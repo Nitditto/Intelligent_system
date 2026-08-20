@@ -129,11 +129,12 @@ def load_resources():
             if model_name in ["random_forest", "xgboost"]:
                 explainers[model_name] = shap.TreeExplainer(model)
             elif model_name in ["logistic_regression", "svr_linear"]:
-                explainers[model_name] = shap.Explainer(model, X_train_scaled)
+                explainers[model_name] = shap.LinearExplainer(model, X_train_scaled)
             elif model_name in ["svr_rbf", "knn"]:
                 # Initialize KernelExplainer for non-linear models
-                # Using model.predict and background_data
-                explainers[model_name] = shap.KernelExplainer(model.predict, background_data)
+                # Using model.predict and smaller background_data to load faster
+                background_summary = shap.kmeans(X_train_scaled, 10)
+                explainers[model_name] = shap.KernelExplainer(model.predict, background_summary)
         except Exception as e:
             print(f"Error setting up explainer for {model_name}: {e}")
 
@@ -196,15 +197,15 @@ async def search_houses(
         # DO NOT fallback to dummy data per Phase 6 & 8
         return []
 
-    # Get images for top results
-    print(f"Executing Image search for: nhà đẹp {district}")
-    images = search_images_ddg(f"nhà đẹp {district}", max_results=len(top_results))
-    
     final_output = []
-    for i, r in enumerate(top_results):
-        img_url = images[i] if i < len(images) else "https://via.placeholder.com/400x300?text=House+Image"
+    for r in top_results:
+        title = r.get('title')
+        print(f"Executing Image search for: {title}")
+        imgs = search_images_ddg(title, max_results=1)
+        img_url = imgs[0] if imgs else "No Images"
+        
         final_output.append({
-            "title": r.get('title'),
+            "title": title,
             "link": r.get('href'),
             "snippet": r.get('body'),
             "image": img_url,
@@ -342,11 +343,19 @@ async def get_result(result_id: str, model: str):
         if target_model in explainers:
             try:
                 explainer = explainers[target_model]
-                shap_vals = explainer.shap_values(model_input)
                 
-                sv = shap_vals[0]
-                if isinstance(sv, list): sv = sv[0]
-                if len(sv.shape) > 1: sv = sv[0]
+                if isinstance(explainer, shap.KernelExplainer):
+                    shap_vals = explainer.shap_values(model_input, nsamples=100)
+                else:
+                    shap_vals = explainer.shap_values(model_input)
+                
+                if isinstance(shap_vals, list):
+                    sv = shap_vals[0]
+                else:
+                    sv = shap_vals
+                
+                if len(sv.shape) > 1: 
+                    sv = sv[0]
                 
                 # Fetch base log value from explainer
                 base_log = explainer.expected_value
@@ -368,18 +377,27 @@ async def get_result(result_id: str, model: str):
                 else:
                     multiplier = float(np.exp(base_log))
                 
+                # Don't drop small values yet to keep the sum exact
                 for i, f_name in enumerate(feature_cols):
-                    # Scale log SHAP to price space
                     val = float(sv[i]) * multiplier
-                    if abs(val) > 0.001:
-                        shap_features.append(SHAPFeature(feature=f_name, value=val))
-                        
-                # Add base value as a feature to force plot starting from 0.0
-                shap_features.append(SHAPFeature(feature="Giá trị nền (Base Value)", value=base_price))
+                    shap_features.append(SHAPFeature(feature=f_name, value=val))
                         
                 shap_features.sort(key=lambda x: abs(x.value), reverse=True)
-                shap_features = shap_features[:11]
                 
+                # Keep top 10 features, group the rest
+                top_features = shap_features[:10]
+                others_sum = sum(x.value for x in shap_features[10:])
+                
+                # Only keep features > 0.001 visually
+                top_features = [x for x in top_features if abs(x.value) > 0.001]
+                
+                if abs(others_sum) > 0.001:
+                    top_features.append(SHAPFeature(feature="Các yếu tố khác", value=others_sum))
+                    
+                # Add base value as a feature to force plot starting from 0.0
+                top_features.append(SHAPFeature(feature="Giá trị nền (Base Value)", value=base_price))
+                
+                shap_features = top_features
                 model_data["base_value"] = 0.0
             except Exception as e:
                 print(f"Error calculating lazy SHAP for {model}: {e}")

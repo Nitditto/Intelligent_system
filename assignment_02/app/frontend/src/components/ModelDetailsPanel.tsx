@@ -46,6 +46,11 @@ const translateFeatureName = (name: string) => {
     'House direction_Tây - Nam': 'Hướng nhà: Tây Nam',
     'House direction_Đông - Bắc': 'Hướng nhà: Đông Bắc',
     'House direction_Tây - Bắc': 'Hướng nhà: Tây Bắc',
+    'House direction_Unknown': 'Hướng nhà: Không xác định',
+    'Furniture state_Full': 'Nội thất: Đầy đủ',
+    'Furniture state_Basic': 'Nội thất: Cơ bản',
+    'Furniture state_None': 'Nội thất: Trống',
+    'Furniture state_Unknown': 'Nội thất: Không xác định',
     'Balcony direction_Đông': 'Hướng ban công: Đông',
     'Balcony direction_Tây': 'Hướng ban công: Tây',
     'Balcony direction_Nam': 'Hướng ban công: Nam',
@@ -94,9 +99,6 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
   }, [isOpen, model, resultId, apiUrl]);
 
   if (!isOpen) return null;
-
-  // Base Value dynamically returned from the backend explainer
-  const baseValue = data?.base_value ?? 5.90;
 
   // Split SHAP values into positive and negative
   const shapValues = data?.shap_values || [];
@@ -196,13 +198,10 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
                 <div className="flex items-center justify-between">
                   <h3 className="text-md font-bold text-slate-800 flex items-center gap-1.5">
                     SHAP Stacked Force Plot
-                    <span className="cursor-help" title="Lực đẩy từ giá gốc 5.9 tỷ: Đỏ đẩy giá cao lên, Xanh kéo giá thấp xuống.">
+                    <span className="cursor-help" title="Lực đẩy từ giá gốc: Đỏ đẩy giá cao lên, Xanh kéo giá thấp xuống.">
                       <HelpCircle className="w-4 h-4 text-slate-400" />
                     </span>
                   </h3>
-                  <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-mono">
-                    Base = {baseValue.toFixed(2)} tỷ
-                  </span>
                 </div>
 
                 {/* Plot component */}
@@ -280,9 +279,6 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
                       <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
                       Tổng lực giảm: -{totalNeg.toFixed(2)} tỷ
                     </div>
-                    <div className="text-slate-500 font-medium">
-                      Base = {baseValue.toFixed(2)} tỷ
-                    </div>
                     <div className="text-red-600 font-bold flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>
                       Tổng lực tăng: +{totalPos.toFixed(2)} tỷ
@@ -296,7 +292,6 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
                 <Info className="w-5 h-5 text-slate-400 shrink-0" />
                 <div className="space-y-1">
                   <p className="font-semibold text-slate-700">Biểu đồ SHAP Force Plot giải thích thế nào?</p>
-                  <p>Giá trị nền trung vị thị trường là <strong>{baseValue.toFixed(2)} tỷ</strong>.</p>
                   <p>Mỗi đặc trưng của bất động sản bạn nhập (ví dụ: diện tích lớn, số phòng ngủ, vị trí quận nội thành) sẽ hoạt động như một "lực đẩy" (Màu Đỏ) hoặc "lực kéo" (Màu Xanh Dương) làm thay đổi giá trị nhà so với giá trung vị gốc, tạo nên mức giá dự đoán cuối cùng.</p>
                 </div>
               </div>

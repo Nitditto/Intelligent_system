@@ -5,5 +5,5 @@ scikit-learn
 xgboost
 ddgs
 pydantic
-shap
+shap==0.52.0
 beautifulsoup4

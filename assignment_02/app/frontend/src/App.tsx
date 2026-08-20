@@ -326,8 +326,23 @@ function App() {
                 {searchResults.map((item, idx) => (
                   <a key={idx} href={item.link} target="_blank" rel="noreferrer" className="group glass-card overflow-hidden hover:shadow-2xl transition-all flex flex-col">
                     <div className="h-48 overflow-hidden bg-slate-200 relative">
-                      <img src={item.image} alt="House" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image'; }} />
-                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm">Xem chi tiết</div>
+                      {item.image && item.image !== "No Images" ? (
+                        <img 
+                          src={item.image} 
+                          alt="House" 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                          onError={(e) => { 
+                            e.currentTarget.style.display = 'none';
+                            if (e.currentTarget.nextElementSibling) {
+                              (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
+                            }
+                          }} 
+                        />
+                      ) : null}
+                      <div className="absolute inset-0 bg-slate-200 text-slate-500 flex items-center justify-center font-medium" style={{ display: (!item.image || item.image === "No Images") ? 'flex' : 'none' }}>
+                        No Images
+                      </div>
+                      <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm z-10">Xem chi tiết</div>
                     </div>
                     <div className="p-5 flex-1 flex flex-col">
                       <h3 className="font-semibold text-slate-800 line-clamp-2 mb-2 group-hover:text-brand-600 transition-colors">{item.title}</h3>
