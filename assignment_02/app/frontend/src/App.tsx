@@ -3,13 +3,14 @@ import axios from 'axios';
 import { Building, MapPin, Ruler, Compass, Search, Home, ChevronRight, CheckCircle2 } from 'lucide-react';
 import localProvinces from './locations.json';
 import { ModelDetailsPanel } from './components/ModelDetailsPanel';
+import { Browser } from '@capacitor/browser';
 
 const API_BASE = 'http://localhost:8001/api';
 
 function App() {
   const [locations, setLocations] = useState<Record<string, string[]>>({});
   const [cities, setCities] = useState<string[]>([]);
-  
+
   const [form, setForm] = useState({
     StreetAddress: '',
     City: 'Thành phố Hà Nội',
@@ -42,7 +43,7 @@ function App() {
       cityList.push(prov.name);
       locMap[prov.name] = prov.districts.map((d: any) => d.name);
     });
-    
+
     setLocations(locMap);
     setCities(cityList);
     if (cityList.length > 0) {
@@ -82,10 +83,10 @@ function App() {
       });
       setResults(res.data.results);
       setResultId(res.data.id);
-      
+
       // Auto trigger search for the first model's price
       if (res.data.results.length > 0) {
-        const bestPrice = res.data.results.find((r:any) => r.model === 'xgboost')?.price || res.data.results[0].price;
+        const bestPrice = res.data.results.find((r: any) => r.model === 'xgboost')?.price || res.data.results[0].price;
         fetchRealHouses(bestPrice);
       }
     } catch (err) {
@@ -135,7 +136,7 @@ function App() {
         <div className="glass-card p-6 sm:p-8 mb-8">
           <form onSubmit={handlePredict} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
+
               {/* Location */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2 border-b pb-2">
@@ -250,8 +251,8 @@ function App() {
             </div>
 
             <div className="pt-4">
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={loading}
                 className="w-full md:w-auto px-8 py-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
@@ -271,8 +272,8 @@ function App() {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {results.map((r, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   onClick={() => {
                     setSelectedModel(r.model);
                     setIsPanelOpen(true);
@@ -291,7 +292,7 @@ function App() {
                       <span>MAPE: {r.mape.toFixed(1)}%</span>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-brand-600 font-medium group-hover:text-brand-700">
                     <span>Xem đóng góp SHAP</span>
                     <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
@@ -324,19 +325,19 @@ function App() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {searchResults.map((item, idx) => (
-                  <a key={idx} href={item.link} target="_blank" rel="noreferrer" className="group glass-card overflow-hidden hover:shadow-2xl transition-all flex flex-col">
+                  <a key={idx} href={item.link} onClick={(e) => { e.preventDefault(); Browser.open({ url: item.link }).catch(() => window.open(item.link, '_blank')); }} className="group glass-card overflow-hidden hover:shadow-2xl transition-all flex flex-col">
                     <div className="h-48 overflow-hidden bg-slate-200 relative">
                       {item.image && item.image !== "No Images" ? (
-                        <img 
-                          src={item.image} 
-                          alt="House" 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                          onError={(e) => { 
+                        <img
+                          src={item.image}
+                          alt="House"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                          onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             if (e.currentTarget.nextElementSibling) {
                               (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex';
                             }
-                          }} 
+                          }}
                         />
                       ) : null}
                       <div className="absolute inset-0 bg-slate-200 text-slate-500 flex items-center justify-center font-medium" style={{ display: (!item.image || item.image === "No Images") ? 'flex' : 'none' }}>
