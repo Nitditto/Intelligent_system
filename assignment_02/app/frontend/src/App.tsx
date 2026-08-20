@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Building, MapPin, Ruler, Compass, Search, Home, ChevronRight, CheckCircle2 } from 'lucide-react';
 import localProvinces from './locations.json';
+import { ModelDetailsPanel } from './components/ModelDetailsPanel';
 
 const API_BASE = 'http://localhost:8001/api';
 
@@ -29,6 +30,9 @@ function App() {
   const [results, setResults] = useState<any[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [resultId, setResultId] = useState<string | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   useEffect(() => {
     // Process localProvinces JSON
@@ -72,11 +76,12 @@ function App() {
     try {
       const res = await axios.post(`${API_BASE}/predict`, form);
       // Sort so XGBoost or best is first
-      const sortedResults = res.data.results.sort((a: any, b: any) => {
+      res.data.results.sort((a: any, b: any) => {
         // Just hardcode a preference for tree models or just return them
         return b.price - a.price; // sort by price for now, or backend already sorted?
       });
       setResults(res.data.results);
+      setResultId(res.data.id);
       
       // Auto trigger search for the first model's price
       if (res.data.results.length > 0) {
@@ -266,11 +271,30 @@ function App() {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {results.map((r, i) => (
-                <div key={i} className={`p-4 rounded-xl border-2 transition-all ${r.model === 'xgboost' || r.model === 'best_model' ? 'bg-green-50 border-green-500 shadow-md transform scale-105 relative z-10' : 'bg-white border-slate-200'}`}>
+                <div 
+                  key={i} 
+                  onClick={() => {
+                    setSelectedModel(r.model);
+                    setIsPanelOpen(true);
+                  }}
+                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer hover:shadow-lg hover:-translate-y-1 transform group ${r.model === 'xgboost' || r.model === 'best_model' ? 'bg-green-50 border-green-500 shadow-md scale-105 relative z-10' : 'bg-white border-slate-200'}`}
+                >
                   {(r.model === 'xgboost' || r.model === 'best_model') && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">TỐT NHẤT</div>}
                   <div className="text-sm text-slate-500 uppercase tracking-wider font-semibold mb-1">{r.model.replace('_', ' ')}</div>
                   <div className={`text-2xl font-bold ${r.model === 'xgboost' || r.model === 'best_model' ? 'text-green-700' : 'text-slate-800'}`}>
                     {r.price.toFixed(2)} tỷ
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1.5 flex flex-col gap-0.5">
+                    <div>Độ tin cậy: {(r.confidence * 100).toFixed(1)}%</div>
+                    <div className="text-[10px] text-slate-500 flex justify-between mt-1 pt-1 border-t border-slate-100/50">
+                      <span>R²: {r.r2.toFixed(4)}</span>
+                      <span>MAPE: {r.mape.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-brand-600 font-medium group-hover:text-brand-700">
+                    <span>Xem đóng góp SHAP</span>
+                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                   </div>
                 </div>
               ))}
@@ -319,6 +343,14 @@ function App() {
           </div>
         )}
       </main>
+
+      <ModelDetailsPanel
+        isOpen={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        model={selectedModel}
+        resultId={resultId}
+        apiUrl={API_BASE.replace('/api', '')}
+      />
     </div>
   );
 }

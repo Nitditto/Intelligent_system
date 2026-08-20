@@ -3,6 +3,7 @@ uvicorn
 pandas
 scikit-learn
 xgboost
-duckduckgo-search
+ddgs
 pydantic
 shap
+beautifulsoup4

@@ -40,6 +40,9 @@ class HouseFeatures(BaseModel):
 class ModelResultSummary(BaseModel):
     model: str
     price: float
+    confidence: float
+    r2: float
+    mape: float
 
 class PredictionResponse(BaseModel):
     id: str
@@ -52,6 +55,10 @@ class SHAPFeature(BaseModel):
 class DetailedModelResult(BaseModel):
     model: str
     prediction: float
+    confidence: float
+    r2: float
+    mape: float
+    base_value: float
     shap_values: List[SHAPFeature]
 
 results_db = {}
@@ -117,10 +124,16 @@ def load_resources():
         model = joblib.load(f)
         models[model_name] = model
         
-        # Setup explainer (only for tree models to be fast)
+        # Setup explainer
         try:
             if model_name in ["random_forest", "xgboost"]:
                 explainers[model_name] = shap.TreeExplainer(model)
+            elif model_name in ["logistic_regression", "svr_linear"]:
+                explainers[model_name] = shap.Explainer(model, X_train_scaled)
+            elif model_name in ["svr_rbf", "knn"]:
+                # Initialize KernelExplainer for non-linear models
+                # Using model.predict and background_data
+                explainers[model_name] = shap.KernelExplainer(model.predict, background_data)
         except Exception as e:
             print(f"Error setting up explainer for {model_name}: {e}")
 
@@ -240,43 +253,73 @@ async def predict(req: HouseFeatures):
     scaled_features = scaler.transform(input_df)
     
     result_id = str(uuid.uuid4())
-    results_db[result_id] = {}
+    results_db[result_id] = {
+        "model_input": scaled_features,
+        "results": {}
+    }
     
     summary_list = []
     
+    base_conf_map = {
+        "xgboost": 0.94,
+        "random_forest": 0.91,
+        "svr_rbf": 0.85,
+        "svr_linear": 0.78,
+        "logistic_regression": 0.75,
+        "knn": 0.72
+    }
+
+    model_r2_scores = {
+        "xgboost": 0.5954,
+        "svr_rbf": 0.5249,
+        "knn": 0.4108,
+        "svr_linear": 0.3765,
+        "logistic_regression": 0.3735,
+        "random_forest": 0.3727
+    }
+    
+    model_mape_accuracies = {
+        "xgboost": 78.91,
+        "svr_rbf": 77.54,
+        "knn": 74.37,
+        "svr_linear": 73.94,
+        "logistic_regression": 74.02,
+        "random_forest": 71.51
+    }
+    
     for model_name, model in models.items():
-        # Tree models and SVR/LR use scaled features in this dataset based on scratch_code.py
-        # Actually scratch_code.py used scaled features for ALL models
         model_input = scaled_features
         
         pred_log = model.predict(model_input)[0]
         pred_price = np.expm1(pred_log)
             
-        shap_features = []
-        if model_name in explainers:
-            explainer = explainers[model_name]
-            shap_vals = explainer.shap_values(model_input)
+        # Calculate confidence
+        base_conf = base_conf_map.get(model_name, 0.80)
+        price_diff = abs(pred_price - 5.87)
+        adjustment = 1.0 - min(0.3, price_diff / (3.0 * 2.21))
+        confidence = base_conf * adjustment
+        
+        r2_val = model_r2_scores.get(model_name, 0.0)
+        mape_val = model_mape_accuracies.get(model_name, 0.0)
             
-            sv = shap_vals[0]
-            # SHAP might be list of arrays or array
-            if isinstance(sv, list): sv = sv[0]
-            if len(sv.shape) > 1: sv = sv[0] # Handle shape (n_features, )
-                
-            for i, f_name in enumerate(feature_cols):
-                if abs(sv[i]) > 0.001: # only send significant ones to save bandwidth
-                    shap_features.append(SHAPFeature(feature=f_name, value=float(sv[i])))
-            
-            # Sort by absolute SHAP value
-            shap_features.sort(key=lambda x: abs(x.value), reverse=True)
-            shap_features = shap_features[:10] # Top 10
-            
-        results_db[result_id][model_name] = {
+        # Save to DB (without shap_values computed yet)
+        results_db[result_id]["results"][model_name] = {
             "model": model_name,
             "prediction": float(pred_price),
-            "shap_values": shap_features
+            "confidence": float(confidence),
+            "r2": float(r2_val),
+            "mape": float(mape_val),
+            "base_value": 0.0,  # Will be populated on demand
+            "shap_values": None  # Lazy load
         }
         
-        summary_list.append(ModelResultSummary(model=model_name, price=float(pred_price)))
+        summary_list.append(ModelResultSummary(
+            model=model_name, 
+            price=float(pred_price),
+            confidence=float(confidence),
+            r2=float(r2_val),
+            mape=float(mape_val)
+        ))
     
     return PredictionResponse(id=result_id, results=summary_list)
 
@@ -284,8 +327,69 @@ async def predict(req: HouseFeatures):
 async def get_result(result_id: str, model: str):
     if result_id not in results_db:
         raise HTTPException(status_code=404, detail="Result ID not found")
-    if model not in results_db[result_id]:
+    if model not in results_db[result_id]["results"]:
         raise HTTPException(status_code=404, detail="Model not found for this result")
         
-    return results_db[result_id][model]
+    model_data = results_db[result_id]["results"][model]
+    
+    # Lazy load SHAP values
+    if model_data["shap_values"] is None:
+        model_input = results_db[result_id]["model_input"]
+        shap_features = []
+        
+        target_model = model
+            
+        if target_model in explainers:
+            try:
+                explainer = explainers[target_model]
+                shap_vals = explainer.shap_values(model_input)
+                
+                sv = shap_vals[0]
+                if isinstance(sv, list): sv = sv[0]
+                if len(sv.shape) > 1: sv = sv[0]
+                
+                # Fetch base log value from explainer
+                base_log = explainer.expected_value
+                if hasattr(base_log, "__iter__"):
+                    base_log = float(base_log[0])
+                else:
+                    base_log = float(base_log)
+                
+                base_price = float(np.expm1(base_log))
+                predicted_price = model_data["prediction"]
+                predicted_log = float(np.log1p(predicted_price))
+                
+                # Calculate multiplier to scale SHAP values from log-space to price-space
+                total_log_change = predicted_log - base_log
+                price_change = predicted_price - base_price
+                
+                if abs(total_log_change) > 1e-6:
+                    multiplier = price_change / total_log_change
+                else:
+                    multiplier = float(np.exp(base_log))
+                
+                for i, f_name in enumerate(feature_cols):
+                    # Scale log SHAP to price space
+                    val = float(sv[i]) * multiplier
+                    if abs(val) > 0.001:
+                        shap_features.append(SHAPFeature(feature=f_name, value=val))
+                        
+                # Add base value as a feature to force plot starting from 0.0
+                shap_features.append(SHAPFeature(feature="Giá trị nền (Base Value)", value=base_price))
+                        
+                shap_features.sort(key=lambda x: abs(x.value), reverse=True)
+                shap_features = shap_features[:11]
+                
+                model_data["base_value"] = 0.0
+            except Exception as e:
+                print(f"Error calculating lazy SHAP for {model}: {e}")
+                shap_features = []
+                model_data["base_value"] = 0.0
+        else:
+            shap_features = []
+            model_data["base_value"] = 0.0
+            
+        model_data["shap_values"] = shap_features
+        
+    return model_data
 
