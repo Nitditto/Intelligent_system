@@ -1,0 +1,1 @@
+from ddgs import DDGS; import json; ddgs = DDGS(); res = list(ddgs.text('Bán nhà Qu?n Hai Bà Trung 6 t? d?n 7 t?', region='vn-vi', max_results=3)); open('test_search.json', 'w', encoding='utf-8').write(json.dumps(res, ensure_ascii=False))

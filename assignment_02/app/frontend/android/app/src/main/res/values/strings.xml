@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Housing Predictor</string>
+    <string name="title_activity_main">Housing Predictor</string>
+    <string name="package_name">com.intelligent.system.housing</string>
+    <string name="custom_url_scheme">com.intelligent.system.housing</string>
+</resources>
