@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+scikit-learn
+xgboost
+ddgs
+pydantic
+shap==0.52.0
+beautifulsoup4
