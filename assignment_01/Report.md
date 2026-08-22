@@ -10,9 +10,9 @@ The intelligent system is a diagnostic assistant that analyzes a patient's clini
 ### System Diagram
 ```mermaid
 flowchart LR
-    A[Input:\nRaw Patient\nMedical Data] --> B[Represent:\nFeature Vector\n(Scaled Numerics)]
+    A[Input:\nRaw Patient\nMedical Data] --> B["Represent:\nFeature Vector\n(Scaled Numerics)"]
     B --> C[Model:\nTrained ML\nClassifier]
-    C --> D[Predict:\nBinary Outcome\n(Diabetic / Non-Diabetic)]
+    C --> D["Predict:\nBinary Outcome\n(Diabetic / Non-Diabetic)"]
 ```
 
 ## 3. Problem Definition
@@ -156,9 +156,17 @@ Random Forest achieved the highest overall performance — Accuracy 76.62%, Prec
 - **What would change if the representation changed?** The choice of model would have to change drastically (e.g., CNNs for images, RNNs for sequences, GNNs for graphs). The computational cost would increase, and the interpretability of the model (knowing exactly why a prediction was made) would likely decrease.
 
 ## 11. Intelligent Application
-The trained `random_forest.pkl` model (auto-selected in Section 20 of the notebook as the highest-F1 model) is integrated into a full-stack application (`app/` directory: FastAPI backend + React frontend, with SHAP-based per-feature explanations). Users enter clinical data into the UI and receive an instant prediction from the backend `/api/predict` endpoint.
+The trained models are integrated into a full-stack application (`app/` directory: FastAPI backend + React frontend, with SHAP-based per-feature explanations). Users enter clinical data once into the form and the backend `/api/predict` endpoint runs the **same patient through all six trained models at once**, returning a ranked comparison (Section 15.1's Experiment 1, reproduced live) instead of a single black-box answer.
 
-The exact same pipeline (impute → scale → predict) is also demonstrated directly inside the notebook via a `predict_diabetes()` function (Section 21–22), so the complete path can be verified without needing the web UI. Three input cases were run end-to-end:
+![Application dashboard — patient input form and the six models ranked by accuracy for one submitted profile](image.png)
+
+Selecting any row in the ranking opens a detail drawer with that specific model's prediction, confidence, and a SHAP feature-attribution chart. The screenshot below shows this drawer for **Random Forest** — the model auto-selected as the final model in Section 20 — but the same drill-down is available for any of the other five; Random Forest is shown here simply because it is the one actually shipped for the notebook's `predict_diabetes()` demonstration below.
+
+![Model detail drawer for Random Forest — prediction, confidence, accuracy, and the SHAP chart explaining which features pushed the prediction toward "Diabetic"](image-1.png)
+
+For this particular patient (Pregnancies=6, Glucose=148, BMI=33.6, Age=50 — the dataset's first row), Random Forest predicts **Diabetic at 52.0% confidence**, driven mainly by high Glucose (+0.15) and Age (+0.075), partially offset by a low Insulin reading (−0.20).
+
+The exact same preprocessing pipeline (impute → scale → predict) is also demonstrated directly inside the notebook via a `predict_diabetes()` function (Section 21–22) using only the auto-selected final model, so the complete path can be verified without needing the web UI. Three input cases were run end-to-end there:
 
 | Case | Prediction | P(Diabetic) |
 | --- | --- | --- |
@@ -167,7 +175,6 @@ The exact same pipeline (impute → scale → predict) is also demonstrated dire
 | High-risk profile (high glucose, high BMI, high pedigree) | Diabetic | 85.00% |
 
 These three cases move monotonically with the clinical risk factors, which is the qualitative sanity check expected of the system: as glucose, BMI, and pedigree function rise, the predicted diabetes probability rises with them.
-*[Insert screenshot of the web Application UI + a live prediction here for the final submission]*
 
 ## 12. Limitations
 - **Data Bias:** The dataset is limited to females of Pima Indian heritage. The model will likely fail to generalize accurately to males, or to populations with different genetic backgrounds and dietary habits.
