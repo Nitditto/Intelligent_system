@@ -49,7 +49,7 @@ flowchart LR
 | DiabetesPedigreeFunction | Numerical | Real value | Diabetes pedigree function (genetic risk) |
 | Age | Numerical | Integer | Age in years |
 
-*(Note: There are no categorical features requiring encoding in this dataset. However, invalid `0` measurements for features like Glucose and BMI were imputed to their median, and the entire feature vector was standardized using `StandardScaler` to have a mean of 0 and variance of 1.)*
+*(Note: There are no categorical features requiring encoding in this dataset. However, invalid `0` measurements for features like Glucose and BMI were imputed to their median, and the entire feature vector was standardized using `StandardScaler` to have a mean of 0 and variance of 1. Both the imputer and the scaler are `fit()` on the training split only and `transform()`-ed onto the test split, so no test-set information leaks into preprocessing — three distinct representations exist along the pipeline: **raw feature** (may contain an invalid 0) → **imputed feature** (0 replaced by the train-only median) → **model input** (imputed feature standardized for distance-based models; tree models use the imputed-but-unscaled feature directly).)*
 
 ## 6. Traditional ML Methods
 
@@ -114,31 +114,36 @@ flowchart LR
 - **Setup:** We compare Logistic Regression, SVM (Linear), SVM (RBF), KNN, Random Forest, and XGBoost using the same 80/20 train-test split. The scaled data is provided to distance-based models (LR, SVM, KNN), and unscaled data to tree models (Random Forest, XGBoost). We evaluate using Accuracy, Precision, Recall, and F1-score.
 
 ### Experiment 2: Hyperparameter Investigation
-- **Question:** How does the number of neighbors ($k$) affect the performance of the KNN algorithm on this dataset?
-- **Setup:** Using GridSearchCV, we test $k$ values of 3, 5, 7, and 9. We observe how the accuracy changes, identifying whether a low $k$ (high variance/overfitting) or a high $k$ (high bias/underfitting) performs better for this specific medical data.
+- **Question:** How do the number of neighbors ($k$) and the weighting scheme (`uniform` vs. `distance`) affect the performance of the KNN algorithm on this dataset?
+- **Setup:** Using 5-fold `GridSearchCV`, we test $k \in \{3, 5, 7, 9\}$ × `weights` $\in \{$uniform, distance$\}$, then inspect the **full** `cv_results_` (not just the single best combination) to see how cross-validated accuracy moves across the whole grid.
+- **Result:** Best configuration: $k=9$, `weights='uniform'` → CV accuracy = 0.7607. The accuracy spread across all 8 combinations tested was 0.0342 — noticeable enough that $k$ is a meaningful hyperparameter here, not just a knob that can be left at a default. Accuracy trends upward from $k=3$ to $k=9$ in this range, consistent with $k=3$ overfitting to a few noisy neighbors (high variance) and larger $k$ smoothing the decision boundary (higher bias, lower variance) more appropriately for this dataset's class overlap.
 
 ### Experiment 3: Representation / Feature Investigation
 - **Question:** Does standardizing (scaling) the feature vectors improve the performance of distance-based models like KNN?
-- **Setup:** We train a K-Nearest Neighbors classifier twice: once on the raw, unscaled feature vectors, and once on the standardized feature vectors. We will compare the resulting accuracy to determine if the representation change significantly affects the result. We expect scaling to drastically improve KNN because the original features have vastly different ranges (e.g., Pedigree Function is < 1, while Insulin can be > 100), meaning the large-range features would unjustly dominate the Euclidean distance calculation.
+- **Setup:** We train a K-Nearest Neighbors classifier ($k=5$) twice: once on the raw, unscaled feature vectors, and once on the standardized feature vectors, and compare test accuracy.
+- **Result:** Unscaled accuracy = **67.53%**, Scaled accuracy = **75.32%** — a **+7.8 point** jump from standardization alone. This confirms the expectation: raw features have vastly different ranges (e.g., Pedigree Function is < 1, while Insulin can be > 100), so unscaled Euclidean distance is dominated by the large-range features. Standardizing forces every feature to contribute proportionally, which is exactly why the representation choice ("Data Representation", Section 5) is not a cosmetic detail but a determinant of model quality.
 
 ## 8. Results
 
-*Note: The exact metrics below correspond to the execution of the final Jupyter notebook.*
+*Reproduced end-to-end by executing [Report_Notebook.ipynb](Report_Notebook.ipynb) (Aug 2026 run, after fixing the train/test leakage in the median-imputation step — see Section 5).*
 
 | Model | Accuracy | Precision | Recall | F1 |
 | --- | --- | --- | --- | --- |
-| Logistic Regression | 70.13% | 0.59 | 0.50 | 0.54 |
-| SVM (Linear) | 70.78% | 0.60 | 0.50 | 0.55 |
-| SVM (RBF) | 71.43% | 0.62 | 0.48 | 0.54 |
-| KNN (Best k=9) | 69.48% | 0.57 | 0.52 | 0.54 |
-| Random Forest | 74.03% | 0.67 | 0.52 | 0.58 |
-| XGBoost | 72.73% | 0.64 | 0.52 | 0.57 |
+| Baseline (Most Frequent) | 64.94% | 0.000 | 0.000 | 0.000 |
+| Logistic Regression | 70.78% | 0.600 | 0.500 | 0.545 |
+| SVM (Linear) | 70.78% | 0.605 | 0.481 | 0.536 |
+| SVM (RBF) | 69.48% | 0.581 | 0.463 | 0.515 |
+| KNN (Best k=9, uniform) | 74.03% | 0.635 | 0.611 | 0.623 |
+| **Random Forest** | **76.62%** | **0.696** | 0.593 | **0.640** |
+| XGBoost | 74.68% | 0.653 | 0.593 | 0.621 |
+
+The baseline's Precision/Recall/F1 are all **0.000** because `DummyClassifier(strategy='most_frequent')` always predicts "Non-Diabetic" — it never once identifies a diabetic patient, even though it still scores 64.94% accuracy (the non-diabetic proportion of the dataset). This is exactly why a baseline is necessary: accuracy alone would make this trivial, useless strategy look "pretty good," while Precision/Recall/F1 correctly expose that it has zero diagnostic value.
 
 **Appropriate Metrics:** 
-For a medical diagnostic tool like predicting diabetes, **Recall** is arguably the most critical metric. High recall ensures that we minimize False Negatives (telling a diabetic patient they are healthy, leading to lack of treatment). While Accuracy gives a good overall picture, F1-score (harmonic mean of precision and recall) provides a better summary metric than accuracy, given the imbalance in the dataset.
+For a medical diagnostic tool like predicting diabetes, **Recall** is arguably the most critical metric. High recall ensures that we minimize False Negatives (telling a diabetic patient they are healthy, leading to lack of treatment). While Accuracy gives a good overall picture, **F1-score** (harmonic mean of precision and recall) is used as the ranking metric for model comparison and automatic final-model selection, since it is more informative than raw accuracy on this dataset (roughly 65% non-diabetic / 35% diabetic).
 
 ## 9. Model Comparison
-Random Forest achieved the highest overall performance across accuracy (74.03%), precision, and F1-score (0.58). As an ensemble method, it naturally captured the non-linear relationships and complex interactions between features like Glucose, BMI, and Age much better than the linear models (LR and SVM Linear). XGBoost also performed exceptionally well, confirming that tree-based ensembles are highly effective on this tabular dataset. KNN underperformed compared to all other models (69.48% accuracy), struggling with the high dimensionality of the feature space even after tuning. 
+Random Forest achieved the highest overall performance — Accuracy 76.62%, Precision 0.696, and the best F1-score (0.640) — and is selected as the final model. As an ensemble method, it naturally captured the non-linear relationships and interactions between features like Glucose, BMI, and Age better than the linear models (Logistic Regression and SVM Linear). KNN (k=9) and XGBoost followed closely (F1 = 0.623 and 0.621), confirming that both instance-based and boosted-tree methods are competitive on this tabular dataset once features are properly represented (imputed + scaled). SVM (RBF) was the weakest trained model (F1 = 0.515), edging out only the baseline — its non-linear kernel did not find structure beyond what the simpler linear models already captured on this dataset.
 
 ## 10. Representation Analysis
 - **Why is your feature-vector representation appropriate?** The medical data naturally comes in independent tabular measurements. A fixed-length feature vector perfectly encapsulates these discrete health metrics for a single patient.
@@ -151,9 +156,18 @@ Random Forest achieved the highest overall performance across accuracy (74.03%),
 - **What would change if the representation changed?** The choice of model would have to change drastically (e.g., CNNs for images, RNNs for sequences, GNNs for graphs). The computational cost would increase, and the interpretability of the model (knowing exactly why a prediction was made) would likely decrease.
 
 ## 11. Intelligent Application
-The trained `xgboost.pkl` / `random_forest.pkl` model has been integrated into a full-stack application (located in the `app` directory). It features a frontend where users can input their clinical data and receive an instant prediction from the backend API serving the model.
-*[Insert screenshot of Application UI here]*
-*[Insert screenshot of Prediction Result here]*
+The trained `random_forest.pkl` model (auto-selected in Section 20 of the notebook as the highest-F1 model) is integrated into a full-stack application (`app/` directory: FastAPI backend + React frontend, with SHAP-based per-feature explanations). Users enter clinical data into the UI and receive an instant prediction from the backend `/api/predict` endpoint.
+
+The exact same pipeline (impute → scale → predict) is also demonstrated directly inside the notebook via a `predict_diabetes()` function (Section 21–22), so the complete path can be verified without needing the web UI. Three input cases were run end-to-end:
+
+| Case | Prediction | P(Diabetic) |
+| --- | --- | --- |
+| Low-risk profile (young, normal glucose/BMI) | Non-Diabetic | 1.00% |
+| Borderline profile (elevated glucose, mid BMI) | Diabetic | 54.00% |
+| High-risk profile (high glucose, high BMI, high pedigree) | Diabetic | 85.00% |
+
+These three cases move monotonically with the clinical risk factors, which is the qualitative sanity check expected of the system: as glucose, BMI, and pedigree function rise, the predicted diabetes probability rises with them.
+*[Insert screenshot of the web Application UI + a live prediction here for the final submission]*
 
 ## 12. Limitations
 - **Data Bias:** The dataset is limited to females of Pima Indian heritage. The model will likely fail to generalize accurately to males, or to populations with different genetic backgrounds and dietary habits.
@@ -170,4 +184,4 @@ The trained `xgboost.pkl` / `random_forest.pkl` model has been integrated into a
 - **What limitations prevent it from being a more capable intelligent system?** It lacks contextual awareness. It cannot ask follow-up questions, it doesn't know the patient's family history (beyond the pedigree function), and it cannot explain its reasoning to the doctor in a human-readable way (lack of deep explainability).
 
 ## 14. Conclusion
-We successfully designed and implemented an intelligent system to predict diabetes based on clinical features. By evaluating multiple models and standardizing the data representations, we determined that non-linear ensemble models like Random Forest provided the most accurate and reliable predictions. While the system demonstrates clear value as a preliminary screening tool, its deployment must be accompanied by awareness of its demographic biases and lack of temporal awareness.
+We successfully designed and implemented an intelligent system to predict diabetes based on clinical features. After correcting a train/test leakage issue in the imputation step (median now computed from the training split only) and adding full Precision/Recall/F1 reporting for every model, Random Forest achieved the best held-out performance (Accuracy 76.62%, F1 0.640) and was selected automatically as the final model. The three controlled experiments showed that: (1) all six trained models clearly beat the zero-F1 baseline, (2) KNN's accuracy is meaningfully sensitive to `k` (spread of 0.034 across the grid), and (3) standardizing features improves KNN accuracy by +7.8 points — confirming that representation choices, not just model choice, materially affect outcomes. While the system demonstrates clear value as a preliminary screening tool — verified end-to-end in the notebook with three sample patients — its deployment must be accompanied by awareness of its demographic biases (Pima Indian females only), lack of temporal awareness, and the fact that the whole pipeline was built on only 768 records.
