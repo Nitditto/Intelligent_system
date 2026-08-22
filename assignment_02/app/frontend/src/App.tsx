@@ -5,7 +5,9 @@ import localProvinces from './locations.json';
 import { ModelDetailsPanel } from './components/ModelDetailsPanel';
 import { Browser } from '@capacitor/browser';
 
-const API_BASE = 'http://localhost:8001/api';
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = 'true';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 function App() {
   const [locations, setLocations] = useState<Record<string, string[]>>({});
