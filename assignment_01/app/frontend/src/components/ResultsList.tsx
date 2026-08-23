@@ -16,45 +16,56 @@ const formatModelName = (name: string) => {
 
 export const ResultsList: React.FC<ResultsListProps> = ({ summaries, onSelectModel, selectedModel }) => {
   return (
-    <div className="glass-panel p-6 h-full flex flex-col">
-      <h2 className="text-2xl font-bold mb-6 text-primary-100 flex items-center gap-2">
-        <Award className="w-6 h-6 text-yellow-500" />
-        Model Rankings
-      </h2>
-      <div className="flex-1 overflow-y-auto pr-2 space-y-3">
+    <div className="h-full p-5 sm:p-6 flex flex-col">
+      <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--app-primary)]">Output</p>
+          <h2 className="mt-1 flex items-center gap-2 text-xl font-bold text-[var(--app-text)]">
+            <Award className="w-5 h-5 text-[var(--app-accent)]" />
+            Model Rankings
+          </h2>
+        </div>
+        <p className="text-sm muted-text">Select a row to inspect details</p>
+      </div>
+      <div className="flex-1 overflow-y-auto pr-1 space-y-3">
         {summaries.map((summary, idx) => (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 }}
+            transition={{ delay: idx * 0.06 }}
             key={summary.model}
           >
             <button
               onClick={() => onSelectModel(summary.model)}
               className={clsx(
-                "w-full text-left p-4 rounded-xl transition-all border flex items-center justify-between group",
-                selectedModel === summary.model
-                  ? "bg-primary-900/40 border-primary-500 shadow-lg shadow-primary-900/20"
-                  : "bg-slate-800/30 border-slate-700 hover:bg-slate-800 hover:border-slate-600"
+                'ranking-button w-full text-left p-4 rounded-lg transition-all flex items-center justify-between gap-3 group',
+                selectedModel === summary.model && 'ranking-button-selected shadow-lg shadow-primary-900/10'
               )}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 items-center gap-4">
                 <div className={clsx(
-                  "flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm",
-                  idx === 0 ? "bg-yellow-500/20 text-yellow-400" :
-                  idx === 1 ? "bg-slate-300/20 text-slate-300" :
-                  idx === 2 ? "bg-amber-700/20 text-amber-500" : "bg-slate-700 text-slate-400"
+                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-bold text-sm',
+                  idx === 0 ? 'bg-amber-500/20 text-amber-500' :
+                  idx === 1 ? 'bg-cyan-500/20 text-cyan-500' :
+                  idx === 2 ? 'bg-orange-500/20 text-orange-500' : 'bg-primary-500/10 text-[var(--app-text-muted)]'
                 )}>
                   #{idx + 1}
                 </div>
-                <div>
-                  <h3 className="font-semibold text-slate-100">{formatModelName(summary.model)}</h3>
-                  <p className="text-sm text-slate-400">Accuracy: {(summary.accuracy * 100).toFixed(2)}%</p>
+                <div className="min-w-0">
+                  <h3 className="truncate font-semibold text-[var(--app-text)]">{formatModelName(summary.model)}</h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="accuracy-track">
+                      <span style={{ width: `${Math.round(summary.accuracy * 100)}%` }} />
+                    </div>
+                    <p className="text-sm font-semibold text-[var(--app-primary-strong)]">
+                      {(summary.accuracy * 100).toFixed(2)}%
+                    </p>
+                  </div>
                 </div>
               </div>
               <ChevronRight className={clsx(
-                "w-5 h-5 transition-transform",
-                selectedModel === summary.model ? "text-primary-400" : "text-slate-500 group-hover:text-slate-300 group-hover:translate-x-1"
+                'w-5 h-5 shrink-0 transition-transform',
+                selectedModel === summary.model ? 'text-primary-500' : 'text-[var(--app-text-muted)] group-hover:text-primary-500 group-hover:translate-x-1'
               )} />
             </button>
           </motion.div>

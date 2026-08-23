@@ -128,7 +128,7 @@ def load_resources():
         try:
             if model_name in ["random_forest", "xgboost"]:
                 explainers[model_name] = shap.TreeExplainer(model)
-            elif model_name in ["logistic_regression", "svr_linear"]:
+            elif model_name in ["linear_regression", "svr_linear"]:
                 explainers[model_name] = shap.LinearExplainer(model, X_train_scaled)
             elif model_name in ["svr_rbf", "knn"]:
                 # Initialize KernelExplainer for non-linear models
@@ -266,7 +266,7 @@ async def predict(req: HouseFeatures):
         "random_forest": 0.91,
         "svr_rbf": 0.85,
         "svr_linear": 0.78,
-        "logistic_regression": 0.75,
+        "linear_regression": 0.75,
         "knn": 0.72
     }
 
@@ -275,7 +275,7 @@ async def predict(req: HouseFeatures):
         "svr_rbf": 0.5249,
         "knn": 0.4108,
         "svr_linear": 0.3765,
-        "logistic_regression": 0.3735,
+        "linear_regression": 0.3735,
         "random_forest": 0.3727
     }
     
@@ -284,7 +284,7 @@ async def predict(req: HouseFeatures):
         "svr_rbf": 77.54,
         "knn": 74.37,
         "svr_linear": 73.94,
-        "logistic_regression": 74.02,
+        "linear_regression": 74.02,
         "random_forest": 71.51
     }
     
