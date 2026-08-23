@@ -11,27 +11,291 @@
   --color-surface: #1e293b;
 }
 
+/* ---------------------------------------------------------------- */
+/* Design tokens — light theme is the default, `.dark` overrides.   */
+/* ---------------------------------------------------------------- */
+:root {
+  --app-bg: #f3f2fb;
+  --app-bg-glow-1: rgba(217, 70, 239, 0.14);
+  --app-bg-glow-2: rgba(56, 189, 248, 0.12);
+  --app-surface: rgba(255, 255, 255, 0.72);
+  --app-surface-solid: #ffffff;
+  --app-border: rgba(15, 23, 42, 0.09);
+  --app-text: #171923;
+  --app-text-muted: #64748b;
+  --app-primary: #c026d3;
+  --app-primary-strong: #86198f;
+  --app-primary-soft: rgba(192, 38, 211, 0.10);
+  --app-accent: #0891b2;
+  --app-success: #059669;
+  --app-danger: #e11d48;
+  --app-danger-soft: rgba(225, 29, 72, 0.10);
+  --app-success-soft: rgba(5, 150, 105, 0.10);
+  --app-shadow: 0 20px 45px -20px rgba(76, 29, 149, 0.25);
+}
+
+:root.dark {
+  --app-bg: #0a0f1e;
+  --app-bg-glow-1: rgba(232, 121, 249, 0.16);
+  --app-bg-glow-2: rgba(34, 211, 238, 0.12);
+  --app-surface: rgba(30, 41, 59, 0.55);
+  --app-surface-solid: #1e293b;
+  --app-border: rgba(148, 163, 184, 0.14);
+  --app-text: #f1f5f9;
+  --app-text-muted: #94a3b8;
+  --app-primary: #e879f9;
+  --app-primary-strong: #f0abfc;
+  --app-primary-soft: rgba(232, 121, 249, 0.14);
+  --app-accent: #22d3ee;
+  --app-success: #34d399;
+  --app-danger: #fb7185;
+  --app-danger-soft: rgba(251, 113, 133, 0.14);
+  --app-success-soft: rgba(52, 211, 153, 0.14);
+  --app-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.55);
+}
+
 @layer base {
   body {
-    @apply bg-background text-slate-100 min-h-screen antialiased selection:bg-primary-500 selection:text-white font-sans;
+    @apply min-h-screen antialiased selection:bg-primary-500 selection:text-white font-sans;
+    background: var(--app-bg);
+    color: var(--app-text);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--app-border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--app-text-muted); }
+
+/* ---------------------------------------------------------------- */
+/* Shared surfaces                                                  */
+/* ---------------------------------------------------------------- */
 .glass-panel {
-  @apply bg-surface/80 backdrop-blur-md border border-slate-700/50 shadow-xl rounded-2xl;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Custom scrollbar for webkit */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.muted-text { color: var(--app-text-muted); }
+
+.surface-control {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
 }
-::-webkit-scrollbar-track {
-  background: transparent; 
+.surface-control:focus {
+  outline: none;
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 3px var(--app-primary-soft);
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full; 
+
+.primary-gradient {
+  background-image: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
 }
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600; 
+
+/* ---------------------------------------------------------------- */
+/* App shell / background                                           */
+/* ---------------------------------------------------------------- */
+.app-shell {
+  background:
+    radial-gradient(700px 400px at 12% -10%, var(--app-bg-glow-1), transparent 60%),
+    radial-gradient(600px 380px at 100% 10%, var(--app-bg-glow-2), transparent 55%),
+    var(--app-bg);
+}
+
+/* ---------------------------------------------------------------- */
+/* Top bar                                                           */
+/* ---------------------------------------------------------------- */
+.top-bar {
+  padding: 0.85rem 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  flex-shrink: 0;
+  background-image: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  box-shadow: 0 10px 25px -8px rgba(192, 38, 211, 0.55);
+}
+
+.theme-toggle {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.theme-toggle:hover { background: var(--app-primary-soft); }
+
+/* ---------------------------------------------------------------- */
+/* Hero band                                                         */
+/* ---------------------------------------------------------------- */
+.hero-band {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border-radius: 1.5rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+}
+@media (min-width: 1024px) {
+  .hero-band { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+.hero-copy { max-width: 34rem; }
+.hero-copy h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--app-text);
+  margin-top: 0.75rem;
+}
+.hero-copy p {
+  margin-top: 0.6rem;
+  color: var(--app-text-muted);
+  font-size: 0.925rem;
+  line-height: 1.55;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--app-primary-soft);
+  color: var(--app-primary-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--app-success);
+  box-shadow: 0 0 0 0 var(--app-success-soft);
+  animation: status-pulse 2s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--app-success-soft); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  min-width: 6.5rem;
+  border-radius: 1rem;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.metric-value { font-size: 1.35rem; font-weight: 800; color: var(--app-text); line-height: 1; }
+.metric-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--app-text-muted); }
+
+/* ---------------------------------------------------------------- */
+/* Results stage / empty state                                       */
+/* ---------------------------------------------------------------- */
+.results-stage {
+  height: 100%;
+  min-height: 26rem;
+  border-radius: 1.25rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.empty-state {
+  height: 100%;
+  min-height: 26rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2.5rem 2rem;
+}
+.empty-state h2 { font-size: 1.15rem; font-weight: 700; color: var(--app-text); }
+.empty-state p { margin-top: 0.35rem; color: var(--app-text-muted); font-size: 0.9rem; max-width: 26rem; }
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+}
+.empty-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.empty-steps span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-muted);
+}
+
+/* ---------------------------------------------------------------- */
+/* Ranking list (ResultsList)                                        */
+/* ---------------------------------------------------------------- */
+.ranking-button {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.ranking-button:hover { border-color: var(--app-primary); }
+.ranking-button-selected {
+  border-color: var(--app-primary) !important;
+  background: var(--app-primary-soft);
+}
+
+.accuracy-track {
+  position: relative;
+  width: 6.5rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.accuracy-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background-image: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600));
 }

@@ -19,3 +19,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Trained model artifacts (large, fully regenerable via `python build_notebook.py`
+# + Run All on Report_Notebook.ipynb — see README.md)
+*.pkl

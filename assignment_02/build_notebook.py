@@ -36,9 +36,9 @@ def build():
 
     cells.append(new_markdown_cell(
         "# 3. Dataset Source\n"
-        "The dataset is `vietnam_housing_dataset.csv`, a collection of Vietnamese residential real-estate "
-        "listings.\n\n"
-        "**[TODO: paste the exact Kaggle/source URL here.]**"
+        "[House Price Prediction Dataset Vietnam - 2024](https://www.kaggle.com/datasets/nguyentiennhan/vietnam-housing-dataset-2024) "
+        "(Kaggle, author: `nguyentiennhan`) — a collection of ~30,000 Vietnamese residential real-estate "
+        "listings, saved locally as `vietnam_housing_dataset.csv`."
     ))
 
     cells.append(new_markdown_cell(
@@ -156,11 +156,16 @@ def build():
 
     cells.append(new_markdown_cell(
         "# 16. Evaluation\n"
-        "For a price-estimation tool, **R²** summarizes how much of the price variance the model explains "
-        "overall, but **MAE** and **RMSE** (both in billions of VND) are more actionable for an end user, "
-        "since they express a typical prediction error in real currency terms rather than an abstract "
-        "variance-explained percentage. RMSE additionally penalizes large errors more than MAE, which "
-        "matters here because the target has high-value outliers."
+        "Every model is scored with **5 metrics**: R², MAE, MSE, RMSE, and a MAPE-based accuracy percentage "
+        "(`max(0, (1 - MAPE) * 100)`). For a price-estimation tool, **R²** summarizes how much of the price "
+        "variance the model explains overall, but **MAE** and **RMSE** (both in billions of VND) are more "
+        "actionable for an end user, since they express a typical prediction error in real currency terms "
+        "rather than an abstract variance-explained percentage. **MSE** is RMSE's un-rooted form — it is "
+        "reported because it is what `GridSearchCV` actually optimizes (`scoring='neg_mean_squared_error'`), "
+        "so it directly reflects the training objective, while RMSE penalizes large errors more than MAE and "
+        "is easier to interpret since it shares Price's own unit (billion VND). **MAPE Accuracy** adds a "
+        "scale-free, percentage view that is easy to communicate to a non-technical end user (\"the model is "
+        "typically ~75% accurate\") independent of the price range."
     ))
 
     cells.append(new_markdown_cell(
@@ -223,9 +228,31 @@ def build():
 
     cells.append(new_markdown_cell(
         "# 20. Final Model\n"
-        "XGBoost achieved the best overall performance (R² = 0.5954, MAE ≈ 1.05 billion VND), narrowly "
-        "ahead of Random Forest (R² = 0.5623). The trained `xgboost.pkl` model is selected as the final "
-        "model and serialized for use in the application."
+        "The final model is **selected automatically from the Experiment 1 table** (`results_df`, already "
+        "sorted by R² in Section 17), rather than asserted by hand: we take the model in the top row and "
+        "reload its serialized `.pkl` file."
+    ))
+    cells.append(new_code_cell(
+        "model_filenames = {\n"
+        "    'Linear Regression': 'linear_regression.pkl',\n"
+        "    'SVR (RBF)': 'svr_rbf.pkl',\n"
+        "    'SVR (Linear)': 'svr_linear.pkl',\n"
+        "    'KNN': 'knn.pkl',\n"
+        "    'Random Forest': 'random_forest.pkl',\n"
+        "    'XGBoost': 'xgboost.pkl',\n"
+        "}\n"
+        "\n"
+        "best_row = results_df.iloc[0]\n"
+        "best_model_name = best_row['Model']\n"
+        "final_model_file = model_filenames[best_model_name]\n"
+        "final_model = joblib.load(final_model_file)\n"
+        "\n"
+        "print(f\"Selected final model: {best_model_name}\")\n"
+        "print(f\"  -> Serialized file: {final_model_file}\")\n"
+        "print(f\"  -> R2={best_row['R-squared']:.4f}, MAE={best_row['MAE']:.4f}, MSE={best_row['MSE']:.4f}, \"\n"
+        "      f\"RMSE={best_row['RMSE']:.4f}, MAPE Accuracy={best_row['MAPE Accuracy']:.2f}%\")\n"
+        "print(\"Selection rule: highest R2 on the held-out test set — the same criterion Experiment 1 \"\n"
+        "      \"already ranks all six models by, so 'final model' and 'top of the ranking table' always agree.\")"
     ))
 
     cells.append(new_markdown_cell(

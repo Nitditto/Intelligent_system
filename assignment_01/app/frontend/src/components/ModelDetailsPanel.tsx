@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Loader2, Target, Percent } from 'lucide-react';
+import {
+  X,
+  Loader2,
+  Target,
+  Percent,
+  Award,
+  TrendingUp,
+  TrendingDown,
+  Activity,
+  AlertCircle,
+} from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -10,7 +20,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell
+  Cell,
+  ReferenceLine,
 } from 'recharts';
 import clsx from 'clsx';
 
@@ -39,7 +50,45 @@ const formatModelName = (name: string) => {
   return name.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 };
 
-export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, onClose, model, resultId, apiUrl }) => {
+const CustomSHAPTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload as SHAPFeature;
+    const isPositive = data.value > 0;
+    return (
+      <div className="rounded-xl border border-[var(--app-border)] bg-[var(--app-surface-solid)] p-3.5 text-xs shadow-2xl min-w-[210px] space-y-1.5">
+        <div className="flex items-center justify-between border-b border-[var(--app-border)] pb-1.5">
+          <span className="font-semibold text-[var(--app-text)]">{data.feature}</span>
+          <span className={clsx(
+            'rounded px-1.5 py-0.5 font-mono font-medium',
+            isPositive ? 'bg-rose-500/15 text-rose-500' : 'bg-emerald-500/15 text-emerald-500'
+          )}>
+            {data.value > 0 ? `+${data.value.toFixed(4)}` : data.value.toFixed(4)}
+          </span>
+        </div>
+        <p className="muted-text leading-relaxed">
+          {isPositive ? (
+            <span className="flex items-center gap-1 font-medium text-rose-500">
+              <TrendingUp className="w-3.5 h-3.5" /> Pushes toward Diabetic
+            </span>
+          ) : (
+            <span className="flex items-center gap-1 font-medium text-emerald-500">
+              <TrendingDown className="w-3.5 h-3.5" /> Pushes toward Non-Diabetic
+            </span>
+          )}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({
+  isOpen,
+  onClose,
+  model,
+  resultId,
+  apiUrl,
+}) => {
   const [data, setData] = useState<DetailedModelResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,16 +99,15 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
       setError(null);
       axios.get<DetailedModelResult>(`${apiUrl}/api/result/${resultId}?model=${model}`)
         .then(res => {
-          // Sort SHAP values by absolute magnitude for better chart display
           const sortedData = {
             ...res.data,
-            shap_values: res.data.shap_values.sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+            shap_values: [...res.data.shap_values].sort((a, b) => Math.abs(b.value) - Math.abs(a.value)),
           };
           setData(sortedData);
         })
         .catch(err => {
           console.error(err);
-          setError('Failed to load model details.');
+          setError('Could not load the model details. Is the backend running?');
         })
         .finally(() => setLoading(false));
     }
@@ -74,101 +122,177 @@ export const ModelDetailsPanel: React.FC<ModelDetailsPanelProps> = ({ isOpen, on
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40"
+            className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-sm"
           />
+
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-xl bg-surface border-l border-slate-700 shadow-2xl z-50 overflow-y-auto"
+            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+            className="glass-panel fixed right-0 top-0 bottom-0 z-50 flex w-full max-w-2xl flex-col overflow-y-auto rounded-none sm:rounded-l-2xl"
+            style={{ background: 'var(--app-surface-solid)' }}
           >
-            <div className="p-6">
+            <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-[var(--app-border)] p-6" style={{ background: 'var(--app-surface-solid)' }}>
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--app-primary-soft)] text-[var(--app-primary)]">
+                  <Activity className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="truncate text-xl font-bold text-[var(--app-text)]">
+                      {data ? formatModelName(data.model) : 'Model Details'}
+                    </h2>
+                    <span className="shrink-0 rounded-full border border-[var(--app-border)] bg-[var(--app-primary-soft)] px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[var(--app-primary-strong)]">
+                      Explainable AI
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-xs muted-text">Prediction breakdown &amp; SHAP feature attribution</p>
+                </div>
+              </div>
+
               <button
                 onClick={onClose}
-                className="absolute top-6 right-6 p-2 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                className="theme-toggle shrink-0 rounded-xl p-2 transition-colors"
+                aria-label="Close panel"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 text-[var(--app-text-muted)]" />
               </button>
+            </div>
 
+            <div className="flex-1 space-y-6 p-6">
               {loading ? (
-                <div className="flex flex-col items-center justify-center h-[80vh] text-primary-400 gap-4">
-                  <Loader2 className="w-10 h-10 animate-spin" />
-                  <p>Loading model insights...</p>
+                <div className="flex h-96 flex-col items-center justify-center gap-3 text-[var(--app-primary)]">
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                  <span className="text-sm muted-text">Computing SHAP values...</span>
                 </div>
               ) : error ? (
-                <div className="flex items-center justify-center h-[80vh] text-red-400">
-                  <p>{error}</p>
+                <div className="flex h-96 flex-col items-center justify-center rounded-2xl border p-6 text-center"
+                     style={{ background: 'var(--app-danger-soft)', borderColor: 'var(--app-danger)' }}>
+                  <AlertCircle className="mb-2 h-10 w-10" style={{ color: 'var(--app-danger)' }} />
+                  <p className="text-sm font-medium" style={{ color: 'var(--app-danger)' }}>{error}</p>
                 </div>
               ) : data ? (
-                <div className="space-y-8 mt-4">
-                  <div>
-                    <h2 className="text-3xl font-bold text-slate-100">{formatModelName(data.model)}</h2>
-                    <p className="text-slate-400 mt-1">Detailed Analysis</p>
+                <>
+                  {/* Stat cards */}
+                  <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">
+                    <div
+                      className="rounded-2xl border p-4 shadow-md"
+                      style={{
+                        background: data.prediction === 1 ? 'var(--app-danger-soft)' : 'var(--app-success-soft)',
+                        borderColor: data.prediction === 1 ? 'var(--app-danger)' : 'var(--app-success)',
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold muted-text">Prediction</span>
+                        <Target className="w-4 h-4" style={{ color: data.prediction === 1 ? 'var(--app-danger)' : 'var(--app-success)' }} />
+                      </div>
+                      <div className="mt-3">
+                        <span className="text-xl font-black tracking-tight" style={{ color: data.prediction === 1 ? 'var(--app-danger)' : 'var(--app-success)' }}>
+                          {data.prediction === 1 ? 'Diabetic' : 'Non-Diabetic'}
+                        </span>
+                        <p className="mt-0.5 text-[11px] muted-text">
+                          {data.prediction === 1 ? 'High-risk signal detected' : 'Low-risk profile'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--app-border)] p-4 shadow-md" style={{ background: 'var(--app-primary-soft)' }}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold muted-text">Confidence</span>
+                        <Percent className="w-4 h-4 text-[var(--app-primary)]" />
+                      </div>
+                      <div className="mt-3">
+                        <span className="text-xl font-black tracking-tight text-[var(--app-primary-strong)]">
+                          {(data.confidence * 100).toFixed(1)}%
+                        </span>
+                        <p className="mt-0.5 text-[11px] muted-text">Class probability</p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--app-border)] p-4 shadow-md">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold muted-text">Accuracy</span>
+                        <Award className="w-4 h-4 text-[var(--app-accent)]" />
+                      </div>
+                      <div className="mt-3">
+                        <span className="text-xl font-black tracking-tight" style={{ color: 'var(--app-accent)' }}>
+                          {(data.accuracy * 100).toFixed(1)}%
+                        </span>
+                        <p className="mt-0.5 text-[11px] muted-text">Held-out test set</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="glass-panel p-4 flex flex-col gap-2 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Target className="w-16 h-16" />
+                  {/* SHAP chart */}
+                  <div className="glass-panel space-y-4 p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--app-border)] pb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-[var(--app-text)]">Feature contribution</h3>
+                        <p className="text-xs muted-text">SHAP values show how each feature moved the prediction</p>
                       </div>
-                      <span className="text-sm text-slate-400 font-medium">Prediction</span>
-                      <span className={clsx(
-                        "text-2xl font-bold",
-                        data.prediction === 1 ? "text-red-400" : "text-green-400"
-                      )}>
-                        {data.prediction === 1 ? 'Diabetes' : 'No Diabetes'}
-                      </span>
-                    </div>
-                    <div className="glass-panel p-4 flex flex-col gap-2 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Percent className="w-16 h-16" />
+                      <div className="flex items-center gap-3 text-xs">
+                        <div className="flex items-center gap-1.5 text-rose-500">
+                          <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                          Raises risk
+                        </div>
+                        <div className="flex items-center gap-1.5 text-emerald-500">
+                          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                          Lowers risk
+                        </div>
                       </div>
-                      <span className="text-sm text-slate-400 font-medium">Confidence</span>
-                      <span className="text-2xl font-bold text-primary-400">
-                        {(data.confidence * 100).toFixed(1)}%
-                      </span>
                     </div>
-                  </div>
 
-                  <div className="glass-panel p-6">
-                    <h3 className="text-lg font-semibold text-slate-200 mb-6">Feature Contributions (SHAP Values)</h3>
-                    <div className="h-[400px] w-full">
+                    <div className="h-[340px] w-full pt-2">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart
-                          data={data.shap_values}
-                          layout="vertical"
-                          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                        >
-                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
-                          <XAxis type="number" stroke="#94a3b8" />
-                          <YAxis 
-                            dataKey="feature" 
-                            type="category" 
-                            width={120} 
-                            stroke="#94a3b8"
-                            tick={{ fill: '#cbd5e1', fontSize: 12 }} 
-                          />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9' }}
-                            itemStyle={{ color: '#d946ef' }}
-                            cursor={{ fill: '#334155', opacity: 0.4 }}
-                            formatter={(value: number) => [value.toFixed(4), 'Impact']}
-                          />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                        <BarChart data={data.shap_values} layout="vertical" margin={{ top: 5, right: 25, left: 10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="var(--app-border)" horizontal={false} />
+                          <XAxis type="number" stroke="var(--app-text-muted)" fontSize={11} tickLine={false} />
+                          <YAxis dataKey="feature" type="category" width={110} stroke="var(--app-text-muted)" fontSize={11} tickLine={false} axisLine={false} />
+                          <Tooltip content={<CustomSHAPTooltip />} cursor={{ fill: 'var(--app-primary-soft)' }} />
+                          <ReferenceLine x={0} stroke="var(--app-text-muted)" strokeWidth={1.5} />
+                          <Bar dataKey="value" radius={[4, 4, 4, 4]}>
                             {data.shap_values.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.value > 0 ? '#ef4444' : '#3b82f6'} />
+                              <Cell key={`cell-${index}`} fill={entry.value > 0 ? '#f43f5e' : '#10b981'} />
                             ))}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                    <p className="text-xs text-slate-500 mt-4 text-center">
-                      <span className="text-red-400 font-semibold">Red</span> pushes prediction towards Diabetes. 
-                      <span className="text-blue-400 font-semibold ml-2">Blue</span> pushes towards No Diabetes.
-                    </p>
                   </div>
-                </div>
+
+                  {/* Top factors */}
+                  <div className="glass-panel p-5">
+                    <h3 className="mb-3 text-sm font-semibold text-[var(--app-text)]">Top contributing factors</h3>
+                    <div className="space-y-2.5">
+                      {data.shap_values.slice(0, 4).map((item, idx) => {
+                        const isPos = item.value > 0;
+                        const percentWidth = Math.min(100, Math.abs(item.value) * 150);
+                        return (
+                          <div key={idx} className="flex items-center justify-between rounded-xl border border-[var(--app-border)] p-2.5" style={{ background: 'var(--app-surface)' }}>
+                            <div className="mr-4 flex-1">
+                              <div className="mb-1 flex items-center justify-between">
+                                <span className="text-xs font-medium text-[var(--app-text)]">{item.feature}</span>
+                                <span className={clsx('font-mono text-xs font-semibold', isPos ? 'text-rose-500' : 'text-emerald-500')}>
+                                  {isPos ? `+${item.value.toFixed(4)}` : item.value.toFixed(4)}
+                                </span>
+                              </div>
+                              <div className="h-1.5 w-full overflow-hidden rounded-full" style={{ background: 'var(--app-border)' }}>
+                                <div className={clsx('h-full rounded-full', isPos ? 'bg-rose-500' : 'bg-emerald-500')} style={{ width: `${percentWidth}%` }} />
+                              </div>
+                            </div>
+                            <span className={clsx(
+                              'whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium',
+                              isPos ? 'bg-rose-500/10 text-rose-500' : 'bg-emerald-500/10 text-emerald-500'
+                            )}>
+                              {isPos ? 'Raises risk' : 'Lowers risk'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
               ) : null}
             </div>
           </motion.div>

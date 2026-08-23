@@ -24,7 +24,7 @@ flowchart LR
 - **Who or what uses the prediction?** Property buyers, sellers, and real-estate agents/brokers, via the deployed web application (`app/`), as a quick reference point during price negotiation.
 
 ## 4. Dataset
-- **Dataset Source:** `vietnam_housing_dataset.csv` — a collection of Vietnamese residential real-estate listings. **[TODO: paste the exact Kaggle/source URL here — not recorded in the project files, must be filled in by the author.]**
+- **Dataset Source:** [House Price Prediction Dataset Vietnam - 2024](https://www.kaggle.com/datasets/nguyentiennhan/vietnam-housing-dataset-2024) (Kaggle, author: `nguyentiennhan`) — a collection of ~30,000 Vietnamese residential real-estate listings, saved locally as `vietnam_housing_dataset.csv`.
 - **What real-world phenomenon is represented?** The pricing behavior of the Vietnamese residential real-estate market, driven by property size, location, and quality attributes.
 - **What is one observation?** A single property listing (one row = one house/apartment posted for sale).
 - **What are the features?** Address, Area, Frontage, Access Road, House direction, Balcony direction, Floors, Bedrooms, Bathrooms, Legal status, Furniture state (11 raw columns).
@@ -148,22 +148,24 @@ Error decreases monotonically as `k` grows from 3 to 9 (higher `k` reduces varia
 
 ## 8. Results
 
-| Model | MAE | MSE | RMSE | R² |
-| --- | --- | --- | --- | --- |
-| Baseline (predict mean) | 1.8696 | 5.0270 | 2.2421 | -0.0310 |
-| Linear Regression | 1.3001 | 3.0548 | 1.7478 | 0.3735 |
-| SVR (Linear) | 1.3147 | 3.0398 | 1.7435 | 0.3765 |
-| KNN (k=9, distance) | 1.2751 | 2.8740 | 1.6953 | 0.4106 |
-| SVR (RBF) | 1.1195 | 2.3165 | 1.5220 | 0.5249 |
-| Random Forest | 1.0696 | 2.1345 | 1.4610 | 0.5623 |
-| **XGBoost** | **1.0498** | **1.9726** | **1.4045** | **0.5954** |
+*Reproduced end-to-end by executing [Report_Notebook.ipynb](Report_Notebook.ipynb).*
 
-*(All values are in billions of VND, computed after inverse log-transforming predictions back to price space. All six trained models clearly beat the mean-prediction baseline, whose slightly negative R² illustrates that a naive constant guess is worse than always predicting the sample mean directly in price space — an artifact of comparing a log-space baseline against a linear price-space benchmark.)*
+| Model | MAE | MSE | RMSE | R² | MAPE Accuracy |
+| --- | --- | --- | --- | --- | --- |
+| Baseline (predict mean) | 1.8438 | 4.8760 | 2.2082 | -0.0000 | — |
+| Linear Regression | 1.3001 | 3.0549 | 1.7478 | 0.3735 | 74.02% |
+| SVR (Linear) | 1.3147 | 3.0400 | 1.7435 | 0.3765 | 73.94% |
+| KNN (k=9, distance) | 1.2747 | 2.8730 | 1.6950 | 0.4108 | 74.37% |
+| SVR (RBF) | 1.1195 | 2.3166 | 1.5221 | 0.5249 | 77.54% |
+| Random Forest | 1.0738 | 2.1475 | 1.4654 | 0.5596 | 77.96% |
+| **XGBoost** | **1.0498** | **1.9727** | **1.4045** | **0.5954** | **78.91%** |
 
-**Appropriate Metrics:** For a price-estimation tool, **R²** is useful to summarize how much of the price variance the model explains overall, but **MAE** and **RMSE** (both in billions of VND) are more actionable for an end user, since they express a typical prediction error in real currency terms rather than an abstract variance-explained percentage. RMSE additionally penalizes large errors more than MAE, which matters here because the target has high-value outliers.
+*(All price-unit values are in billions of VND, computed after inverse log-transforming predictions back to price space. All six trained models clearly beat the mean-prediction baseline, whose ~0 R² illustrates the mathematical definition of R² — a model that always predicts the training mean scores ~0 R² on data drawn from the same distribution — giving a true zero-skill reference point.)*
+
+**Appropriate Metrics:** Five metrics are reported for every model. **R²** summarizes how much of the price variance the model explains overall, but **MAE** and **RMSE** (both in billions of VND) are more actionable for an end user, since they express a typical prediction error in real currency terms rather than an abstract variance-explained percentage. **MSE** is reported because it is the exact quantity `GridSearchCV` optimizes (`scoring='neg_mean_squared_error'`), so it reflects the true training objective, while RMSE (its square root) is easier to interpret in Price's own unit and penalizes large errors more than MAE — relevant here since the target has high-value outliers. **MAPE Accuracy** (`max(0, (1 − MAPE) × 100)`) adds a scale-free percentage that is easiest to communicate to a non-technical end user.
 
 ## 9. Model Comparison
-XGBoost achieved the best overall performance (R² = 0.5954, MAE = 1.05B VND), narrowly ahead of Random Forest (R² = 0.5623). Both tree-based ensembles clearly outperformed every non-tree model, confirming that price depends on non-linear interactions between features (e.g., a large area only commands a premium in the right district, with the right legal status) that linear and margin-based models cannot capture directly. SVR (RBF) was the best non-tree model (R² = 0.5249), showing that a non-linear kernel recovers some of this structure. KNN, SVR (Linear), and plain Linear Regression performed closely to each other and noticeably worse, consistent with Experiment 2's finding that KNN struggles in the 367-dimensional, mostly-sparse one-hot feature space, and with the linear models' inability to model feature interactions.
+XGBoost achieved the best overall performance on every metric (R² = 0.5954, MAE = 1.05B VND, MAPE Accuracy = 78.91%) and is selected automatically as the final model in Section 20 of the notebook (highest R² in the ranking table). Random Forest is a close second (R² = 0.5596); both tree-based ensembles clearly outperform every non-tree model, confirming that price depends on non-linear interactions between features (e.g., a large area only commands a premium in the right district, with the right legal status) that linear and margin-based models cannot capture directly. SVR (RBF) was the best non-tree model (R² = 0.5249), showing that a non-linear kernel recovers some of this structure. KNN, SVR (Linear), and plain Linear Regression performed closely to each other and noticeably worse, consistent with Experiment 2's finding that KNN struggles in the 367-dimensional, mostly-sparse one-hot feature space, and with the linear models' inability to model feature interactions.
 
 ## 10. Representation Analysis
 - **Why is your feature-vector representation appropriate?** Each listing naturally comes as a fixed set of independent attributes (area, rooms, direction, legal status, district), which maps cleanly onto a fixed-length feature vector — the standard representation for tabular data.
@@ -176,7 +178,7 @@ XGBoost achieved the best overall performance (R² = 0.5954, MAE = 1.05B VND), n
 - **What would change if the representation changed?** Using embeddings or graph structure would reduce dimensionality (mitigating the curse-of-dimensionality issue seen with KNN), likely improve distance/margin-based models, and could enable transfer to districts with few listings — at the cost of needing additional geocoding infrastructure and losing some interpretability.
 
 ## 11. Intelligent Application
-The trained `xgboost.pkl` model (the best performer from Experiment 1) is integrated into a full-stack application (`app/` directory: FastAPI backend + frontend). Users enter property details (area, district, legal status, etc.) into the UI and receive an instant predicted price from the backend API.
+The trained `xgboost.pkl` model (auto-selected in Section 20 of the notebook as the highest-R² model) is integrated into a full-stack application (`app/` directory: FastAPI backend + frontend). Users enter property details (area, district, legal status, etc.) into the UI and receive an instant predicted price from the backend API.
 *[Insert screenshot of Application UI here]*
 *[Insert screenshot of a Prediction Result here — recommended: at least 3 different input cases, as required for System Demonstration]*
 
