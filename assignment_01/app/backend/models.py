@@ -14,6 +14,8 @@ class PredictionRequest(BaseModel):
 class ModelResultSummary(BaseModel):
     model: str
     accuracy: float
+    prediction: int
+    confidence: float
 
 class PredictionResponse(BaseModel):
     id: str
