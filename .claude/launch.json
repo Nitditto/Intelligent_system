@@ -6,6 +6,18 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "assignment_01/app/frontend", "run", "dev"],
       "port": 5173
+    },
+    {
+      "name": "assignment02-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "assignment_02/app/frontend", "run", "dev", "--", "--port", "5180", "--strictPort"],
+      "port": 5180
+    },
+    {
+      "name": "assignment02-backend",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "main:app", "--reload", "--port", "8001", "--app-dir", "assignment_02/app/backend"],
+      "port": 8001
     }
   ]
 }
