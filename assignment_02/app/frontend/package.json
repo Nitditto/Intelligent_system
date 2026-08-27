@@ -14,9 +14,11 @@
     "@capacitor/browser": "^8.0.4",
     "@capacitor/core": "^8.5.0",
     "axios": "^1.19.0",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.32.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.0",

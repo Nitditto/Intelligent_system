@@ -29,38 +29,45 @@ results_db = {}
 # Global variables for models and utilities
 models = {}
 scaler = None
+imputer = None
 model_accuracies = {}
 explainers = {}
 feature_names = ["Pregnancies", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "DiabetesPedigreeFunction", "Age"]
 
 def load_resources():
-    global scaler, models, model_accuracies, explainers
-    
+    global scaler, imputer, models, model_accuracies, explainers
+
     # Load dataset to evaluate accuracy and setup SHAP background
     df = pd.read_csv("diabetes_dataset.csv")
-
-    # Impute invalid 0 values (same as notebook)
-    cols_to_replace = ['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']
-    for col in cols_to_replace:
-        df[col] = df[col].replace(0, df[col].median())
 
     X = df[feature_names]
     y = df["Outcome"]
 
-    # Split features and target to evaluate accuracy on the test set
+    # Split BEFORE imputation (mirrors the training notebook) so preprocessing
+    # statistics are never derived from the test split.
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+    X_train, X_test = X_train.copy(), X_test.copy()
+
+    # Impute invalid 0 values using the imputer fit on the training split only (same as notebook)
+    cols_to_impute = ['Glucose', 'BloodPressure', 'SkinThickness', 'Insulin', 'BMI']
+    imputer = joblib.load("imputer.pkl")
+    X_train[cols_to_impute] = X_train[cols_to_impute].replace(0, np.nan)
+    X_test[cols_to_impute] = X_test[cols_to_impute].replace(0, np.nan)
+    X_train[cols_to_impute] = imputer.transform(X_train[cols_to_impute])
+    X_test[cols_to_impute] = imputer.transform(X_test[cols_to_impute])
 
     # Load scaler
     scaler = joblib.load("scaler.pkl")
 
-    X_scaled = scaler.transform(X)
+    X_train_scaled = scaler.transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    
-    # Background data for KernelExplainer to speed up
-    background_data = shap.sample(X_scaled, 50)
 
-    # Load all models
-    model_files = [f for f in os.listdir(".") if f.endswith(".pkl") and f != "scaler.pkl"]
+    # Background data for KernelExplainer to speed up
+    background_data = shap.sample(X_train_scaled, 50)
+
+    # Load all predictive models (exclude preprocessing artifacts, which are not models)
+    non_model_files = {"scaler.pkl", "imputer.pkl", "baseline.pkl"}
+    model_files = [f for f in os.listdir(".") if f.endswith(".pkl") and f not in non_model_files]
     for f in model_files:
         model_name = f.replace(".pkl", "")
         model = joblib.load(f)
@@ -151,7 +158,9 @@ async def predict(req: PredictionRequest):
             "shap_values": shap_features
         }
         
-        summary_list.append(ModelResultSummary(model=model_name, accuracy=acc))
+        summary_list.append(ModelResultSummary(
+            model=model_name, accuracy=acc, prediction=int(pred), confidence=float(confidence)
+        ))
     
     # Sort summaries by accuracy descending
     summary_list.sort(key=lambda x: x.accuracy, reverse=True)

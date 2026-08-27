@@ -1,37 +1,535 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-primary-50: #fdf4ff;
-  --color-primary-100: #fae8ff;
-  --color-primary-400: #e879f9;
-  --color-primary-500: #d946ef;
-  --color-primary-600: #c026d3;
-  --color-primary-900: #701a75;
+  --color-primary-50: #eef2ff;
+  --color-primary-100: #e0e7ff;
+  --color-primary-400: #818cf8;
+  --color-primary-500: #6366f1;
+  --color-primary-600: #4f46e5;
+  --color-primary-900: #312e81;
   --color-background: #0f172a;
   --color-surface: #1e293b;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ---------------------------------------------------------------- */
+/* Design tokens — light theme is the default, `.dark` overrides.   */
+/* ---------------------------------------------------------------- */
+:root {
+  --app-bg: #f4f5fc;
+  --app-bg-glow-1: rgba(99, 102, 241, 0.14);
+  --app-bg-glow-2: rgba(6, 182, 212, 0.12);
+  --app-surface: rgba(255, 255, 255, 0.72);
+  --app-surface-solid: #ffffff;
+  --app-border: rgba(15, 23, 42, 0.09);
+  --app-text: #171923;
+  --app-text-muted: #64748b;
+  --app-primary: #4f46e5;
+  --app-primary-strong: #3730a3;
+  --app-primary-soft: rgba(79, 70, 229, 0.10);
+  --app-accent: #0891b2;
+  --app-success: #059669;
+  --app-danger: #e11d48;
+  --app-danger-soft: rgba(225, 29, 72, 0.10);
+  --app-success-soft: rgba(5, 150, 105, 0.10);
+  --app-shadow: 0 20px 45px -20px rgba(49, 46, 129, 0.25);
+}
+
+:root.dark {
+  --app-bg: #0a0f1e;
+  --app-bg-glow-1: rgba(129, 140, 248, 0.16);
+  --app-bg-glow-2: rgba(34, 211, 238, 0.12);
+  --app-surface: rgba(30, 41, 59, 0.55);
+  --app-surface-solid: #1e293b;
+  --app-border: rgba(148, 163, 184, 0.14);
+  --app-text: #f1f5f9;
+  --app-text-muted: #94a3b8;
+  --app-primary: #818cf8;
+  --app-primary-strong: #a5b4fc;
+  --app-primary-soft: rgba(129, 140, 248, 0.14);
+  --app-accent: #22d3ee;
+  --app-success: #34d399;
+  --app-danger: #fb7185;
+  --app-danger-soft: rgba(251, 113, 133, 0.14);
+  --app-success-soft: rgba(52, 211, 153, 0.14);
+  --app-shadow: 0 25px 50px -20px rgba(0, 0, 0, 0.55);
 }
 
 @layer base {
   body {
-    @apply bg-background text-slate-100 min-h-screen antialiased selection:bg-primary-500 selection:text-white font-sans;
+    @apply min-h-screen antialiased selection:bg-primary-500 selection:text-white;
+    font-family: var(--font-sans);
+    background: var(--app-bg);
+    color: var(--app-text);
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--app-border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--app-text-muted); }
+
+/* ---------------------------------------------------------------- */
+/* Shared surfaces                                                  */
+/* ---------------------------------------------------------------- */
 .glass-panel {
-  @apply bg-surface/80 backdrop-blur-md border border-slate-700/50 shadow-xl rounded-2xl;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 1.25rem;
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
-/* Custom scrollbar for webkit */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+.muted-text { color: var(--app-text-muted); }
+
+.surface-control {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
 }
-::-webkit-scrollbar-track {
-  background: transparent; 
+.surface-control:focus {
+  outline: none;
+  border-color: var(--app-primary);
+  box-shadow: 0 0 0 3px var(--app-primary-soft);
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-slate-700 rounded-full; 
+
+.primary-gradient {
+  background-image: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
 }
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-slate-600; 
+
+/* ---------------------------------------------------------------- */
+/* App shell / background                                           */
+/* ---------------------------------------------------------------- */
+.app-shell {
+  background:
+    radial-gradient(700px 400px at 12% -10%, var(--app-bg-glow-1), transparent 60%),
+    radial-gradient(600px 380px at 100% 10%, var(--app-bg-glow-2), transparent 55%),
+    var(--app-bg);
 }
+
+/* ---------------------------------------------------------------- */
+/* Top bar                                                           */
+/* ---------------------------------------------------------------- */
+.top-bar {
+  padding: 0.85rem 1.25rem;
+  border-radius: 1.25rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.9rem;
+  flex-shrink: 0;
+  background-image: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600));
+  box-shadow: 0 10px 25px -8px rgba(79, 70, 229, 0.55);
+}
+
+.theme-toggle {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.theme-toggle:hover { background: var(--app-primary-soft); }
+
+/* ---------------------------------------------------------------- */
+/* Hero band                                                         */
+/* ---------------------------------------------------------------- */
+.hero-band {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1.75rem;
+  border-radius: 1.5rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+}
+@media (min-width: 1024px) {
+  .hero-band { flex-direction: row; align-items: center; justify-content: space-between; }
+}
+
+.hero-copy { max-width: 34rem; }
+.hero-copy h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--app-text);
+  margin-top: 0.75rem;
+}
+.hero-copy p {
+  margin-top: 0.6rem;
+  color: var(--app-text-muted);
+  font-size: 0.925rem;
+  line-height: 1.55;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--app-primary-soft);
+  color: var(--app-primary-strong);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--app-success);
+  box-shadow: 0 0 0 0 var(--app-success-soft);
+  animation: status-pulse 2s ease-in-out infinite;
+}
+@keyframes status-pulse {
+  0%   { box-shadow: 0 0 0 0 var(--app-success-soft); }
+  70%  { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  min-width: 6.5rem;
+  border-radius: 1rem;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.metric-value { font-size: 1.35rem; font-weight: 800; color: var(--app-text); line-height: 1; }
+.metric-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--app-text-muted); }
+
+/* ---------------------------------------------------------------- */
+/* Results stage / empty state                                       */
+/* ---------------------------------------------------------------- */
+.results-stage {
+  height: 100%;
+  min-height: 26rem;
+  border-radius: 1.25rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.empty-state {
+  height: 100%;
+  min-height: 26rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2.5rem 2rem;
+}
+.empty-state h2 { font-size: 1.15rem; font-weight: 700; color: var(--app-text); }
+.empty-state p { margin-top: 0.35rem; color: var(--app-text-muted); font-size: 0.9rem; max-width: 26rem; }
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 999px;
+  background: var(--app-primary-soft);
+  color: var(--app-primary);
+}
+.empty-steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.empty-steps span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+  color: var(--app-text-muted);
+}
+
+/* ---------------------------------------------------------------- */
+/* Ranking list (ResultsList)                                        */
+/* ---------------------------------------------------------------- */
+.ranking-button {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+}
+.ranking-button:hover { border-color: var(--app-primary); }
+.ranking-button-selected {
+  border-color: var(--app-primary) !important;
+  background: var(--app-primary-soft);
+}
+
+.accuracy-track {
+  position: relative;
+  width: 6.5rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: var(--app-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.accuracy-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  border-radius: 999px;
+  background-image: linear-gradient(90deg, var(--color-primary-500), var(--color-primary-600));
+}
+
+/* ---------------------------------------------------------------- */
+/* Patient presets (PredictionForm)                                  */
+/* ---------------------------------------------------------------- */
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-solid);
+  color: var(--app-text-muted);
+  transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.preset-chip:hover { transform: translateY(-1px); }
+.preset-chip .dot { width: 0.5rem; height: 0.5rem; border-radius: 999px; flex-shrink: 0; }
+.preset-chip-low { }
+.preset-chip-low:hover { border-color: var(--app-success); color: var(--app-success); }
+.preset-chip-low .dot { background: var(--app-success); }
+.preset-chip-borderline:hover { border-color: #d97706; color: #d97706; }
+.preset-chip-borderline .dot { background: #d97706; }
+.preset-chip-high:hover { border-color: var(--app-danger); color: var(--app-danger); }
+.preset-chip-high .dot { background: var(--app-danger); }
+
+/* ---------------------------------------------------------------- */
+/* Clinical range indicator (under Glucose / BMI / BloodPressure)    */
+/* ---------------------------------------------------------------- */
+.range-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  width: fit-content;
+}
+.range-badge-normal { background: var(--app-success-soft); color: var(--app-success); }
+.range-badge-watch { background: rgba(217, 119, 6, 0.12); color: #d97706; }
+.range-badge-high { background: var(--app-danger-soft); color: var(--app-danger); }
+
+/* ---------------------------------------------------------------- */
+/* Model comparison matrix + export                                  */
+/* ---------------------------------------------------------------- */
+.matrix-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8rem; }
+.matrix-table th {
+  text-align: left;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-muted);
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+}
+.matrix-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--app-border);
+  color: var(--app-text);
+  vertical-align: middle;
+}
+.matrix-table tr:last-child td { border-bottom: none; }
+.matrix-verdict-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.matrix-verdict-positive { background: var(--app-danger-soft); color: var(--app-danger); }
+.matrix-verdict-negative { background: var(--app-success-soft); color: var(--app-success); }
+
+.consensus-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 0.6rem;
+  border: 1px solid var(--app-border);
+}
+.consensus-strip > span { height: 100%; }
+
+.export-button {
+  background: var(--app-surface-solid);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+}
+.export-button:hover { border-color: var(--app-primary); color: var(--app-primary); }
+
+/* ---------------------------------------------------------------- */
+/* Rank cards (top 3)                                                */
+/* ---------------------------------------------------------------- */
+.rank-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface-solid);
+  box-shadow: var(--app-shadow);
+  padding: 1rem;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.rank-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--app-primary);
+}
+.rank-card-best {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.06) 0%, var(--app-surface-solid) 60%);
+}
+.rank-card-best:hover {
+  border-color: rgba(245, 158, 11, 0.7);
+}
+
+.rank-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: var(--app-primary-soft);
+  color: var(--app-primary-strong);
+}
+.rank-pill-best {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+/* ---------------------------------------------------------------- */
+/* Correlation Heatmap                                              */
+/* ---------------------------------------------------------------- */
+.heatmap-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.7rem;
+  border-radius: 0.35rem;
+  cursor: help;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.08);
+  z-index: 10;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+}
+
+.heatmap-tooltip {
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.65rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  z-index: 50;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.heatmap-cell:hover .heatmap-tooltip {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- */
+/* Print layout styles                                               */
+/* ---------------------------------------------------------------- */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+  
+  .app-shell {
+    background: #ffffff !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide all elements except the active tab when on report creator */
+  header,
+  .hero-band,
+  nav,
+  .theme-toggle,
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  /* Ensure page breaks operate cleanly */
+  .page-break {
+    page-break-before: always;
+  }
+}
+
