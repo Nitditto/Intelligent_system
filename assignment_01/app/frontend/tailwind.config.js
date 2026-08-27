@@ -8,11 +8,11 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#fdf4ff',
-          100: '#fae8ff',
-          500: '#d946ef',
-          600: '#c026d3',
-          900: '#701a75',
+          50: '#eef2ff',
+          100: '#e0e7ff',
+          500: '#6366f1',
+          600: '#4f46e5',
+          900: '#312e81',
         },
         background: '#0f172a',
         surface: '#1e293b',

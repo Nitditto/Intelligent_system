@@ -1,3 +1,5 @@
+name: assignment-02
+
 services:
   backend:
     build:
@@ -8,6 +10,8 @@ services:
     restart: unless-stopped
     volumes:
       - ./backend:/app  # Optional: for hot-reloading if you run uvicorn with --reload
+    cpus: 1.0
+    mem_limit: 512m
 
   ngrok:
     image: ngrok/ngrok:latest
@@ -22,6 +26,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 128m
 
   frontend:
     build:
@@ -32,3 +38,5 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    cpus: 0.5
+    mem_limit: 128m

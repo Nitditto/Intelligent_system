@@ -16,18 +16,35 @@ def clean_location(city: str, district: str):
 
 def build_queries(city, district, price, area=None, bedrooms=None):
     clean_c, clean_d = clean_location(city, district)
+    
+    # Round price to 1 decimal place to match real listings
+    rounded_price = round(price, 1)
+    if rounded_price.is_integer():
+        price_str = str(int(rounded_price))
+    else:
+        price_str = f"{rounded_price:.1f}"
+        
+    area_str = f"{int(area)}" if area else None
+    
     queries = []
     
-    # Base query
-    base_q = f"bán nhà {clean_d} {clean_c} {price} tỷ"
-    queries.append(base_q)
+    # 1. Targeted query with price
+    queries.append(f"bán nhà {clean_d} {clean_c} {price_str} tỷ")
     
-    if area:
-        queries.append(f"bán nhà {clean_d} {clean_c} {area}m2 {price} tỷ")
+    # 2. Fallback query without price to guarantee results
+    queries.append(f"bán nhà {clean_d} {clean_c}")
+    
+    # 3. Targeted query with area and price
+    if area_str:
+        queries.append(f"bán nhà {clean_d} {clean_c} {area_str}m2 {price_str} tỷ")
+        
+    # 4. Fallback query with area
+    if area_str:
+        queries.append(f"bán nhà {clean_d} {clean_c} {area_str}m2")
         
     # Site specific queries
     for site in ['batdongsan.com.vn', 'alonhadat.com.vn', 'muaban.net']:
-        queries.append(f"site:{site} bán nhà {clean_d} {clean_c} {price} tỷ")
+        queries.append(f"site:{site} bán nhà {clean_d} {clean_c} {price_str} tỷ")
         
     return queries
 
@@ -111,6 +128,43 @@ def score_result(result, district, city, predicted_price, target_area=None):
 
 def search_ddg(query: str, max_results=10):
     results = []
+    
+    # 1. Try html.duckduckgo.com POST method first (extremely robust, bypasses bot blocks)
+    try:
+        url = "https://html.duckduckgo.com/html/"
+        data = urllib.parse.urlencode({'q': query}).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        })
+        html = urllib.request.urlopen(req, timeout=8).read()
+        soup = BeautifulSoup(html, 'html.parser')
+        
+        for div in soup.select('.result'):
+            title_elem = div.select_one('.result__a')
+            snippet_elem = div.select_one('.result__snippet')
+            
+            if title_elem:
+                href = title_elem.get('href', '')
+                if 'uddg=' in href:
+                    m = re.search(r'uddg=([^&]+)', href)
+                    if m:
+                        href = urllib.parse.unquote(m.group(1))
+                
+                results.append({
+                    'title': title_elem.get_text(strip=True),
+                    'href': href,
+                    'body': snippet_elem.get_text(strip=True) if snippet_elem else "Đang cập nhật...",
+                    'source': 'DuckDuckGo'
+                })
+                if len(results) >= max_results:
+                    break
+        if results:
+            print(f"DuckDuckGo HTML parsed {len(results)} results.")
+            return results
+    except Exception as e:
+        print("DuckDuckGo HTML scraper error:", e)
+
+    # 2. Fallback to DDGS library if POST scraper fails
     try:
         from ddgs import DDGS
         with DDGS() as ddgs:
@@ -122,7 +176,7 @@ def search_ddg(query: str, max_results=10):
                     'source': 'DuckDuckGo'
                 })
     except Exception as e:
-        print("DDGS error:", e)
+        print("DDGS library error:", e)
     return results
 
 def search_bing(query: str):

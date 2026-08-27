@@ -66,9 +66,10 @@ models = {}
 scaler = None
 explainers = {}
 feature_cols = []
-locations = {} 
+locations = {}
 median_values = {}
 X_train_scaled = None
+dataset_stats = {}
 
 def extract_district(address):
     if pd.isna(address) or address == 'Unknown': return 'Unknown'
@@ -80,12 +81,62 @@ def extract_city(address):
     parts = [part.strip() for part in str(address).split(',')]
     return parts[-1] if len(parts) >= 1 else 'Unknown'
 
+def compute_dataset_stats(raw_df, clean_df):
+    total_rows = len(raw_df)
+    missing_pct = {}
+    for col in ['Area', 'Frontage', 'Access Road', 'House direction', 'Balcony direction', 'Floors', 'Bedrooms', 'Bathrooms', 'Legal status', 'Furniture state']:
+        missing_pct[col] = round(float(raw_df[col].isna().mean() * 100), 1)
+
+    price = clean_df['Price']
+    bucket_edges = [0, 2, 4, 6, 8, 10, 12, float('inf')]
+    bucket_labels = ['<2', '2-4', '4-6', '6-8', '8-10', '10-12', '12+']
+    price_buckets = pd.cut(price, bins=bucket_edges, labels=bucket_labels, right=False)
+    price_histogram = [
+        {"range": label, "count": int((price_buckets == label).sum())}
+        for label in bucket_labels
+    ]
+
+    def avg_price_by(col, top_n=None):
+        grouped = clean_df[clean_df[col] != 'Unknown'].groupby(col)['Price'].agg(['mean', 'count'])
+        grouped = grouped.sort_values('count', ascending=False)
+        if top_n:
+            grouped = grouped.head(top_n)
+        return [
+            {"label": idx, "avgPrice": round(float(row['mean']), 2), "count": int(row['count'])}
+            for idx, row in grouped.iterrows()
+        ]
+
+    top_districts = avg_price_by('District', top_n=10)
+    by_legal_status = avg_price_by('Legal status')
+    by_furniture_state = avg_price_by('Furniture state')
+
+    sample_n = min(200, len(clean_df))
+    sample = clean_df[['Area', 'Price']].sample(n=sample_n, random_state=42)
+    area_price_sample = [
+        {"area": round(float(r.Area), 1), "price": round(float(r.Price), 2)}
+        for r in sample.itertuples()
+    ]
+
+    return {
+        "totalListings": total_rows,
+        "featureDimensions": len(feature_cols),
+        "districtCount": clean_df['District'].nunique(),
+        "priceRange": {"min": round(float(price.min()), 1), "max": round(float(price.max()), 1)},
+        "missingPct": missing_pct,
+        "priceHistogram": price_histogram,
+        "topDistricts": top_districts,
+        "byLegalStatus": by_legal_status,
+        "byFurnitureState": by_furniture_state,
+        "areaPriceSample": area_price_sample,
+    }
+
 def load_resources():
-    global scaler, models, explainers, feature_cols, locations, median_values, X_train_scaled
-    
+    global scaler, models, explainers, feature_cols, locations, median_values, X_train_scaled, dataset_stats
+
     print("Loading dataset...")
-    df = pd.read_csv("vietnam_housing_dataset.csv")
-    df = df.dropna(subset=['Price'])
+    raw_df = pd.read_csv("vietnam_housing_dataset.csv")
+    raw_df = raw_df.dropna(subset=['Price'])
+    df = raw_df.copy()
 
     numerical_cols = df.select_dtypes(include=['float64', 'int64']).columns.drop('Price')
     categorical_cols = df.select_dtypes(include=['object']).columns
@@ -100,21 +151,23 @@ def load_resources():
 
     df['District'] = df['Address'].apply(extract_district)
     df['City'] = df['Address'].apply(extract_city)
-    
+
     # Build locations dict
     for city in df['City'].unique():
         districts = df[df['City'] == city]['District'].unique().tolist()
         locations[city] = districts
 
-    X = df.drop(['Price', 'Address', 'City'], axis=1, errors='ignore') 
+    X = df.drop(['Price', 'Address', 'City'], axis=1, errors='ignore')
     X_encoded = pd.get_dummies(X, drop_first=True)
     feature_cols = X_encoded.columns.tolist()
 
     # Rebuild scaler
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_encoded)
-    
+
     background_data = shap.sample(X_train_scaled, 50)
+
+    dataset_stats = compute_dataset_stats(raw_df, df)
 
     # Load models
     model_files = [f for f in os.listdir(".") if f.endswith(".pkl") and f not in ["features.pkl", "scaler.pkl"]]
@@ -123,20 +176,6 @@ def load_resources():
         print(f"Loading {model_name}...")
         model = joblib.load(f)
         models[model_name] = model
-        
-        # Setup explainer
-        try:
-            if model_name in ["random_forest", "xgboost"]:
-                explainers[model_name] = shap.TreeExplainer(model)
-            elif model_name in ["linear_regression", "svr_linear"]:
-                explainers[model_name] = shap.LinearExplainer(model, X_train_scaled)
-            elif model_name in ["svr_rbf", "knn"]:
-                # Initialize KernelExplainer for non-linear models
-                # Using model.predict and smaller background_data to load faster
-                background_summary = shap.kmeans(X_train_scaled, 10)
-                explainers[model_name] = shap.KernelExplainer(model.predict, background_summary)
-        except Exception as e:
-            print(f"Error setting up explainer for {model_name}: {e}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -146,6 +185,10 @@ async def startup_event():
 @app.get("/api/locations")
 async def get_locations():
     return locations
+
+@app.get("/api/dataset-stats")
+async def get_dataset_stats():
+    return dataset_stats
 
 from search_service import (
     build_queries, search_ddg, search_bing, search_google, 
@@ -340,6 +383,19 @@ async def get_result(result_id: str, model: str):
         
         target_model = model
             
+        if target_model not in explainers:
+            try:
+                m = models[target_model]
+                if target_model in ["random_forest", "xgboost"]:
+                    explainers[target_model] = shap.TreeExplainer(m)
+                elif target_model in ["linear_regression", "svr_linear"]:
+                    explainers[target_model] = shap.LinearExplainer(m, X_train_scaled)
+                elif target_model in ["svr_rbf", "knn"]:
+                    background_summary = shap.kmeans(X_train_scaled, 10)
+                    explainers[target_model] = shap.KernelExplainer(m.predict, background_summary)
+            except Exception as e:
+                print(f"Error setting up explainer on demand for {target_model}: {e}")
+                
         if target_model in explainers:
             try:
                 explainer = explainers[target_model]
