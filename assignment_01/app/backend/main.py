@@ -158,7 +158,9 @@ async def predict(req: PredictionRequest):
             "shap_values": shap_features
         }
         
-        summary_list.append(ModelResultSummary(model=model_name, accuracy=acc))
+        summary_list.append(ModelResultSummary(
+            model=model_name, accuracy=acc, prediction=int(pred), confidence=float(confidence)
+        ))
     
     # Sort summaries by accuracy descending
     summary_list.sort(key=lambda x: x.accuracy, reverse=True)

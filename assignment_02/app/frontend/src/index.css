@@ -1,27 +1,150 @@
 @import "tailwindcss";
 
+/* Class-based dark mode: toggled via .dark on <html>, not just OS preference */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  --color-brand-50: #f0f9ff;
-  --color-brand-100: #e0f2fe;
-  --color-brand-500: #0ea5e9;
-  --color-brand-600: #0284c7;
-  --color-brand-900: #0c4a6e;
+  /* Gold accent — CTAs, icons, highlights (evokes premium real estate) */
+  --color-brand-50: #fbf3e3;
+  --color-brand-100: #f5e3ba;
+  --color-brand-400: #d9a441;
+  --color-brand-500: #c28a2a;
+  --color-brand-600: #a06f1e;
+  --color-brand-700: #7d5717;
+  --color-brand-900: #4a3410;
+
+  /* Navy — hero, header, dark surfaces (architectural, trustworthy) */
+  --color-navy-50: #eef1f5;
+  --color-navy-100: #d7dee8;
+  --color-navy-200: #b3c0d1;
+  --color-navy-300: #8296ae;
+  --color-navy-400: #4a5f7d;
+  --color-navy-600: #263b56;
+  --color-navy-700: #1c2c42;
+  --color-navy-800: #14202f;
+  --color-navy-900: #0d1520;
+  --color-navy-950: #080d15;
+}
+
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
 }
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+    @apply text-stone-900 dark:text-stone-100 font-sans antialiased transition-colors duration-300;
+    background:
+      radial-gradient(900px 420px at 50% 0%, rgba(194, 138, 42, 0.05), transparent 65%),
+      #f6f5f2;
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+  .dark body {
+    background:
+      radial-gradient(900px 420px at 50% 0%, rgba(217, 164, 65, 0.05), transparent 65%),
+      linear-gradient(180deg, #0b1119 0%, #080e16 55%, #05090f 100%);
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl rounded-2xl;
+    @apply bg-white/90 dark:bg-navy-800/70 backdrop-blur-md border border-stone-200/70 dark:border-navy-600/50 shadow-xl shadow-navy-900/5 dark:shadow-black/40 rounded-2xl transition-colors duration-300;
   }
   .input-field {
-    @apply w-full rounded-xl border-gray-200 bg-white/50 px-4 py-3 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors shadow-sm;
+    @apply w-full rounded-xl border-stone-200 dark:border-navy-600 bg-white dark:bg-navy-900/60 text-stone-900 dark:text-stone-100 px-4 py-3 text-sm focus:border-brand-500 focus:ring-brand-500 transition-colors shadow-sm;
   }
   .label-text {
-    @apply block text-sm font-medium text-slate-700 mb-1.5;
+    @apply block text-sm font-medium text-stone-700 dark:text-stone-300 mb-1.5;
+  }
+}
+
+/* ---------------------------------------------------------------- */
+/* Custom range slider (What-if simulator)                           */
+/* ---------------------------------------------------------------- */
+:root {
+  --slider-track-bg: #e7e5e4; /* stone-200 */
+}
+:root.dark {
+  --slider-track-bg: #263b56; /* navy-600 */
+}
+
+.range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--slider-fill, #c28a2a) var(--pct, 0%), var(--slider-track-bg) var(--pct, 0%));
+  outline: none;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+.range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--slider-fill, #c28a2a);
+  border: 3px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(20, 32, 47, 0.35);
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+.range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+.range-slider::-moz-range-track {
+  height: 8px;
+  border-radius: 9999px;
+  background: transparent;
+}
+.range-slider::-moz-range-progress {
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--slider-fill, #c28a2a);
+}
+.range-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--slider-fill, #c28a2a);
+  border: 3px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(20, 32, 47, 0.35);
+  cursor: pointer;
+}
+.dark .range-slider::-webkit-slider-thumb,
+.dark .range-slider::-moz-range-thumb {
+  border-color: #14202f; /* navy-800, matches dark card surface */
+}
+
+/* ---------------------------------------------------------------- */
+/* Print layout styles                                               */
+/* ---------------------------------------------------------------- */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+  }
+
+  .app-hero,
+  .app-nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 }
