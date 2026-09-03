@@ -17,6 +17,24 @@ export interface ListingInput {
   district?: string;
 }
 
+export interface FeatureContribution {
+  name: string;
+  label: string;
+  impact_million: number;
+  direction: "positive" | "negative";
+  importance_pct: number;
+}
+
+export interface ModelMetadata {
+  algorithm: string;
+  n_estimators: number;
+  max_depth: number;
+  features_count: number;
+  transformed_features: number;
+  target_transform: string;
+  zero_leakage: boolean;
+}
+
 export interface PredictionResponse {
   predicted_price: number;
   price_per_m2: number | null;
@@ -24,6 +42,8 @@ export interface PredictionResponse {
   currency: string;
   model_name: string;
   interpretation: string;
+  feature_contributions?: FeatureContribution[];
+  model_metadata?: ModelMetadata;
 }
 
 export interface HealthResponse {
