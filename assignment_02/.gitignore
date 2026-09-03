@@ -41,3 +41,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# local scratch (not part of the deliverable)
+_scratch/
+
+# raw Kaggle datasets (large; fetched via each app's data/README.md)
+*/data/*.csv
+*/data/*.zip
