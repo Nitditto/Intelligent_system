@@ -13,25 +13,34 @@ export const Navbar: React.FC<NavbarProps> = ({ health, loading, onRefreshHealth
   return (
     <header className="navbar">
       <div className="nav-container">
-        <div className="nav-brand">
-          <span className="brand-title">Vietnam House Price Estimator</span>
+        <div className="nav-brand-group">
+          <div className="brand-badge">REALVAL</div>
+          <div className="brand-info">
+            <h1 className="brand-title">Vietnam Real Estate Valuation</h1>
+            <span className="brand-subtitle">AI-Powered Automated Valuation Model</span>
+          </div>
         </div>
 
         <div className="nav-actions">
+          <div className="nav-pill-tabs">
+            <span className="nav-tab active">Predictor</span>
+            <span className="nav-tab">Market Insights</span>
+          </div>
+
           <button
             type="button"
             onClick={onRefreshHealth}
-            className={`status-pill ${isHealthy ? "status-online" : "status-offline"}`}
-            title="Click to check API status"
+            className={`api-status-pill ${isHealthy ? "online" : "offline"}`}
+            title="Click to refresh connection status"
             disabled={loading}
           >
             <span className="status-dot" />
-            <span>
+            <span className="status-label">
               {loading
                 ? "Connecting..."
                 : isHealthy
-                ? "API Connected"
-                : "API Disconnected"}
+                ? `API Active (${health?.model_name || "RandomForest"})`
+                : "API Offline"}
             </span>
           </button>
         </div>
