@@ -93,10 +93,10 @@ def _clean(v):
         return v.strftime("%Y-%m-%d %H:%M:%S")
     if v is None or (isinstance(v, float) and np.isnan(v)):
         return None
-    if isinstance(v, (np.integer,)):
+    if isinstance(v, (np.integer, int)):
         return int(v)
-    if isinstance(v, (np.floating,)):
-        return round(float(v), 2)
+    if isinstance(v, (np.floating, float)):
+        return round(float(v), 2)   # kill float-sum artefacts like 50.010000000000005
     return v
 
 

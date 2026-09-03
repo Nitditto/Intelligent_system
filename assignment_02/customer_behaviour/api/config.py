@@ -125,10 +125,43 @@ FORM_FIELDS = [
      "note": "When the order really reached the customer. Later than the promised date "
              "= “late”, and lateness is the single biggest cause of a bad review."},
     {"field": "review_comment_message", "type": "text", "label": "Review comment the customer wrote",
-     "required": False, "section": "Delivery & review", "examples": COMMENT_EXAMPLES,
+     "required": False, "section": "Customer & review", "examples": COMMENT_EXAMPLES,
      "note": "The free-text comment left with the star rating (optional). The model "
              "learned from Brazilian-Portuguese comments, so Portuguese works best — "
-             "other languages are accepted but barely move the prediction."},
+             "other languages are accepted but barely move the prediction. Use an example "
+             "below to see the effect."},
 ]
+
+DESC_LEN_DEFAULT = 607
+
+# Human-friendly label mapping for machine feature names in SHAP contributions chart
+PRETTY_LABELS = {
+    "tab__log__price_total": "Order value (price)",
+    "tab__log__freight_total": "Shipping paid (freight)",
+    "tab__log__payment_value_total": "Total amount charged",
+    "tab__std__freight_ratio": "Shipping-to-price ratio",
+    "tab__std__n_items": "Item quantity count",
+    "tab__std__n_sellers": "Number of sellers",
+    "tab__std__max_installments": "Payment instalments",
+    "tab__std__n_payment_types": "Number of payment methods",
+    "tab__std__product_weight_g": "Product weight",
+    "tab__std__product_desc_len": "Product description length",
+    "tab__std__product_photos_qty": "Listing photo count",
+    "tab__std__delivery_days": "Actual delivery time (days)",
+    "tab__std__estimated_days": "Promised delivery time (days)",
+    "tab__std__delivery_delay_days": "Days late vs promise",
+    "tab__std__comment_len": "Comment length (chars)",
+    "tab__bin__is_late": "Delivered late vs promised",
+    "tab__bin__has_comment": "Customer left review comment",
+    "tab__cat__main_payment_type_boleto": "Payment: Bank slip (boleto)",
+    "tab__cat__main_payment_type_credit_card": "Payment: Credit card",
+    "tab__cat__main_payment_type_debit_card": "Payment: Debit card",
+    "tab__cat__main_payment_type_voucher": "Payment: Store voucher",
+    "tab__cat__customer_region_Centre-West": "Customer region: Centre-West",
+    "tab__cat__customer_region_North": "Customer region: North",
+    "tab__cat__customer_region_Northeast": "Customer region: Northeast",
+    "tab__cat__customer_region_South": "Customer region: South",
+    "tab__cat__customer_region_Southeast": "Customer region: Southeast",
+}
 
 WIZARD_STEPS = ["Product", "Payment", "Delivery & review"]
