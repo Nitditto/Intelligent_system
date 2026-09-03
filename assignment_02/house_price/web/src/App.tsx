@@ -6,13 +6,41 @@ import { ErrorBanner } from "./components/ErrorBanner";
 import { fetchHealth, predictPrice } from "./services/api";
 import type { ListingInput, PredictionResponse, HealthResponse } from "./types";
 
+const DEFAULT_FORM_DATA: ListingInput = {
+  Area: 78.7,
+  Width: 4.0,
+  Length: 19.6,
+  Bedrooms: 3,
+  Bathrooms: 2,
+  Floors: 2,
+  "Alley Width": 3.5,
+  "Agent Listing Count": 1,
+  "Property Type": "Nhà riêng",
+  Position: "Đường chính",
+  Direction: "Nam",
+  "Road Type": "Đường nhựa",
+  Province: "an-giang",
+  "Agent Role": "Chính chủ",
+  ward: "Phường An Hòa",
+  district: "Rạch Giá",
+};
+
+const STEPS_NAV = [
+  { num: 1, title: "Dimensions", desc: "Area & Lot Size" },
+  { num: 2, title: "Living Space", desc: "Rooms & Floors" },
+  { num: 3, title: "Location", desc: "City & Position" },
+  { num: 4, title: "Attributes", desc: "Type & Access" },
+  { num: 5, title: "Valuation & SHAP", desc: "Model Prediction" },
+];
+
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
-  const [lastInput, setLastInput] = useState<ListingInput | null>(null);
+  const [formData, setFormData] = useState<ListingInput>(DEFAULT_FORM_DATA);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [currentStep, setCurrentStep] = useState(1);
 
   const checkServerHealth = async () => {
     setHealthLoading(true);
@@ -30,14 +58,14 @@ export const App: React.FC = () => {
     checkServerHealth();
   }, []);
 
-  const handlePredict = async (formData: ListingInput) => {
+  const handlePredict = async (dataToPredict: ListingInput) => {
     setSubmitting(true);
     setErrorMessage("");
-    setLastInput(formData);
 
     try {
-      const res = await predictPrice(formData);
+      const res = await predictPrice(dataToPredict);
       setPrediction(res);
+      setCurrentStep(5);
     } catch (err: any) {
       if (err.response) {
         if (err.response.status === 422) {
@@ -65,8 +93,17 @@ export const App: React.FC = () => {
 
   const handleReset = () => {
     setPrediction(null);
-    setLastInput(null);
+    setFormData(DEFAULT_FORM_DATA);
     setErrorMessage("");
+    setCurrentStep(1);
+  };
+
+  const handleStepClick = (stepNum: number) => {
+    if (stepNum === 5 && !prediction) {
+      handlePredict(formData);
+      return;
+    }
+    setCurrentStep(stepNum);
   };
 
   return (
@@ -78,31 +115,67 @@ export const App: React.FC = () => {
       />
 
       <main className="main-content">
-        <div className="content-container">
+        <div className="content-container-wizard">
           <ErrorBanner
             message={errorMessage}
             onDismiss={() => setErrorMessage("")}
           />
 
-          <div className="dashboard-grid">
-            <div className="grid-col-form">
+          {/* Stepper Progress Navigation Bar */}
+          <div className="wizard-stepper-bar">
+            {STEPS_NAV.map((s) => {
+              const isCurrent = currentStep === s.num;
+              const isCompleted = (prediction !== null && s.num === 5) || currentStep > s.num;
+              return (
+                <button
+                  key={s.num}
+                  type="button"
+                  className={`wizard-step-tab ${isCurrent ? "active" : ""} ${
+                    isCompleted ? "completed" : ""
+                  }`}
+                  onClick={() => handleStepClick(s.num)}
+                >
+                  <span className="step-badge">
+                    {s.num === 5 && prediction ? "✓" : currentStep > s.num ? "✓" : `0${s.num}`}
+                  </span>
+                  <div className="step-tab-text">
+                    <span className="tab-title">{s.title}</span>
+                    <span className="tab-desc">{s.desc}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Step Views: Steps 1-4 = Input Wizard, Step 5 = Result Dashboard at the Last Place */}
+          {currentStep <= 4 ? (
+            <div className="wizard-stage-container animate-step">
               <PredictionForm
+                formData={formData}
+                onFormDataChange={setFormData}
                 onSubmit={handlePredict}
                 loading={submitting}
                 onReset={handleReset}
+                currentStep={currentStep}
+                onStepChange={setCurrentStep}
               />
             </div>
-
-            <div className="grid-col-result">
-              <ResultCard result={prediction} input={lastInput} />
+          ) : (
+            <div className="wizard-stage-container animate-step">
+              <ResultCard
+                result={prediction}
+                input={formData}
+                onJumpToStep={setCurrentStep}
+                onReset={handleReset}
+              />
             </div>
-          </div>
+          )}
         </div>
       </main>
 
       <footer className="footer">
         <div className="footer-container">
-          <p>© 2026 Vietnam Real Estate Valuation. All estimates are for informational purposes.</p>
+          <p>© 2026 REALVAL · Vietnam Real Estate Valuation Engine. Powered by Random Forest Regressor.</p>
         </div>
       </footer>
     </div>
