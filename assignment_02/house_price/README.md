@@ -118,20 +118,3 @@ flutter run          # Runs on Android emulator, iOS simulator, or connected dev
 ```
 
 The mobile client is a native **Flutter** cross-platform application (Material 3). Training happens only in the notebook; the mobile app is a pure REST client (**Training ≠ Inference**). Tap the server status badge in the top-right corner to point the app to `http://10.0.2.2:8002` (Android emulator) or your host machine's Wi-Fi LAN IP.
-
-## Deliverable checklist (Appendix F, house-price rows)
-
-- [ ] Kaggle dataset selected and referenced (`data/README.md`)
-- [ ] Problem definition, dataset structure, data quality analysed (notebook §1–§9)
-- [ ] Data representation explained — raw row → feature vector, `X ∈ ℝ^{N×d}`, `y ∈ ℝ^N` (§12)
-- [ ] Numerical + categorical features identified, encoding + scaling explained (§11–§13)
-- [ ] EDA with ≥3 interpreted plots (§10)
-- [ ] Train/val/test split, leakage discussed (§14)
-- [ ] Preprocessing pipeline fitted on train only (§15)
-- [ ] ≥4 regression models trained + compared: MAE / MSE / RMSE / R² + training time (§16–§18)
-- [ ] Best model evaluated on held-out test set (§19), error analysis (§20), selection justified (§21)
-- [ ] `model_pipeline.joblib` (+ schema) saved (§22); reload → JSON inference test (§23)
-- [ ] REST API `POST /predict` working, demonstrated via Swagger / curl
-- [ ] Web app: input form → prediction, screenshots
-- [ ] Mobile app: input → prediction, screenshots, evidence of API calls
-- [ ] Reproducibility: Python version, OS, `requirements.txt`, `RANDOM_SEED`
