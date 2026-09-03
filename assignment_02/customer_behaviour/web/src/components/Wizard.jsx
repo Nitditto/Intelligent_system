@@ -1,170 +1,167 @@
-import React, { useMemo } from 'react'
-import Field from './Field.jsx'
-import CategoryTile from './CategoryTile.jsx'
-import DeliveryTimeline from './DeliveryTimeline.jsx'
-import { deriveTimeline } from '../lib/order.js'
+import React, { useState } from 'react'
+import ThemeToggle from './ThemeToggle.jsx'
+import ExamplePicker from './ExamplePicker.jsx'
+import StepProduct from '../steps/StepProduct.jsx'
+import StepPayment from '../steps/StepPayment.jsx'
+import StepDelivery from '../steps/StepDelivery.jsx'
+import StepReview from '../steps/StepReview.jsx'
+import { STEP_DEFINITIONS, STEP_REQUIRED_FIELDS } from '../lib/labels.js'
+import { exampleToValues } from '../lib/order.js'
 
-function Stepper({ labels, step, onJump }) {
-  return (
-    <ol className="stepper">
-      {labels.map((label, i) => {
-        const state = i < step ? 'done' : i === step ? 'current' : 'todo'
-        const clickable = i < step
-        return (
-          <li key={label} className={`stepper__item is-${state}`}>
-            {i > 0 && <span className="stepper__line" aria-hidden="true" />}
-            <button
-              type="button" className="stepper__btn" disabled={!clickable}
-              aria-current={state === 'current' ? 'step' : undefined}
-              onClick={() => clickable && onJump(i)}
-            >
-              <span className="stepper__dot">{state === 'done' ? '✓' : i + 1}</span>
-              <span className="stepper__label">{label}</span>
-            </button>
-          </li>
-        )
-      })}
-    </ol>
-  )
-}
+export default function Wizard({
+  values,
+  setValues,
+  samples,
+  apiUp,
+  onSubmit,
+  busy,
+  error,
+  setError,
+}) {
+  const [step, setStep] = useState(0)
+  const [stepErrors, setStepErrors] = useState({})
 
-export default function Wizard({ meta, values, setValues, step, setStep, onPredict, busy }) {
-  const sections = meta.wizard_steps
-  const N = sections.length // step indices 0..N-1 are field steps; step N is the summary
-  const isSummary = step >= N
-  const labels = [...sections, 'Review']
-
-  const set = (k, v) => setValues((s) => ({ ...s, [k]: v }))
-  const fieldsFor = (sec) => meta.fields.filter((f) => f.section === sec)
-
-  const stepValid = useMemo(() => {
-    if (isSummary) return true
-    return fieldsFor(sections[step]).every((f) => {
-      if (!f.required) return true
-      const v = values[f.field]
-      if (v === '' || v == null) return false
-      if (f.field === 'price_total' && !(Number(v) > 0)) return false
-      return true
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, values, meta])
-
-  const missingInvalid = (f) => {
-    if (!f.required) return false
-    const v = values[f.field]
-    if (v === '' || v == null) return true
-    if (f.field === 'price_total' && !(Number(v) > 0)) return true
-    return false
+  function handleLoadExample(ex) {
+    setError(null)
+    setStepErrors({})
+    setValues(exampleToValues(ex, samples?.defaults))
+    setStep(3) // Jump directly to Review & Predict step for instant preview
   }
 
-  function leftVisual() {
-    if (step === 0) return <CategoryTile category={values.category} />
-    if (sections[step] === 'Payment') {
-      return (
-        <div className="viz-tile">
-          <div className="viz-tile__glyph" aria-hidden="true">💳</div>
-          <div className="viz-tile__name">
-            {values.main_payment_type ? values.main_payment_type.replace(/_/g, ' ') : 'payment'}
-          </div>
-          <div className="viz-tile__cap">
-            {values.customer_state ? `ships to ${values.customer_state}` : 'customer region'}
-          </div>
-        </div>
-      )
+  function validateCurrentStep() {
+    const requiredKeys = STEP_REQUIRED_FIELDS[step] || []
+    const errs = {}
+    let valid = true
+
+    for (const key of requiredKeys) {
+      const val = values[key]
+      if (val === '' || val == null) {
+        errs[key] = 'This field is required'
+        valid = false
+      }
     }
-    return <DeliveryTimeline values={values} />
+
+    setStepErrors(errs)
+    return valid
   }
 
+  function handleNext() {
+    setError(null)
+    if (!validateCurrentStep()) {
+      return
+    }
+    if (step < STEP_DEFINITIONS.length - 1) {
+      setStep(s => s + 1)
+      setStepErrors({})
+    } else {
+      onSubmit()
+    }
+  }
+
+  function handleBack() {
+    setError(null)
+    setStepErrors({})
+    if (step > 0) {
+      setStep(s => s - 1)
+    }
+  }
+
+  const currentStepDef = STEP_DEFINITIONS[step]
+
   return (
-    <div className="wiz">
-      <Stepper labels={labels} step={step} onJump={setStep} />
-      <p className="wiz__count">
-        Step {Math.min(step + 1, N + 1)} of {N + 1} · <b>{labels[Math.min(step, N)]}</b>
-      </p>
+    <div className="wiz-shell">
+      {/* 1. Fixed Top Bar */}
+      <header className="wiz-hdr">
+        <div className="wiz-hdr__left">
+          <h1 className="wiz-hdr__title">Order Satisfaction Predictor</h1>
+          <span className="wiz-hdr__sub">Full-Viewport Wizard</span>
+        </div>
 
-      <div className="wiz-panel">
-        {isSummary ? (
-          <Summary meta={meta} values={values} />
-        ) : (
-          <div className="step__body">
-            <aside className="step__viz">{leftVisual()}</aside>
-            <div className="step__fields">
-              <h2 className="step__title">{sections[step]}</h2>
-              <div className="fieldgrid">
-                {fieldsFor(sections[step]).map((f) => (
-                  <Field
-                    key={f.field} f={f} value={values[f.field]} onChange={set}
-                    invalid={missingInvalid(f)}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="wiz-hdr__right">
+          {samples?.examples?.length > 0 && (
+            <ExamplePicker examples={samples.examples} onPick={handleLoadExample} />
+          )}
+          <ThemeToggle />
+          <span className={`pill ${apiUp === false ? 'pill--bad' : apiUp ? 'pill--good' : ''}`}>
+            {apiUp === false ? 'API offline' : apiUp ? 'API connected' : 'connecting…'}
+          </span>
+        </div>
+      </header>
 
-        <div className="step__nav">
+      {apiUp === false && (
+        <div className="banner banner--top">
+          <span>API isn&apos;t reachable. Run <code>uvicorn api.main:app --port 8000</code> in <code>customer_behaviour/</code>.</span>
+        </div>
+      )}
+
+      {/* 2. Scrollable Step Body */}
+      <main className="wiz-body">
+        <div className="wiz-step-hdr">
+          <div className="wiz-step-badge">Step {step + 1} of 4</div>
+          <h2 className="wiz-step-title">{currentStepDef.title}</h2>
+          <p className="wiz-step-sub">{currentStepDef.sub}</p>
+        </div>
+
+        <div className="wiz-step-content">
+          {step === 0 && <StepProduct values={values} setValues={setValues} errors={stepErrors} />}
+          {step === 1 && <StepPayment values={values} setValues={setValues} errors={stepErrors} />}
+          {step === 2 && <StepDelivery values={values} setValues={setValues} errors={stepErrors} />}
+          {step === 3 && (
+            <StepReview
+              values={values}
+              onSubmit={onSubmit}
+              busy={busy}
+              error={error}
+            />
+          )}
+        </div>
+      </main>
+
+      {/* 3. Sticky Footer Navigation */}
+      <footer className="wiz-foot">
+        <div className="wiz-foot__container">
           <button
-            type="button" className="btn btn--ghost"
-            onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}
+            type="button"
+            className="btn btn--ghost"
+            disabled={step === 0 || busy}
+            onClick={handleBack}
           >
             ← Back
           </button>
-          {isSummary ? (
-            <button type="button" className="btn btn--primary btn--lg" onClick={onPredict} disabled={busy}>
-              {busy && <span className="spinner" aria-hidden="true" />}
-              {busy ? 'Predicting…' : 'Predict this order'}
-            </button>
-          ) : (
-            <button
-              type="button" className="btn btn--primary"
-              onClick={() => setStep((s) => s + 1)} disabled={!stepValid}
-              title={stepValid ? '' : 'Fill the required fields first'}
-            >
-              Next →
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function Summary({ meta, values }) {
-  const fmt = (f) => {
-    const v = values[f.field]
-    if (v === '' || v == null) return '—'
-    if (f.type === 'date') return String(v).replace('T', ' ')
-    if (f.field === 'review_comment_message') return v.length > 90 ? v.slice(0, 88) + '…' : v
-    return String(v)
-  }
-  const { daysLate, deliveryDays } = deriveTimeline(values)
-  return (
-    <div className="summary">
-      <h2 className="step__title">Review &amp; predict</h2>
-      {Number.isFinite(daysLate) && (
-        <p className={`summary__lead ${daysLate > 0.5 ? 'is-bad' : 'is-good'}`}>
-          Delivery: <b>{daysLate > 0.5 ? `${daysLate} days late` : `${Math.abs(daysLate)} days early`}</b>
-          {Number.isFinite(deliveryDays) ? ` · ${deliveryDays} days door to door` : ''}
-        </p>
-      )}
-      {meta.wizard_steps.map((sec) => (
-        <div className="summary__group" key={sec}>
-          <div className="summary__group-head">{sec}</div>
-          <dl className="summary__kv">
-            {meta.fields.filter((f) => f.section === sec).map((f) => (
-              <div key={f.field}>
-                <dt>{f.label}</dt>
-                <dd>{fmt(f)}</dd>
-              </div>
+          {/* Progress Dots */}
+          <div className="wiz-dots">
+            {STEP_DEFINITIONS.map((def, idx) => (
+              <button
+                key={idx}
+                type="button"
+                className={`wiz-dot ${idx === step ? 'is-active' : idx < step ? 'is-done' : ''}`}
+                title={def.title}
+                onClick={() => {
+                  if (idx < step || validateCurrentStep()) {
+                    setStep(idx)
+                  }
+                }}
+              >
+                <span className="wiz-dot__num">{idx + 1}</span>
+              </button>
             ))}
-          </dl>
+          </div>
+
+          <button
+            type="button"
+            className={`btn ${step === STEP_DEFINITIONS.length - 1 ? 'btn--primary btn--glow' : 'btn--primary'}`}
+            disabled={busy}
+            onClick={handleNext}
+          >
+            {step === STEP_DEFINITIONS.length - 1 ? (
+              busy ? 'Running model…' : '⚡ Predict Order'
+            ) : (
+              'Next Step →'
+            )}
+          </button>
         </div>
-      ))}
-      <p className="summary__assume">
-        Assumed (not asked): listing description length ={' '}
-        <b>{meta.fixed_inputs?.product_desc_len}</b> chars · payment methods used ={' '}
-        <b>{meta.fixed_inputs?.n_payment_types}</b>. Blank optional fields use dataset-typical values.
-      </p>
+      </footer>
     </div>
   )
 }

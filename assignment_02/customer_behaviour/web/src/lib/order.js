@@ -37,6 +37,27 @@ export function deriveTimeline(values) {
   }
 }
 
+export function calculateTiming(values) {
+  const purchase = parseLocal(values.order_purchase_timestamp)
+  const promised = parseLocal(values.order_estimated_delivery_date)
+  const actual = parseLocal(values.order_delivered_customer_date)
+  const isValid = Boolean(purchase && promised && actual)
+  
+  const daysLate = isValid ? round1((actual - promised) / DAY_MS) : 0
+  const deliveryDays = isValid ? round1((actual - purchase) / DAY_MS) : 0
+  
+  return {
+    purchase,
+    promised,
+    actual,
+    deliveryDays,
+    daysLate,
+    isLate: daysLate > 0,
+    isValid,
+  }
+}
+
+
 // Recompute promised + actual from the two quick numbers, keeping the purchase
 // date fixed. actual = purchase + deliveryDays ; promised = actual - daysLate.
 export function applyTimeline(values, { daysLate, deliveryDays }) {

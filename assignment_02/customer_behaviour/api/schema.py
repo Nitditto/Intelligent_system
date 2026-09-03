@@ -59,6 +59,7 @@ class Prediction(BaseModel):
     confidence: float
     p_satisfied: float
     threshold: float
+    review_terms: Optional[dict] = None
     signals: dict
     contributions: Optional[dict] = None   # linear-SHAP breakdown (None if model not linear)
     model: str

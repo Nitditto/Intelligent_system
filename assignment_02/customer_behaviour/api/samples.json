@@ -21,7 +21,7 @@
  "examples": [
   {
    "price_total": 117.0,
-   "freight_total": 50.010000000000005,
+   "freight_total": 50.01,
    "payment_value_total": 167.01,
    "n_items": 3,
    "n_sellers": 1,
@@ -421,7 +421,7 @@
   {
    "price_total": 236.0,
    "freight_total": 15.4,
-   "payment_value_total": 251.39999999999998,
+   "payment_value_total": 251.4,
    "n_items": 1,
    "n_sellers": 1,
    "max_installments": 1,
@@ -756,7 +756,7 @@
   },
   {
    "price_total": 248.0,
-   "freight_total": 44.17999999999999,
+   "freight_total": 44.18,
    "payment_value_total": 292.17,
    "n_items": 4,
    "n_sellers": 2,
@@ -820,7 +820,7 @@
   {
    "price_total": 31.9,
    "freight_total": 21.15,
-   "payment_value_total": 53.050000000000004,
+   "payment_value_total": 53.05,
    "n_items": 1,
    "n_sellers": 1,
    "max_installments": 5,
