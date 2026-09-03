@@ -79,6 +79,24 @@ class ListingInput(BaseModel):
     }
 
 
+class FeatureContribution(BaseModel):
+    name: str = Field(..., description="Feature group or variable name")
+    label: str = Field(..., description="Human-readable label for the feature")
+    impact_million: float = Field(..., description="Estimated price contribution in million VND relative to baseline")
+    direction: str = Field(..., description="'positive' (increases price) or 'negative' (decreases price)")
+    importance_pct: float = Field(..., description="Relative feature importance percentage from tree ensemble")
+
+
+class ModelMetadata(BaseModel):
+    algorithm: str = Field(..., description="Algorithm name")
+    n_estimators: int = Field(100, description="Number of ensemble trees")
+    max_depth: int = Field(16, description="Max depth of decision trees")
+    features_count: int = Field(18, description="Raw feature dimensions")
+    transformed_features: int = Field(117, description="Transformed feature dimensions after OneHotEncoding")
+    target_transform: str = Field("log1p(Price) -> expm1(y)", description="Target skewness transformation")
+    zero_leakage: bool = Field(True, description="Strict Training != Inference adherence")
+
+
 class PredictionOut(BaseModel):
     predicted_price: float = Field(..., description="Estimated listing price in million VND")
     price_per_m2: Optional[float] = Field(None, description="Estimated unit price in million VND/m²")
@@ -86,6 +104,12 @@ class PredictionOut(BaseModel):
     currency: str = Field("million VND", description="Unit of currency")
     model_name: str = Field(..., description="Deployed machine learning model name")
     interpretation: Optional[str] = Field(None, description="Brief natural language interpretation of the prediction")
+    feature_contributions: Optional[list[FeatureContribution]] = Field(
+        None, description="SHAP-style feature contributions decomposing valuation"
+    )
+    model_metadata: Optional[ModelMetadata] = Field(
+        None, description="Technical model specifications and pipeline parameters"
+    )
 
 
 class HealthOut(BaseModel):

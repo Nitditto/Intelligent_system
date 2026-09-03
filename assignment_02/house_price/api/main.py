@@ -121,6 +121,10 @@ def predict(input_data: ListingInput) -> PredictionOut:
         f"({ppm2:,.1f} million VND/m²) for a {area} m² property in {loc_display}."
     )
 
+    # Compute SHAP-style feature contributions & model metadata
+    contributions = I.compute_feature_contributions(payload, price)
+    meta = I.get_model_metadata()
+
     return PredictionOut(
         predicted_price=round(price, 2),
         price_per_m2=ppm2,
@@ -128,6 +132,8 @@ def predict(input_data: ListingInput) -> PredictionOut:
         currency=C.PRICE_UNIT,
         model_name=I.model_name(),
         interpretation=interpretation,
+        feature_contributions=contributions,
+        model_metadata=meta,
     )
 
 
