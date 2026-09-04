@@ -1,52 +1,134 @@
-# Node / frontend tooling
+# Node.js / Frontend / Web
 node_modules/
 dist/
 dist-ssr/
+build/
+.next/
+.nuxt/
+.out/
+.vite/
+.cache/
+.turbo/
+.parcel-cache/
 *.local
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
+logs/
+*.log
 
-# Eclipse / Buildship / Java language-server leftovers (Capacitor Android sub-projects)
+# Python / Jupyter / ML
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.ipynb_checkpoints/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Machine Learning & Model Artifacts (regenerable from notebooks/scripts)
+*.pkl
+*.joblib
+*.h5
+*.onnx
+*.pth
+*.pt
+*.tflite
+*.safetensors
+*.matrix
+*.model
+*.sav
+!assignment_02/diabetes/model/model_pipeline.joblib
+!assignment_02/diabetes/model/feature_names.joblib
+
+# Flutter / Dart / Mobile
+.dart_tool/
+.pub-cache/
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+**/Flutter/ephemeral/
+**/Flutter/Generated.xcconfig
+**/Flutter/flutter_export_environment.sh
+**/flutter/ephemeral/
+**/flutter/generated_plugin_registrant.*
+**/flutter/generated_plugins.cmake
+**/Runner/GeneratedPluginRegistrant.*
+**/Runner/GeneratedPluginRegistrant.swift
+**/doc/api/
+app.*.symbols
+app.*.map.json
+
+# Eclipse / Buildship / Java / Gradle / Android / Capacitor
 .project
 .classpath
 .settings/
 .gradle/
-build/
-local.properties
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-env/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Env / secrets
-.env
-.env.*
-
-# Trained model artifacts (regenerable from the notebooks)
-*.pkl
-*.joblib
-
-# OS / editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# Capacitor
+**/android/.gradle/
+**/android/app/build/
+**/android/local.properties
 **/android/app/src/main/assets/public/
 **/android/app/src/main/assets/capacitor.config.json
 **/android/app/src/main/assets/capacitor.plugins.json
 **/android/capacitor-cordova-android-plugins/
+local.properties
 *.iml
+*.ipr
+*.iws
+.externalNativeBuild/
+.cxx/
+captures/
+.transforms/
+*.apk
+*.aab
+key.properties
+*.keystore
+*.jks
 
+# Environment variables & secrets
+.env
+.env.*
+!.env.example
+
+# Temporary / Scratch files
+*.tmp
+.tmp/
+**/tmp/
+**/temp/
+_scratch/
+
+# Kaggle / Raw Datasets (large files fetched via app data scripts)
+*/data/*.csv
+*/data/*.zip
+
+# OS / Editors / IDE / AI Tools
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+[Dd]esktop.ini
+.idea/
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude/*
+!.claude/launch.json
+.gemini/
