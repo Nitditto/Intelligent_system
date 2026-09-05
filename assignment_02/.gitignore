@@ -39,6 +39,8 @@ env/
 *.tflite
 !diabetes/model/model_pipeline.joblib
 !diabetes/model/feature_names.joblib
+!house_price/model/model_pipeline.joblib
+!house_price/model/feature_names.joblib
 
 # Flutter / Dart / Mobile
 .dart_tool/

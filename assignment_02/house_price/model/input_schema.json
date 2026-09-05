@@ -1,12 +1,10 @@
 {
-  "_comment": "STUB — the notebook's section 22 overwrites this with the fitted contract on Run All. Values below reflect the notebook as written (district-only location, log1p target).",
-  "target": "Price  (listing price in MILLION VND; model trained on log1p(Price), invert with expm1)",
+  "target": "Price (million VND); model trained on log1p(Price), invert with expm1",
   "task": "regression",
-  "chosen_model": "TODO (section 18/19 winner — RandomForest in the reference run)",
+  "chosen_model": "RandomForest",
   "random_seed": 42,
-  "sklearn_version": "TODO (printed in notebook section 0)",
+  "sklearn_version": "1.9.0",
   "price_unit": "million VND",
-
   "numeric_features": [
     "Area",
     "Width",
@@ -20,7 +18,6 @@
     "Bathrooms_missing",
     "Floors_missing"
   ],
-
   "categorical_features": [
     "Property Type",
     "Position",
@@ -30,48 +27,46 @@
     "Agent Role",
     "district"
   ],
-
   "model_features_order": [
-    "Area", "Width", "Length", "Bedrooms", "Bathrooms", "Floors",
-    "Alley Width", "Agent Listing Count",
-    "Bedrooms_missing", "Bathrooms_missing", "Floors_missing",
-    "Property Type", "Position", "Direction", "Road Type",
-    "Province", "Agent Role", "district"
+    "Area",
+    "Width",
+    "Length",
+    "Bedrooms",
+    "Bathrooms",
+    "Floors",
+    "Alley Width",
+    "Agent Listing Count",
+    "Bedrooms_missing",
+    "Bathrooms_missing",
+    "Floors_missing",
+    "Property Type",
+    "Position",
+    "Direction",
+    "Road Type",
+    "Province",
+    "Agent Role",
+    "district"
   ],
-
   "engineered": [
-    "district        (parsed from Location: Quận/Huyện/Thị xã/Thành phố token, else ward, else 'Unknown')",
-    "Bedrooms_missing / Bathrooms_missing / Floors_missing  (1 if the column was NaN before imputation)",
-    "99th-percentile cap on Area / Width / Length / Alley Width"
+    "district (parsed from Location: Quận/Huyện/Thị xã/TP token, else ward, else Unknown)",
+    "Bedrooms_missing",
+    "Bathrooms_missing",
+    "Floors_missing",
+    "99th-pct cap on Area/Width/Length/Alley Width"
   ],
-
   "dropped_columns": [
-    "Title              (LEAKS the target — the price is written in the text)",
-    "Description        (free text, not used for the tabular model)",
-    "Listing ID         (identifier; used only to drop re-scraped duplicates)",
-    "VIP Account        (constant: all False)",
+    "Title (leaks Price)",
+    "Description",
+    "Listing ID",
+    "VIP Account",
     "Avatar",
-    "Agent Name         (28k unique — high-cardinality noise)",
-    "Property Type Slug (duplicate of Property Type)",
-    "Last Updated / Scraped At / Last Updated Date  (timestamps)",
-    "Latitude / Longitude  (~68% missing)",
-    "Location           (kept only to derive district, then dropped)",
-    "ward               (~4,600 levels — dropped as noise; district is the useful admin level)"
-  ],
-
-  "reference_run": {
-    "_note": "from one full Run All on VN-real-estate-Apr-Sept-2025.csv; your numbers will vary slightly",
-    "rows_after_cleaning_N": 201654,
-    "feature_dimension_d": 404,
-    "best_model": "RandomForest",
-    "test_R2": 0.19,
-    "test_MAE_million_vnd": 10627,
-    "test_RMSE_million_vnd": 26873
-  },
-
-  "cleaning_bounds": {
-    "Price": "keep 0 < Price <= 200000 (million VND)",
-    "Area": "keep 0 < Area <= 10000 (m^2); drop rows with missing Area",
-    "dedupe": "drop_duplicates(subset='Listing ID', keep='last')"
-  }
+    "Agent Name",
+    "Property Type Slug",
+    "Last Updated",
+    "Scraped At",
+    "Last Updated Date",
+    "Latitude",
+    "Longitude",
+    "Location"
+  ]
 }
