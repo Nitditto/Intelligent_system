@@ -25,15 +25,15 @@ Until then, `/healthz` returns `model_loaded: false` and `/predict` returns `503
 
 ```bash
 # from Assignment_2/house_price/
-uvicorn api.main:app --reload --port 8001
+python -m uvicorn api.main:app --reload --port 8002
 ```
 
-Swagger UI: http://localhost:8001/docs
+Swagger UI: http://localhost:8002/docs
 
 ## Testing with Postman
 
 Import `api/house_price_api.postman_collection.json` into Postman. It has a `{{baseUrl}}`
-collection variable (default `http://localhost:8001`) and five requests: health check,
+collection variable (default `http://localhost:8002`) and five requests: health check,
 full-input predict, minimal predict (`Area` only), an apartment example, and a
 missing-`Area` request that returns `422` (use it as the input-validation evidence for
 the report). Start the API first, then Send each request.
@@ -46,7 +46,7 @@ the report). Start the API first, then Send each request.
 ## Example
 
 ```bash
-curl -s -X POST http://localhost:8001/predict \
+curl -s -X POST http://localhost:8002/predict \
   -H 'content-type: application/json' \
   -d '{
         "Area": 78.7, "Width": 4.0, "Bedrooms": 3, "Bathrooms": 2, "Floors": 2,
