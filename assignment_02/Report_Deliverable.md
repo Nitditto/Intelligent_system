@@ -4,7 +4,8 @@
 Framework applied identically to each app: `Data → Understand → Clean → Represent →
 Learn → Evaluate → Persist → Deploy`. Every number below is the executed value from the
 corresponding `notebook/*.ipynb` (Python 3.13, Windows 11, scikit-learn 1.9.0,
-`RANDOM_SEED = 42`). Replace each 📸 with the real screenshot before submitting.
+`RANDOM_SEED = 42`). The 📸 markers below point at captured images in
+`report/screenshots/` — see that folder's `README.md` for the file-to-section index.
 
 ---
 
@@ -699,11 +700,20 @@ columns after `min_frequency=50`. `d` for e-commerce = 138 tabular columns after
 
 ## Screenshot checklist
 
-| ID | App | Where | Shows |
+Captured screenshots live in **`report/screenshots/`** (see its `README.md` for the full
+index and the ports each stack ran on). All three stacks were run locally on 2026-09-07:
+FastAPI + Uvicorn backend, React/Vite web, and the Flutter client built for web at a
+390 × 844 device viewport.
+
+| ID | App | File(s) in `report/screenshots/` | Shows |
 |---|---|---|---|
-| N1–N9 (–D / –H / –C) | each | notebook §4/§5/§9/§10/§12/§18/§19/§20 | `info`/`describe`, data-quality table, outliers, EDA plots, raw→vector + shapes, model comparison, test report + confusion + ROC/residuals, error analysis |
-| N-B-C | App 3 | notebook Appendix B | elbow/silhouette + 5-segment profile + PCA scatter |
-| W1–W3 (×3 apps) | each | web app | input screen · valid-input example · result screen (verdict + confidence + interpretation) |
-| W-docs | each | FastAPI `/docs` | `POST /predict` "Try it out" |
-| M1–M2 (×3 apps) | each | mobile app | input screen · result screen |
-| M-evidence | each | API terminal | a `POST /predict 200` log line while the mobile app is used |
+| W1 (–D/–H/–C) | each | `W1-D_input.png` · `W1-H_input.png` · `W1-C_input.png` | web input screen with a valid example entered |
+| W2 (–D/–H/–C) | each | `W2-D_result.png` · `W2-H_result.png` · `W2-C_result.png` | web result screen — probability / predicted value + plain-language interpretation + SHAP |
+| W-docs (–D/–H/–C) | each | `W3-D_docs.png` · `W3-H_docs.png` · `W3-C_docs.png` | FastAPI `/docs`, `POST /predict` expanded (request + response schema) |
+| M1 (–D/–H/–C) | each | `M1-D_input.png` · `M1-H_input.png` · `M1-C_input.png` | Flutter mobile input screen |
+| M2 (–D/–H/–C) | each | `M2-D_result.png` · `M2-H_result.png` · `M2-C_result.png` | Flutter mobile result screen (verdict + confidence/probability); each run logged `POST /predict 200` — the evidence the client calls the service |
+| N (–D/–H/–C) | each | `NB_D_*` · `NB_H_*` · `NB_C_*` | notebook figures pulled from the executed `*.ipynb`: §9 outliers, §10 EDA + correlation, §19 confusion/ROC (classifiers) or predicted-vs-actual + residuals (regressor) |
+
+Still to add before the final PDF: the cover-page details (name / ID / class / team) and,
+optionally, a notebook `df.info()`/`describe()` grab and the App 3 Appendix-B
+elbow/silhouette figure.
