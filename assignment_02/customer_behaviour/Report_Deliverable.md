@@ -190,18 +190,20 @@ Interpretation / ML implication (already written under §10):
 
 ## 6.6 Model development
 
-- **Seven pipelines** compared (notebook §17), across the **two representations** the
-  assignment asks about:
+- **Eight pipelines** compared (notebook §17) — the assignment's six models for
+  Application 3 (rows 1–6) plus two extras — across the **two representations** it asks
+  about:
 
-  | # | model | representation |
-  |---|---|---|
-  | 1 | Logistic Regression | tabular |
-  | 2 | Linear SVM (`LinearSVC`) | tabular |
-  | 3 | Random Forest | tabular |
-  | 4 | HistGradientBoosting | tabular |
-  | 5 | SGD (`loss="log_loss"`) | text (TF-IDF) — *the required text-based linear classifier* |
-  | 6 | Complement Naive Bayes | text (TF-IDF) |
-  | 7 | Logistic Regression | **tabular + text** — *deployed* |
+  | # | model | representation | assignment slot |
+  |---|---|---|---|
+  | 1 | Logistic Regression | tabular | *Logistic Regression* |
+  | 2 | Decision Tree | tabular | *Decision Tree* |
+  | 3 | Random Forest | tabular | *Random Forest* |
+  | 4 | Linear SVM (`LinearSVC`) | tabular | *SVM* |
+  | 5 | SGD (`loss="log_loss"`) | text (TF-IDF) | *text-based linear classifier* |
+  | 6 | HistGradientBoosting | tabular | *another justified model* |
+  | 7 | Complement Naive Bayes | text (TF-IDF) | extra |
+  | 8 | Logistic Regression | **tabular + text** | **deployed** (the representation comparison) |
 
 - Protocol: all trained on the same training split with the same preprocessing (fitted
   on train only); hyperparameters fixed and recorded (notebook §17 table); the deployed
@@ -216,7 +218,7 @@ Interpretation / ML implication (already written under §10):
   | D | **text only** (TF-IDF) | **0.965** | 0.859 | 0.882 |
   | E | **tabular + text** (deployed) | **0.966** | 0.861 | 0.885 |
 
-- **Six models** (notebook §18b, validation):
+- **Eight models** (notebook §18b, validation — quote the executed table):
 
   | model | representation | ROC-AUC | macro-F1 | recall(0) | accuracy |
   |---|---|---|---|---|---|
@@ -225,10 +227,14 @@ Interpretation / ML implication (already written under §10):
   | RandomForest | tab | 0.810 | 0.686 | 0.611 | 0.806 |
   | LogisticRegression | tab | 0.768 | 0.622 | 0.679 | 0.722 |
   | LinearSVC | tab | 0.767 | 0.622 | 0.676 | 0.723 |
+  | **Decision Tree** | tab | 0.767 | 0.637 | 0.649 | 0.746 |
   | SGD (log-loss, text) | text | 0.965 | 0.856 | 0.885 | 0.916 |
   | ComplementNB (text) | text | 0.955 | 0.840 | 0.846 | 0.907 |
   | *baseline B — LogReg skin-profile only* | | *0.536* | | | *0.495* |
   | *baseline A — majority class* | | *0.500* | *0.458* | *0.000* | *0.847* |
+
+  A single depth-12 Decision Tree lands with the linear models (~0.77) — it captures the
+  main splits but not the skin×category×brand interactions the ensembles (~0.81) exploit.
 
 - **Tabular vs tabular + text — the assignment's key question.** *Both representations
   have real predictive skill* — tabular reaches **~0.77 (linear) / ~0.81 (trees)** from
@@ -238,7 +244,7 @@ Interpretation / ML implication (already written under §10):
   than complementary** — a customer who will withhold a recommendation has usually
   already *said so* in the review — but the comparison is genuine, unlike a corpus where
   one side is empty.
-- 📸 **Screenshot N7 — notebook §18**: the 5-rung ladder table + the 7-model comparison
+- 📸 **Screenshot N7 — notebook §18**: the 5-rung ladder table + the 8-model comparison
   table.
 
 ### 6.6a Data leakage (assignment requirement — notebook §14a)
@@ -440,14 +446,14 @@ API:        POST http://<host>:8000/predict   (same endpoint as the web app)
 | Preprocessing | `ColumnTransformer`: median `SimpleImputer` → `log1p` (5 money/popularity/vote cols) → `StandardScaler`; scale (4 numeric); pass-through (6 binary); `OneHotEncoder(handle_unknown="ignore", min_frequency=25)` (6 categorical); `TfidfVectorizer(ngram_range=(1,2), min_df=10, max_features=40000, sublinear_tf=True, stop_words="english")` on `review_all`. Fitted on train only. |
 | Feature representation | 21 tabular columns → `x_tab ∈ ℝ^{138}` after one-hot; `x_txt ∈ ℝ^{~28,600}` sparse; combined `d ≈ 28,700`, sparse CSR; `y ∈ {0,1}^N`, `N = 104,313` |
 | Train/val/test split | `StratifiedGroupKFold(n_splits=5)` **grouped on `author_id`** (no reviewer spans splits; ~22% review > once) → train 62,587 · val 20,862 · test 20,864, each at recommend rate 0.8465 |
-| Model hyperparameters | `LogisticRegression(C=1.0, max_iter=1000, class_weight="balanced", random_state=42)` on the tabular + text representation (full 7-model table: notebook §17) |
+| Model hyperparameters | `LogisticRegression(C=1.0, max_iter=1000, class_weight="balanced", random_state=42)` on the tabular + text representation (full 8-model table: notebook §17) |
 | Evaluation metrics | test: Acc 0.918 · macro-F1 0.858 · ROC-AUC 0.964 · class-0 recall 0.876 · confusion `[[2804, 398], [1315, 16347]]`; single-representation on the same test set: tab-only 0.801, text-only 0.963 |
 | Saved pipeline | `model/model_pipeline.joblib` (~2.0 MB — tabular transformer + TF-IDF + LogisticRegression) |
 | Saved model config | `model/feature_names.joblib`, `model/feature_means.joblib` (linear-SHAP reference: 37,240 transformed-feature means + `coef`/`intercept`), `model/input_schema.json` (raw fields, engineered fields, framing / leakage note) |
 | API code | `customer_behaviour/api/` (FastAPI: `config.py`, `features.py`, `inference.py`, `schema.py`, `main.py`, `make_samples.py`) |
 | Web app code | `customer_behaviour/web/` (React + Vite, 3-step wizard) |
 | Mobile app code | `customer_behaviour/mobile/` (Flutter, 2 screens) |
-| Reproduce | execute `notebook/customer_behaviour.ipynb` (writes `model/`) → `python -m venv .venv && . .venv/Scripts/activate` → `pip install -r api/requirements.txt` → `python api/make_samples.py` → `python -m uvicorn api.main:app --port 8000` (from `customer_behaviour/`) → `npm --prefix web install && npm --prefix web run dev` → `flutter run` in `mobile/` |
+| Reproduce | download `reviews_500-750.csv` + `product_info.csv` from Kaggle into `data/sephora/` → `python -m venv .venv && . .venv/Scripts/activate` → `pip install -r requirements.txt` → execute `notebook/customer_behaviour.ipynb` (writes `model/`) → `python api/make_samples.py` → `python -m uvicorn api.main:app --port 8000` (from `customer_behaviour/`) → `npm --prefix web install && npm --prefix web run dev` → `flutter run` in `mobile/` |
 
 ---
 

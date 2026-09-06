@@ -25,7 +25,7 @@ co-authorship; the tabular-only signal is ~0.8, the text-only ~0.96.
 ```bash
 cd customer_behaviour
 python -m venv .venv && . .venv/Scripts/activate      # Windows;  .venv/bin/activate on *nix
-pip install -r api/requirements.txt                   # numpy/pandas/sklearn 1.9.0/fastapi/uvicorn/…
+pip install -r requirements.txt                       # notebook + API; api/requirements.txt is serving-only
 python api/make_samples.py                            # writes api/samples.json from data/sephora/
 python -m uvicorn api.main:app --port 8000 --reload   # run from customer_behaviour/, NOT api/
 # docs / try-it:  http://localhost:8000/docs
