@@ -4,14 +4,17 @@
 
 | Field | Value |
 |---|---|
-| **Name** | VN Real Estate Listings (April–September 2025) |
+| **Name** | Vietnamese Real Estate Listings 2025 (Kaggle, author `qmanhbeo`) |
+| **URL** | https://www.kaggle.com/datasets/qmanhbeo/vietnamese-real-estate-listings-may-2024 |
 | **File** | `VN-real-estate-Apr-Sept-2025.csv` |
+| **Downloaded** | 2025-09 (Kaggle page last updated 2025-09-30) |
 | **Rows / cols** | 236,226 rows × 28 columns (true CSV record count; `wc -l` reports 238,924 because `Description` contains newlines) |
 | **Size** | ~210 MB |
 | **Encoding** | UTF-8 **with BOM** — read with `encoding="utf-8-sig"` |
 | **Separator** | `,` |
-| **Provenance** | Scraped Vietnamese property-listing portal; listings updated Apr–Sept 2025 (`Scraped At` / `Last Updated Date`). |
-| **Licence** | Scraped data — research use only; cite the source portal in the report. |
+| **Provenance** | Scraped from publicly available real-estate adverts on **Guland.vn**. `Scraped At` shows the crawl ran 12–14 Sept 2025; individual `Last Updated` dates reach further back (hence "Apr–Sept" in the file name). File predates the mid-2025 province mergers — `Location` strings carry a `(Mới)` marker. |
+| **Licence** | **CC BY-NC 4.0** — non-commercial; educational / research use only. Author does not claim ownership of the underlying listings. |
+| **Translation** | Vietnamese column values — author's helper notebook `qmanhbeo/translate-vn-real-estate-datasets-to-english`. |
 
 ## How to obtain it
 
@@ -50,10 +53,3 @@ cp ../../../VN-real-estate-Apr-Sept-2025.csv data/
 - `Direction`, `Road Type`, `Position`, `Alley Width` 30–70% missing → "Unknown" category / impute
 - `VIP Account` constant → drop
 - Duplicate listings by `Listing ID` — checked in §7
-
-## Note on the previous dataset
-
-An earlier version of this assignment used `vietnam_housing_dataset.csv` (~30k rows, Kaggle
-"Vietnam Housing Dataset"). It has been **replaced** by this larger scrape. The old trained
-models and their JSON artifacts were removed; `notebook/house_price.ipynb` regenerates
-everything from this CSV.
