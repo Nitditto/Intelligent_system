@@ -1,209 +1,215 @@
 import 'package:flutter/material.dart';
 
-import '../main.dart';
 import '../models.dart';
+import '../theme.dart';
+import '../widgets/primitives.dart';
+import '../widgets/result_parts.dart';
 
-/// Shows one PredictResult: verdict, P(recommend) bar, the profile/product
-/// signals, the review terms that moved it, and a short interpretation.
 class ResultScreen extends StatelessWidget {
   final PredictResult result;
-  const ResultScreen({super.key, required this.result});
+  final Map<String, dynamic> modelInfo;
+  const ResultScreen(
+      {super.key, required this.result, this.modelInfo = const {}});
 
-  String _pct(double x) => '${(x * 100).toStringAsFixed(1)}%';
-  String? _s(dynamic v) => (v == null) ? null : v.toString();
+  String _pct(double x) => '${(x * 100).round()}%';
+  String? _s(dynamic v) => v?.toString();
 
   @override
   Widget build(BuildContext context) {
+    final c = context.c;
     final good = result.good;
-    final color = verdictColor(good);
     final s = result.signals;
+    final pRec = (result.pRecommend * 100).round();
+
+    final kv = <(String, String)>[
+      ('Skin type', _s(s['skin_type']) ?? '—'),
+      ('Category', _s(s['category']) ?? '—'),
+      ('Brand', _s(s['brand']) ?? '—'),
+      (
+        'Price',
+        s['price_usd'] == null
+            ? '—'
+            : '\$${s['price_usd']}'
+                '${s['price_tier'] != null ? ' · ${s['price_tier']}' : ''}'
+      ),
+      ('Product “loves”', _s(s['product_loves']) ?? '—'),
+      ('Review length', '${s['review_tokens'] ?? '—'} words'),
+    ];
+
+    final against = result.termsAgainst.map((t) => t.term).toList();
+    final toward = result.termsToward.map((t) => t.term).toList();
+    final framing = (modelInfo['framing'] ?? '').toString();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Prediction')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+        padding: const EdgeInsets.fromLTRB(Sp.s4, Sp.s4, Sp.s4, Sp.s8),
         children: [
+          VerdictBlock(
+            good: good,
+            badge: good ? 'RECOMMENDS' : "WON’T RECOMMEND",
+            title: good
+                ? 'This customer would probably recommend the product'
+                : 'This customer probably would not recommend the product',
+            subtitle:
+                'The model puts the chance the reviewer ticks “recommend” at $pRec%. '
+                'We call it “recommends” above ${_pct(result.threshold)}.',
+          ),
+          const SizedBox(height: Sp.s4),
+
+          // meter
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('Chance of a recommendation'),
+                const SizedBox(height: Sp.s3),
+                Meter(
+                  value: result.pRecommend,
+                  threshold: result.threshold,
+                  good: good,
+                  leftLabel: 'won’t',
+                  rightLabel: 'recommends',
+                ),
+                const SizedBox(height: Sp.s3),
+                Text(
+                  'Read it as: $pRec times out of 100, a reviewer who wrote this — '
+                  'with this profile and product — ticked “recommend”.',
+                  style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Sp.s4),
+
+          // signals
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SectionLabel('What the model saw'),
+                const SizedBox(height: Sp.s3),
+                KvGrid(kv),
+                const SizedBox(height: Sp.s3),
+                Text(
+                  'Skin type is the main structured signal — a product that suits dry '
+                  'skin often disappoints oily reviewers. The structured block alone '
+                  'reaches ROC-AUC ~0.8; the review text takes it to ~0.96.',
+                  style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+
+          if (against.isNotEmpty || toward.isNotEmpty) ...[
+            const SizedBox(height: Sp.s4),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('Words in the review that moved the call'),
+                  const SizedBox(height: Sp.s3),
+                  if (against.isNotEmpty) ...[
+                    Text('▼ toward “won’t recommend”',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: c.bad)),
+                    const SizedBox(height: 6),
+                    ChipRow(against, good: false),
+                    const SizedBox(height: Sp.s3),
+                  ],
+                  if (toward.isNotEmpty) ...[
+                    Text('▲ toward “recommends”',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: c.good)),
+                    const SizedBox(height: 6),
+                    ChipRow(toward, good: true),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: Sp.s4),
+          // interpretation
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(Sp.s4),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.10),
-              borderRadius: BorderRadius.circular(12),
+              color: good ? c.goodWeak : c.badWeak,
+              borderRadius: Rad.rMd,
+              border: Border(
+                  left: BorderSide(color: good ? c.good : c.bad, width: 4)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(children: [
+                  Icon(good ? Icons.check_circle : Icons.warning_amber_rounded,
+                      size: 16, color: good ? c.good : c.bad),
+                  const SizedBox(width: 6),
+                  Text('HOW TO USE THIS',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: c.textFaint)),
+                ]),
+                const SizedBox(height: Sp.s2),
                 Text(
                   good
-                      ? 'Would probably recommend'
-                      : 'Probably would not recommend',
-                  style: TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold, color: color),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Chance of a recommendation: ${_pct(result.pRecommend)} '
-                  '(we call it “recommends” above ${_pct(result.threshold)}).',
-                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                      ? 'Text and profile agree the customer is satisfied — safe to '
+                          'surface this review for similar skin types.'
+                      : 'The review reads negative — flag for review-consistency QA '
+                          'and check whether the product page over-promises for this '
+                          'skin type.',
+                  style: TextStyle(fontSize: Ty.sm, color: c.text, height: 1.5),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
 
-          const Text('Chance of a recommendation',
-              style: TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Stack(
-              children: [
-                LinearProgressIndicator(
-                  value: result.pRecommend,
-                  minHeight: 12,
-                  backgroundColor: const Color(0xFFEDF0F4),
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
-                Positioned(
-                  left: MediaQuery.of(context).size.width *
-                      result.threshold *
-                      0.86,
-                  child: Container(width: 2, height: 12, color: Colors.black),
-                ),
-              ],
+          if (result.contributions != null) ...[
+            const SizedBox(height: Sp.s4),
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SectionLabel('Why this prediction — each factor’s pull'),
+                  const SizedBox(height: Sp.s3),
+                  ContribChart(result.contributions!),
+                ],
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Text('decision cut-off ${_pct(result.threshold)}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54)),
-          ),
-          const SizedBox(height: 18),
+          ],
 
-          const Text('What the model saw',
-              style: TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          _row('Skin type', _s(s['skin_type']) ?? '—', null),
-          _row('Category', _s(s['category']) ?? '—', null),
-          _row('Brand', _s(s['brand']) ?? '—', null),
-          _row(
-            'Price',
-            s['price_usd'] == null
-                ? '—'
-                : '\$${s['price_usd']}'
-                    '${s['price_tier'] != null ? ' · ${s['price_tier']}' : ''}',
-            null,
+          const SizedBox(height: Sp.s4),
+          HowItWorks(
+            'Trained on ~104k Sephora skincare reviews (product-id shard 500–750). '
+            'One Logistic Regression over the reviewer’s skin profile + the product '
+            '(category, brand, price, popularity) and a TF-IDF of the review title + '
+            'body. Inference runs server-side (POST /predict). '
+            '${framing.isEmpty ? '' : framing}',
           ),
-          _row('Product “loves”', _s(s['product_loves']) ?? '—', null),
-          _row('Review length', '${s['review_tokens'] ?? '—'} words', null),
-          const SizedBox(height: 16),
 
-          if (result.termsAgainst.isNotEmpty || result.termsToward.isNotEmpty)
-            _Terms(against: result.termsAgainst, toward: result.termsToward),
-
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF4F6F9),
-              border: Border(
-                  left: BorderSide(color: Color(0xFF2F6FED), width: 3)),
-            ),
-            child: Text(
-              good
-                  ? 'Text and profile agree the customer is satisfied — safe to '
-                      'surface this review for similar skin types.'
-                  : 'The review reads negative — flag for review-consistency QA '
-                      'and check whether the product page over-promises for this '
-                      'skin type.',
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'model: ${result.model} (${result.representation})  ·  POST /predict\n'
-            'The review text is written alongside the recommend tick, so it '
-            'strongly signals the outcome — see notebook §14a.',
-            style: const TextStyle(fontSize: 11, color: Colors.black45),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: Sp.s5),
           Center(
-            child: OutlinedButton.icon(
+            child: AppButton(
+              label: 'Score another review',
+              icon: Icons.arrow_back,
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit the review'),
             ),
+          ),
+          const SizedBox(height: Sp.s3),
+          Text(
+            '${result.model} · ${result.representation}',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 10, color: c.textFaint),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _row(String k, String v, Color? valueColor) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-                flex: 5,
-                child: Text(k, style: const TextStyle(fontSize: 13))),
-            Expanded(
-              flex: 5,
-              child: Text(v,
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: valueColor)),
-            ),
-          ],
-        ),
-      );
-}
-
-class _Terms extends StatelessWidget {
-  final List<TermPull> against;
-  final List<TermPull> toward;
-  const _Terms({required this.against, required this.toward});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget chips(String title, List<TermPull> items, Color c) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: c,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.4)),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: items
-                  .map((t) => Chip(
-                        label: Text(t.term,
-                            style: const TextStyle(fontSize: 12)),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize:
-                            MaterialTapTargetSize.shrinkWrap,
-                      ))
-                  .toList(),
-            ),
-            const SizedBox(height: 10),
-          ],
-        );
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Words in the review that moved the call',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        if (against.isNotEmpty)
-          chips('TOWARD “WON’T RECOMMEND”', against, verdictColor(false)),
-        if (toward.isNotEmpty)
-          chips('TOWARD “RECOMMENDS”', toward, verdictColor(true)),
-      ],
     );
   }
 }

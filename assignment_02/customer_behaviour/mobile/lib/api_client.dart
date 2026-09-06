@@ -1,5 +1,5 @@
 // REST client for the customer-behaviour API. The mobile app performs no
-// inference itself — it enters an order, POSTs it, and shows the response.
+// inference itself — it enters a review, POSTs it, and shows the response.
 //
 // Base URL: pass --dart-define=API_URL=http://<host>:8000 at run time.
 // Default 10.0.2.2 is the Android emulator's alias for the host's localhost.
@@ -45,6 +45,13 @@ class ApiClient {
 
   Future<Map<String, dynamic>> modelInfo() async {
     final r = await _http.get(_u('/model-info'));
+    _check(r);
+    return jsonDecode(r.body) as Map<String, dynamic>;
+  }
+
+  /// `{ "defaults": {...}, "examples": [ {...review..., "_label", "_recommended"} ] }`
+  Future<Map<String, dynamic>> samples() async {
+    final r = await _http.get(_u('/samples'));
     _check(r);
     return jsonDecode(r.body) as Map<String, dynamic>;
   }

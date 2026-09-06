@@ -1,11 +1,11 @@
 {
-    "name": "order_satisfaction",
-    "short_name": "order_satisfaction",
+    "name": "Product recommendation",
+    "short_name": "Recommendation",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Sephora product-recommendation mobile client (Assignment 02).",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'api_client.dart';
-import 'screens/order_form_screen.dart';
+import 'screens/review_form_screen.dart';
+import 'theme.dart';
 
 void main() => runApp(const RecommendationApp());
 
@@ -15,14 +16,10 @@ class RecommendationApp extends StatelessWidget {
     return MaterialApp(
       title: 'Product recommendation',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorSchemeSeed: const Color(0xFF2F6FED),
-        useMaterial3: true,
-      ),
+      theme: buildAppTheme(Brightness.light),
+      darkTheme: buildAppTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: const ReviewFormScreen(),
     );
   }
 }
-
-Color verdictColor(bool good) =>
-    good ? const Color(0xFF1F9D55) : const Color(0xFFD64545);
