@@ -3,23 +3,23 @@ import 'package:flutter/material.dart';
 import 'api_client.dart';
 import 'screens/order_form_screen.dart';
 
-void main() => runApp(const OrderSatisfactionApp());
+void main() => runApp(const RecommendationApp());
 
 final ApiClient api = ApiClient();
 
-class OrderSatisfactionApp extends StatelessWidget {
-  const OrderSatisfactionApp({super.key});
+class RecommendationApp extends StatelessWidget {
+  const RecommendationApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Order satisfaction',
+      title: 'Product recommendation',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF2F6FED),
         useMaterial3: true,
       ),
-      home: const OrderFormScreen(),
+      home: const ReviewFormScreen(),
     );
   }
 }

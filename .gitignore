@@ -51,6 +51,9 @@ htmlcov/
 !assignment_02/diabetes/model/feature_names.joblib
 !assignment_02/house_price/model/model_pipeline.joblib
 !assignment_02/house_price/model/feature_names.joblib
+!assignment_02/customer_behaviour/model/model_pipeline.joblib
+!assignment_02/customer_behaviour/model/feature_names.joblib
+!assignment_02/customer_behaviour/model/feature_means.joblib
 
 # Flutter / Dart / Mobile
 .dart_tool/
@@ -112,6 +115,10 @@ _scratch/
 # Kaggle / Raw Datasets (large files fetched via app data scripts)
 */data/*.csv
 */data/*.zip
+# customer_behaviour raw datasets — large, downloaded from Kaggle, not committed
+assignment_02/customer_behaviour/data/sephora/
+assignment_02/customer_behaviour/data/amazon/
+**/data/**/*.parquet
 
 # OS / Editors / IDE / AI Tools
 .DS_Store

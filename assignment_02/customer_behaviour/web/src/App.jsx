@@ -1,26 +1,22 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { api, ApiError } from './api.js'
 import Wizard from './components/Wizard.jsx'
 import ResultScreen from './components/ResultScreen.jsx'
-import { exampleToValues } from './lib/order.js'
+import { exampleToValues } from './lib/sephora.js'
 
 const FALLBACK = {
-  category: 'bed_bath_table',
-  price_total: 129.9,
-  freight_total: 18.3,
-  payment_value_total: 148.2,
-  n_items: 1,
-  n_sellers: 1,
-  main_payment_type: 'credit_card',
-  max_installments: 3,
-  customer_state: 'SP',
-  product_weight_g: 1200,
-  product_photos_qty: 3,
-  product_desc_len: 850,
-  order_purchase_timestamp: '2018-05-01T10:00',
-  order_estimated_delivery_date: '2018-05-20T00:00',
-  order_delivered_customer_date: '2018-05-31T14:00',
-  review_comment_message: 'Produto chegou muito atrasado e a embalagem estava danificada.',
+  skin_type: 'oily',
+  skin_tone: 'light',
+  eye_color: 'brown',
+  hair_color: 'brown',
+  secondary_category: 'Moisturizers',
+  brand_name: 'Skinfix',
+  price_usd: 32,
+  loves_count: 21000,
+  reviews: 1800,
+  review_title: 'Not for oily skin',
+  review_text:
+    'Broke me out within a week and felt greasy all day. Smells strongly of perfume. Wanted to love it but returned it.',
 }
 
 export default function App() {
@@ -37,36 +33,31 @@ export default function App() {
     api.health().then(() => setApiUp(true)).catch(() => setApiUp(false))
     api.questions().then(setMeta).catch((e) => setError(e.message))
     api.modelInfo().then(setModel).catch(() => {})
-    api.samples().then((s) => {
-      setSamples(s)
-      const seed = s.examples?.find((e) => e._true_score <= 2 && e.review_comment_message) || s.examples?.[0]
-      if (seed) setValues(exampleToValues(seed, s.defaults))
-    }).catch(() => {})
+    api
+      .samples()
+      .then((s) => {
+        setSamples(s)
+        const seed = s.examples?.find((e) => e._recommended === 0) || s.examples?.[0]
+        if (seed) setValues(exampleToValues(seed, s.defaults))
+      })
+      .catch(() => {})
   }, [])
+
+  const numberFields = useMemo(
+    () => new Set((meta?.fields || []).filter((f) => f.type === 'number').map((f) => f.field)),
+    [meta],
+  )
 
   async function handleSubmit() {
     setError(null)
     setBusy(true)
-
     const payload = {}
     for (const [k, v] of Object.entries(values)) {
       if (v === '' || v == null) continue
-      payload[k] = k.includes('_date') || k.includes('timestamp')
-        ? String(v).replace('T', ' ')
-        : v
+      payload[k] = numberFields.has(k) ? Number(v) : v
     }
-
-    if (meta?.fields) {
-      for (const f of meta.fields) {
-        if (f.type === 'number' && payload[f.field] != null) {
-          payload[f.field] = Number(payload[f.field])
-        }
-      }
-    }
-
     try {
-      const res = await api.predict(payload)
-      setResult(res)
+      setResult(await api.predict(payload))
     } catch (err) {
       setError(err instanceof ApiError ? err.message : String(err))
     } finally {
@@ -82,13 +73,10 @@ export default function App() {
   return (
     <div className="app-viewport">
       {result ? (
-        <ResultScreen
-          result={result}
-          onRestart={handleRestart}
-          model={model}
-        />
+        <ResultScreen result={result} model={model} onRestart={handleRestart} />
       ) : (
         <Wizard
+          meta={meta}
           values={values}
           setValues={setValues}
           samples={samples}

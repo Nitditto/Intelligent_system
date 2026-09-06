@@ -11,221 +11,316 @@ Source material:
 - `api/README.md`, `web/README.md`, `mobile/README.md` — how each part runs.
 - Key executed numbers are quoted below so the report can cite them directly.
 
+> **One-paragraph summary.** The task is a binary classification: from a Sephora skincare
+> reviewer's **skin profile + the product + the review text**, predict whether they
+> **recommend the product** (`is_recommended`). Two representations are compared: a
+> **tabular** block (ROC-AUC ~0.77 linear / ~0.81 trees) and the **review text** as
+> TF-IDF (ROC-AUC ~0.965). The deployed model is Logistic Regression on **both**
+> (test ROC-AUC **0.964**, macro-F1 **0.858**, recall on the minority "won't recommend"
+> class **0.876**). Section 14a is the required **data-leakage discussion**: the review
+> and the recommend tick are written together, so much of the text's lead is
+> co-authorship, not forecasting skill.
+
 ---
 
 ## 6.1 Problem description
 
 - Objective sentence:
-  *"The objective of this application is to analyse customer purchasing behaviour and
-  discover, at the moment an order is completed, whether the customer will be
-  **satisfied** with it. The prediction target is **`satisfied` (1 if the post-delivery
-  `review_score` is 4 or 5, else 0)**. The prediction can support **proactive customer
-  retention** — triggering a support contact, a goodwill gesture, or a shipment
-  priority before a bad experience becomes a public 1-star review."*
-- `X` = an **order-level behavioural / transactional vector** (order value, freight,
-  payment plan, basket size, delivery speed and lateness vs. the promised date,
-  product category, customer region, order timing) **+** the customer's **review
-  comment text** (Portuguese, present for ~41% of orders).
-- `y` = `satisfied` (binary). It is a **binary classification** problem.
-- Explain the target choice: the business action is binary (intervene / not), the
-  middle score 3 is rare (~8%) and behaves like the negative class in every
-  exploratory cut, and a single supervised target is required by the assignment.
-- One observation = **one order**, assembled by aggregating several transaction tables
-  (`Transactions → Order profile → Feature vector`). Source: notebook §1, §3.
+  *"The objective of this application is to analyse customer behaviour on a beauty
+  marketplace and predict, from who the customer is and what they wrote, whether they
+  **recommend** the product. The target is **`recommended` (= `is_recommended`, 1 if the
+  reviewer ticked "recommends this product", else 0)**. It supports **review-consistency
+  QA** (flag a 5-star review whose text says "would not repurchase"), **cold-start
+  ranking** ("show products this skin type tends to recommend"), and **merchandising**
+  (categories / price tiers with low recommend rates)."*
+- `X` = a **review-level vector**: the reviewer's **skin profile** (`skin_type`,
+  `skin_tone`, `eye_color`, `hair_color`), the **product** (`price_usd`,
+  `secondary_category`, `brand_name`, `loves_count`, product review count, edition
+  flags, listing richness), review **timing / engagement**, **and** the **review text**
+  (`review_title` + `review_text`, English).
+- `y` = `recommended` (binary). It is a **binary classification** problem.
+- Explain the target choice: `is_recommended` is a **separate field** from the 1–5 star
+  `rating` (which is excluded as leakage — §1.3 / §6.6); a single supervised target is
+  required by the assignment; the business action ("surface / flag this review") is
+  binary.
+- One observation = **one product review**, from `reviews_500-750.csv` joined to
+  `product_info.csv` on `product_id`. Source: notebook §1, §3.
 
 ## 6.2 Dataset
 
-- Name: **Brazilian E-Commerce Public Dataset by Olist**.
-- Kaggle URL: <https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce> (CC BY-NC-SA 4.0),
-  downloaded 2026-09-03 into `data/`.
-- Structure: **9 CSV files** linked by id columns (orders, order_reviews, order_items,
-  order_payments, products, product_category_name_translation, customers, sellers,
-  geolocation). Sellers / geolocation are not used.
-- Observations: **98,673** orders that received a review (inner join orders ↔ reviews) →
-  **95,824** after keeping only `delivered` orders with a valid delivery timestamp
-  (2,849 dropped, 2.89%).
-- Raw `review_score` distribution: 1 → 11,424 · 2 → 3,151 · 3 → 8,179 · 4 → 19,142 ·
-  5 → 57,328. Target positive rate: **77.1%** raw → **79.0%** after cleaning.
-- Comment text present for **40,792 orders (41.3%)**; empty for the rest.
-- Feature descriptions: include the section-11 role table (each column → numeric
+- Name: **Sephora Products and Skincare Reviews** (Kaggle, author `nadyinky`, scraped
+  March 2023).
+- Kaggle URL: <https://www.kaggle.com/datasets/nadyinky/sephora-products-and-skincare-reviews>
+  (CC0), placed in `data/sephora/`.
+- Structure: 5 `reviews_*.csv` shards (split by product-id band) + `product_info.csv`.
+  This application uses **one shard — `reviews_500-750.csv`** — joined to
+  `product_info.csv`.
+- Observations: **116,262** raw review rows across **249 skincare products** (each product
+  has hundreds of reviews) → **104,313** after dropping **11,949** rows (11,803 with a
+  blank `is_recommended`, 125 with empty body text, a few exact duplicates). Target
+  positive rate: **0.8465** (84.7% recommend).
+- Products span **~79 brands** and **12 `secondary_category` values** (*Cleansers, Eye
+  Care, Masks, Moisturizers, Sunscreen, Treatments, Self Tanners, Value & Gift Sets,
+  Lip Balms & Treatments, Mini Size, High Tech Tools, Wellness*). All products are in the
+  **Skincare** primary category — a stated scope limitation.
+- Review text present for **116,137 / 116,262 (99.9%)**; `review_title` present for
+  **82,281 (70.8%)**. Skin-profile coverage: `skin_type` 92%, `skin_tone` 87%,
+  `eye_color` 86%, `hair_color` 83%.
+- Feature descriptions: include the notebook §11 role table (each column → numeric
   (log/scale) / binary / one-hot / text / target).
-- Numerical features: `price_total`, `freight_total`, `payment_value_total`,
-  `freight_ratio`, `n_items`, `n_sellers`, `max_installments`, `n_payment_types`,
-  `product_weight_g`, `product_desc_len`, `product_photos_qty`, `delivery_days`,
-  `estimated_days`, `delivery_delay_days`, `comment_len` (15).
-- Categorical features: `main_payment_type` (4), `customer_region` (5 macro-regions,
-  grouped from 27 states), `category_grp` (top-15 product categories + `__other__`).
-  Binary: `is_late`, `has_comment`. Text: `comment_clean`.
+- **Tabular numeric** (9): `price_usd`, `loves_count`, `reviews` (product review count),
+  `total_feedback_count`, `total_neg_feedback_count` (log1p → scale); `n_ingredients`,
+  `n_highlights`, `review_age_days`, `pos_feedback_ratio` (scale).
+- **Tabular binary** (6): `price_missing`, `has_title`, `limited_edition`, `new`,
+  `online_only`, `sephora_exclusive`.
+- **Tabular categorical** (6, one-hot): `skin_type` (4), `skin_tone` (~13), `eye_color`
+  (5), `hair_color` (7), `secondary_category` (12), `brand_name` (~79).
+- **Text**: `review_all` = `review_title + " . " + review_text` → TF-IDF.
+- **Excluded** (§1.3): the review's own `rating` (1–5, co-authored with the label),
+  `rating_product` (the product's displayed average — look-ahead / near-circular).
 
 ## 6.3 Customer representation
 
 Show the transformation chain with concrete numbers (notebook §3, §12):
 ```
-9 CSV tables ─aggregate─▶ one order row ─clean─▶ feature frame ─┬─ ColumnTransformer ─▶ x_tab ∈ ℝ^{d_tab}
-                                                               └─ TF-IDF(comment)   ─▶ x_txt ∈ ℝ^{d_txt}
-                                       model input  X = [x_tab ‖ x_txt] ∈ ℝ^{N × d}
+reviews_500-750.csv  +  product_info.csv ─join(product_id)─▶ one review row
+        │
+        ├─ build_features() ── ColumnTransformer ─▶ x_tab ∈ ℝ^{d_tab}   (skin profile + product + timing; one-hot)
+        └─ TfidfVectorizer(review_all)          ─▶ x_txt ∈ ℝ^{d_txt}    (word 1–2 grams)
+                                model input  X = [x_tab ‖ x_txt]
 ```
-- **Aggregation:** `order_items` → `n_items`, `n_sellers`, `price_total`,
-  `freight_total`, main product; `order_payments` → `payment_value_total`,
-  `max_installments`, `n_payment_types`, main payment type. This is the
-  `Transactions → Customer/Order profile → Feature vector` step the assignment asks for.
-  (Customer-level RFM was rejected: ~97% of Olist customers place only one order, so
-  Frequency ≈ 1 for almost everyone — the order is the usable unit.)
-- **One raw order** (print `raw.iloc[0]`) → **the tabular feature row** it becomes
-  (20 columns) → after `impute → log1p(money) → scale` and `OneHotEncoder` →
-  `x_tab ∈ ℝ^{43}`.
-- Original assembled frame `(98673, 25)`; cleaned modelling frame `(95824, 22)`;
-  `X_tab ∈ ℝ^{N×43}` dense float64, `X_txt ∈ ℝ^{N×~13000}` sparse CSR,
-  combined `d ≈ 13,000`; `y ∈ {0,1}^N`, `N = 95,824`.
-- **Categorical encoding:** one-hot (`handle_unknown="ignore"`, `min_frequency=30`) —
-  e.g. `{North, Northeast, Centre-West, Southeast, South}` → `Southeast → [0,0,0,1,0]`.
-- **Scaling:** `StandardScaler` on the 15-column numeric block; `price_total`,
-  `freight_total`, `payment_value_total` get `log1p` first (heavy right skew, §9).
+- **Assembly:** each review already carries the reviewer profile and part of the product
+  fields; the join adds `secondary_category`, `loves_count`, product review count and the
+  edition flags. This is the `Transactions → Customer/Product profile → Feature vector`
+  step the assignment asks for. (Customer-level RFM is done separately in **Appendix B**;
+  it is not fed to the classifier because ~78% of reviewers in this shard appear once.)
+- **One raw review** (`skin_type=normal`, `price_usd=20`, `brand=dr. jart+`,
+  `category=treatments`, `is_recommended=1`) → **the tabular feature row** it becomes
+  (21 columns, e.g. `loves_count=54955`, `review_age_days=8`, `has_title=1`,
+  `sephora_exclusive=1`) → after `impute → log1p(money/popularity) → scale` and
+  `OneHotEncoder` → `x_tab ∈ ℝ^{138}`.
+- Assembled frame `(116262, 30)`; cleaned modelling frame `(104313, 22)` (21 tabular
+  columns + `review_all`); train `x_tab ∈ ℝ^{138}` dense, `x_txt ∈ ℝ^{~28,600}` sparse
+  CSR, combined `d ≈ 28,700`; `y ∈ {0,1}^N`, `N = 104,313`, positive rate 0.8465.
+- **Categorical encoding:** one-hot (`handle_unknown="ignore"`, `min_frequency=25`) — e.g.
+  `skin_type ∈ {dry, combination, normal, oily}` → `oily → [0,0,0,1]`; rare brands fold
+  into an "infrequent" bucket.
+- **Scaling:** `StandardScaler` on all numerics; `price_usd`, `loves_count`, `reviews`,
+  the two vote counts get `log1p` first (heavy right skew, §9).
 
 ### Text representation requirement (assignment §6.3)
 
-Demonstrate the chain on **one real comment** (notebook §12, second cell):
+Demonstrate the chain on **one real review** (notebook §12, second cell):
 ```
-raw comment ─clean─▶ tokens ─▶ token IDs ─▶ embedding lookup ─▶ E
-"aguardando retorno da loja"
-  → ['aguardando','retorno','da','loja']          (T = 4 tokens)
-  → [1, 4, 2, 3]                                    (token IDs, 0 = PAD)
-  → E  ∈ ℝ^{T×d}   with d = 8   (row i = embedding table[id_i])
-  → E_batch ∈ ℝ^{B×T×d}   with B = 1, T = 4, d = 8
+raw review ─clean─▶ tokens ─▶ token IDs ─▶ embedding lookup ─▶ E
+"I will be the first to say that the price on these is a lot, but for what they do? …"
+  → ['say','price','lot','unbeatable','deep','painful','nodules', …]   (T = 40 tokens)
+  → [29, 26, 17, 39, 6, 22, 21, …]                                     (token IDs, 0 = PAD)
+  → E  ∈ ℝ^{T×d}   with d = 16   (row i = embedding table[id_i])
+  → E_batch ∈ ℝ^{B×T×d}   with B = 1, T = 40, d = 16
 ```
-- Explain **each dimension**: `B` = comments in the batch, `T` = tokens per comment
+- Explain **each dimension**: `B` = reviews in the batch, `T` = tokens per review
   (padded/truncated), `d` = embedding width.
 - State the deployment choice: the served model uses the **TF-IDF bag-of-words** form
-  (a fixed `d_txt`-vector per comment) — the assignment's required "text-based linear
-  classifier" — not the `B×T×d` sequence tensor, which is shown only to satisfy the
-  representation requirement and is what an embedding/RNN model would consume.
-- 📸 **Screenshot N4 — notebook §12 output**: the raw order + tabular vector + the
+  (a fixed `d_txt`-vector per review, `TfidfVectorizer(ngram_range=(1,2), min_df=10,
+  max_features=40000, sublinear_tf=True, English stop-words)`) — the assignment's
+  required *text-based linear classifier* — not the `B×T×d` sequence tensor, which is
+  shown only to satisfy the representation requirement and is what an embedding/RNN model
+  would consume.
+- 📸 **Screenshot N4 — notebook §12 output**: the raw review + tabular vector + the
   shape/dtype lines, and the `Comment → Tokens → IDs → E` block with `B, T, d`.
 
 ## 6.4 Data cleaning
 
 For each operation state **what** and **why** (notebook §5–§9):
-- **Non-delivered orders removed** — `order_status != 'delivered'` (~2.9%) plus 8
-  delivered orders with no delivery timestamp. *Why:* delivery-speed features are the
-  strongest signals and are undefined when the order never arrived. `N`: 98,673 → 95,824.
-  Stated as a **scope limitation** in the report.
-- **Missing comment text kept as a feature** — 58.7% of orders have no comment. *Why:*
-  commenting is itself predictive (satisfied rate 0.675 with a comment vs 0.868
-  without), so fill `""` + add a `has_comment` flag rather than drop the rows.
-- **Incidental numeric missingness** (`price_total` ~0.8%, `category` ~2.2%) — filled
-  **inside the pipeline** with `SimpleImputer(median)` fitted on train only; missing
-  `category` → `__other__` level. *Why:* keep one training/inference code path, no
-  leakage.
-- **Invalid values** — `price_total == 0` (voucher orders) and `max_installments == 0`
-  kept as valid; the `freight_ratio` division is guarded against zero.
-- **Outliers not removed** (notebook §9) — long deliveries and expensive orders are
-  genuine business events; the band table shows satisfied rate falling 0.86 → 0.25 as
-  delivery time rises, which is signal to learn. Handled by `StandardScaler` +
-  `log1p` on money columns; tree/boosting models are rank-invariant anyway.
-- **Text cleaning** — lower-case, strip punctuation, collapse whitespace
-  (`clean_text()`); tokenisation + 1–2-gram vocabulary is done by `TfidfVectorizer`
-  fitted on train only.
-- **Encoding note** — the reviews CSV is **Latin-1**, read with `encoding="latin-1"`
-  so accented Portuguese ("atrasado", "não recebi", "péssimo") is preserved; reading
-  it as UTF-8 corrupts exactly the words the text branch needs.
+- **Blank-target rows removed** — 11,803 reviews have no `is_recommended` (~10%). *Why:*
+  cannot supervise them. Plus 125 empty-body reviews and a few exact duplicates.
+  `N`: 116,262 → 104,313.
+- **Skin-profile blanks kept as a category** — 2–17% of reviews leave a profile field
+  empty. *Why:* the missingness is itself a behaviour; encoded as an explicit `__na__`
+  one-hot level, not imputed.
+- **Incidental numeric missingness** (`price_usd` 0%, `ingredients`/`highlights` a few %,
+  `submission_time` parseable) — the ingredient / highlight counts and `review_age_days`
+  are filled **inside the pipeline** with `SimpleImputer(median)` fitted on train only.
+  *Why:* one training/inference code path, no leakage.
+- **Case / spelling normalisation** — all categorical strings lower-cased;
+  `eye_color "grey" → "gray"` merged.
+- **Invalid values** — none: `rating` always 1–5, prices and counts non-negative.
+- **Outliers not removed** (notebook §9) — `price_usd` (US$4–US$500+), `loves_count` and
+  review length have long right tails but are genuine; the price-band table shows the
+  recommend rate is nearly flat (~0.83–0.87), i.e. price alone is weak. Handled by
+  `log1p` + `StandardScaler`; tree models are rank-invariant.
+- **Text cleaning** — the TF-IDF vectoriser lower-cases, strips accents, drops English
+  stop-words and builds the 1–2-gram vocabulary, fitted on **train only**.
+- **Leakage quarantine** — the review's own star `rating` and `rating_product` are read
+  only in §10 (EDA) and §14a (leakage demo); they are never model inputs (§6.6).
 - 📸 **Screenshot N2 — notebook §5** data-quality table (issue → amount → planned action).
-- 📸 **Screenshot N3 — notebook §9** IQR outlier counts + the delivery-days band table
-  + the three boxplots.
+- 📸 **Screenshot N3 — notebook §9** IQR outlier counts + the price-band recommend-rate
+  table + the three boxplots.
 
 ## 6.5 Interest discovery / EDA
 
-Include ≥ 3 of the 5 plots from notebook §10; for **each** give Observation /
+Include ≥ 3 of the 6 plots from notebook §10; for **each** give Observation /
 Interpretation / ML implication (already written under §10):
-- **Plot 1 (bar)** — target class balance: ~79% satisfied / ~21% not.
-- **Plot 2 (bar)** — satisfied rate vs delivery-delay bucket: ~0.85 when 10+ days early,
-  collapsing toward ~0.35 once > 15 days late.
-- **Plot 3 (barh)** — satisfied rate by product category (top-12 by volume): spreads
-  ~15–20 points; office/furniture/home categories low, watches/gifts high.
-- **Plot 4 (stacked bar)** — comment presence vs satisfaction: orders with a comment are
-  far more likely to be negative.
-- **Plot 5 (heatmap)** — numeric correlation with `satisfied`: `is_late` −0.32,
-  `delivery_days` −0.29, `has_comment` −0.23, `delivery_delay_days` −0.23; price /
-  freight / payment near zero.
-- E-commerce-specific cuts to mention: satisfied | has-comment 0.675 vs no-comment
-  0.868; satisfied | late 0.347 vs on-time 0.828; the by-category satisfied rates;
-  the delivery-days band table from §9.
+- **Plot 1 (bar)** — target class balance: **84.7% recommend / 15.3% not**.
+- **Plot 2 (barh)** — recommend rate by `skin_type`: shifts a few points (0.82 → 0.85),
+  and the gap is larger *within a product* (a serum built for dry skin under-delivers for
+  oily reviewers) — the **customer-product fit** signal.
+- **Plot 3 (barh)** — recommend rate by `secondary_category`: spread **~0.16**
+  (peels/treatments, self-tanners low; moisturisers, gift sets high).
+- **Plot 4 (bar)** — recommend rate vs the review's **own star rating** (an *excluded*
+  feature): ~0.01 at 1★ → ~1.00 at 5★ — an almost perfect step; shown to justify the
+  exclusion.
+- **Plot 5 (topic buckets + frequent terms)** — the reviews are about the **product
+  experience**: texture/feel ~42% (recommend rate 0.89), skin outcome/breakouts ~39%
+  (0.90), scent ~26% (0.84), irritation ~23% (0.84), price/value ~13% (0.80). Frequent
+  terms: `skin, product, love, like, use, face, dry, feel, moisturizer, serum`.
+  Distinctive "won't recommend" terms: `waste money, disappointed, returning, meh, just
+  okay, won repurchasing`.
+- **Plot 6 (spread + mutual information)** — recommend-rate spread ~0.03–0.16 across skin
+  type / category / price / loves deciles, ~0.40 across brands, vs ~0.99 across the
+  excluded star rating. **Mutual information** with `is_recommended`: the excluded
+  `rating` **0.35**; `log_loves` 0.037, `log_price` 0.018, `brand` 0.018;
+  `secondary_category` 0.002; `skin_type` / `skin_tone` ~0.
+- E-commerce cuts to mention: recommend | brand ranges 0.56 → 0.97; recommend | category
+  0.79 → 0.95; recommend | 5★-text-context vs 1★; the topic-bucket rates.
 - 📸 **Screenshot N5 — the 2×2 plot grid** (plots 1–4).
-- 📸 **Screenshot N6 — the correlation heatmap** (plot 5).
+- 📸 **Screenshot N6 — §10 topic-bucket table + the spread / mutual-information table**
+  (plots 5–6).
 
 ## 6.6 Model development
 
-- **Six models** compared (notebook §17), each under **two representations**
-  (tabular-only vs tabular + comment text):
-  Logistic Regression · LinearSVC · SGDClassifier (log-loss) — *the text-based linear
-  classifier* · Decision Tree · Random Forest · HistGradientBoosting.
-- Fair-comparison protocol: all trained on the same **stratified 45,000-row
-  subsample** with the same preprocessing; the winner is refitted on the full
-  training split. Linear models take the raw sparse TF-IDF; tree/boosting models take
-  a 100-component `TruncatedSVD` (LSA) compression of it concatenated to the tabular
-  block.
-- Give the hyperparameter table from notebook §17.
-- **Tabular vs tabular+text** (the assignment's key question): adding the comment
-  branch improves every model — **mean F1 +0.042, mean ROC-AUC +0.08** — with the
-  largest lift on the models that read the full bag-of-words (LogReg +0.089 ROC-AUC,
-  SGD +0.092) and the smallest on the tree family (+0.06–0.08). **Text improves
-  prediction over tabular features alone.**
-- 📸 **Screenshot N7 — notebook §18** the 12-row comparison table + the
-  `*_gain_from_text` table + the stability table (winner @ 45k vs @ full train).
+- **Seven pipelines** compared (notebook §17), across the **two representations** the
+  assignment asks about:
 
-Reference numbers (validation, 45k fit):
+  | # | model | representation |
+  |---|---|---|
+  | 1 | Logistic Regression | tabular |
+  | 2 | Linear SVM (`LinearSVC`) | tabular |
+  | 3 | Random Forest | tabular |
+  | 4 | HistGradientBoosting | tabular |
+  | 5 | SGD (`loss="log_loss"`) | text (TF-IDF) — *the required text-based linear classifier* |
+  | 6 | Complement Naive Bayes | text (TF-IDF) |
+  | 7 | Logistic Regression | **tabular + text** — *deployed* |
 
-| model | representation | ROC-AUC | F1 | recall |
-|---|---|---|---|---|
-| **LogisticRegression** | **tab+text** | **0.866** | **0.913** | **0.914** |
-| LinearSVC | tab+text | 0.864 | 0.928 | 0.970 |
-| HistGradientBoosting | tab+text | 0.860 | 0.928 | 0.968 |
-| RandomForest | tab+text | 0.852 | 0.915 | 0.924 |
-| SGD (log-loss, text) | tab+text | 0.840 | 0.872 | 0.833 |
-| DecisionTree | tab+text | 0.827 | 0.891 | 0.876 |
-| *(all models)* | *tab-only* | *0.75–0.78* | | |
-| *baseline B — LogReg tab-only* | | *0.778* | *0.855* | *0.824* |
-| *baseline A — majority class* | | *0.500* | *0.882* | *1.000* |
+- Protocol: all trained on the same training split with the same preprocessing (fitted
+  on train only); hyperparameters fixed and recorded (notebook §17 table); the deployed
+  model is refitted on train + validation for persistence (§22).
+- **Representation ladder** (notebook §18a, single LogReg, growing feature set):
+
+  | rung | representation | val ROC-AUC | macro-F1 | recall(0) |
+  |---|---|---|---|---|
+  | A | skin profile only | 0.536 | 0.438 | 0.569 |
+  | B | + product (category, brand, price, popularity) | 0.656 | 0.522 | 0.634 |
+  | C | + review timing / engagement (**full tabular**) | **0.768** | 0.622 | 0.679 |
+  | D | **text only** (TF-IDF) | **0.965** | 0.859 | 0.882 |
+  | E | **tabular + text** (deployed) | **0.966** | 0.861 | 0.885 |
+
+- **Six models** (notebook §18b, validation):
+
+  | model | representation | ROC-AUC | macro-F1 | recall(0) | accuracy |
+  |---|---|---|---|---|---|
+  | **LogReg (tab + text)** | **combo** | **0.966** | **0.861** | **0.885** | 0.919 |
+  | HistGradientBoosting | tab | 0.811 | 0.664 | 0.678 | 0.771 |
+  | RandomForest | tab | 0.810 | 0.686 | 0.611 | 0.806 |
+  | LogisticRegression | tab | 0.768 | 0.622 | 0.679 | 0.722 |
+  | LinearSVC | tab | 0.767 | 0.622 | 0.676 | 0.723 |
+  | SGD (log-loss, text) | text | 0.965 | 0.856 | 0.885 | 0.916 |
+  | ComplementNB (text) | text | 0.955 | 0.840 | 0.846 | 0.907 |
+  | *baseline B — LogReg skin-profile only* | | *0.536* | | | *0.495* |
+  | *baseline A — majority class* | | *0.500* | *0.458* | *0.000* | *0.847* |
+
+- **Tabular vs tabular + text — the assignment's key question.** *Both representations
+  have real predictive skill* — tabular reaches **~0.77 (linear) / ~0.81 (trees)** from
+  the skin-profile fit + category + brand + price + popularity + engagement; the review
+  text reaches **~0.965**. Adding the text to the tabular block gives a **small but
+  consistent lift** (macro-F1 0.856 → 0.861, recall(0) up). They are **redundant more
+  than complementary** — a customer who will withhold a recommendation has usually
+  already *said so* in the review — but the comparison is genuine, unlike a corpus where
+  one side is empty.
+- 📸 **Screenshot N7 — notebook §18**: the 5-rung ladder table + the 7-model comparison
+  table.
+
+### 6.6a Data leakage (assignment requirement — notebook §14a)
+
+Write this as its own subsection. Three effects, each measured in §14a:
+1. **The review text is co-authored with the label.** `is_recommended` is a checkbox on
+   the *same form* as the free-text box; reviews literally contain "highly recommend" /
+   "would not repurchase". A text model partly **reads the verdict** — the ~0.965 is an
+   upper bound for a *retrospective* setting, not a forecast.
+2. **The review's own star `rating` IS the label in another column.** Adding it takes
+   the tabular model to **ROC-AUC ~0.985** (Plot 4: recommend rate 0.01 → 1.00 across
+   stars; MI 0.35). Excluded. (The product *average* rating is milder — 0.768 → 0.789 —
+   but also excluded as look-ahead.)
+3. **Engagement counts are post-publication.** `total_feedback_count` etc. are votes cast
+   by other users *after* the review is posted. This model is **retrospective** (it scores
+   reviews that already exist) so they are valid inputs; a **prospective** variant that
+   drops them (`PROSPECTIVE_TAB`) falls to ROC-AUC **~0.66**.
+- **Temporal split** (train older, score newer): text holds at ~0.96, tabular drops from
+  ~0.81 to ~0.74 — what customers *write* travels across time better than the structured
+  recommend pattern.
+- **Conclusion for the report:** the deployed model uses **both** representations; its
+  headline ROC-AUC ~0.964 is honest for a retrospective review-scoring task, and every
+  results table also prints the tabular-only (~0.80) and text-only (~0.963) numbers so
+  the leakage-inflated part of the text's lead stays visible.
+- 📸 **Screenshot N7b — notebook §14a**: the representation-comparison print (tab /
+  prospective / text / tab+text / +rating / +product-avg) + the temporal-split print.
 
 ## 6.7 Evaluation
 
-- Chosen model: **Logistic Regression, tab+text representation**, refit on the full
+- Chosen model: **Logistic Regression, tabular + text representation**, refit on the full
   training data, evaluated once on the held-out **test** set (notebook §19).
-- Report (test):
+- Report (test, `N = 20,864`):
 
   | | precision | recall | F1 | support |
   |---|---|---|---|---|
-  | class 0 — dissatisfied (`score ≤ 3`) | 0.671 | 0.672 | 0.672 | 3,025 |
-  | class 1 — satisfied (`score ≥ 4`) | 0.913 | 0.912 | 0.912 | 11,349 |
-  | accuracy | | | **0.862** | 14,374 |
-  | macro avg | 0.792 | 0.792 | 0.792 | |
+  | class 0 — does not recommend | 0.681 | 0.876 | 0.766 | 3,202 |
+  | class 1 — recommends | 0.976 | 0.926 | 0.950 | 17,662 |
+  | accuracy | | | **0.918** | 20,864 |
+  | macro avg | 0.828 | 0.901 | 0.858 | |
 
-  **ROC-AUC 0.859.**
-- Confusion matrix `[[2034, 991], [997, 10352]]` (rows = actual, cols = predicted).
-  **Interpret it:** FN (997) = *dissatisfied customers predicted happy* → no
-  intervention, the bad review lands — the costly error; FP (991) = satisfied
-  customers flagged at-risk → one wasted support contact; TN (2034) = unhappy
-  customers correctly caught.
-- **Which metric matters most: recall on class 0 (dissatisfied)** — a missed unhappy
-  customer is far more expensive than a wasted support touch. ROC-AUC (0.859) is the
-  threshold-independent summary used for selection. Accuracy (0.862) is *not* the
-  headline: the majority baseline scored 0.79 accuracy while catching zero unhappy
-  customers.
-- 📸 **Screenshot N8 — notebook §19** classification report + confusion-matrix heatmap
-  + ROC curve.
+  **ROC-AUC 0.964.** Same test set, single representation: tabular-only
+  (HistGradientBoosting) ROC-AUC **0.801**; text-only (SGD log-loss) **0.963**.
+- Confusion matrix `[[2804, 398], [1315, 16347]]` (rows = actual, cols = predicted).
+  **Interpret it:** FN (1,315) = *reviewers who won't recommend, predicted as
+  recommending* → a misleading product page — the costly error; FP (398) = happy
+  reviewers flagged → one wasted QA check; TN (2,804) = unhappy reviewers correctly
+  caught.
+- **Which metric matters most: recall on class 0 (does not recommend) — 0.876.** ROC-AUC
+  (0.964) is the threshold-independent selection metric. Accuracy (0.918) is *not* the
+  headline: the majority baseline scored 0.847 accuracy while catching zero unhappy
+  reviewers.
+- 📸 **Screenshot N8 — notebook §19** classification report + confusion-matrix heatmap +
+  ROC curve.
+
+### 6.7a Error analysis (notebook §20)
+
+- **398 false negatives, 1,315 false positives.** The missed "won't recommend" reviews
+  look ordinary on price / popularity / length, and **22% of them carry a 4–5★ rating**
+  — the text reads positively but the customer ticked "no" over one dealbreaker (a scent,
+  a price, a mild reaction) buried in otherwise happy prose. This is the **irreducible**
+  ceiling of the task; fixes = aspect-level text features or a lower decision threshold.
+- 📸 **Screenshot N9 — notebook §20** the FN/FP mean-feature table + the sample missed
+  reviews.
 
 ## 6.8 Business interpretation
 
 From notebook **Appendix A** — answer *"what behaviour/interest was discovered and how
 could an e-commerce company use it?"*:
-- **Discovered:** post-purchase satisfaction is driven first by **delivery performance
-  vs. the promised date**, then by **product category**, and the customer's own
-  **decision to write a comment** (and its wording) is an early sentiment signal;
-  price / freight / payment plan barely matter alone.
-- **Uses:** proactive retention (contact / voucher before the 1-star review);
-  operations prioritisation (expedite orders predicted to tip a customer negative);
-  seller / category management (where returns and expectation gaps concentrate);
-  marketing suppression (don't send "buy again" to a predicted-unhappy customer —
-  route to service); review-response triage (work highest-risk orders first).
+- **Discovered:** whether a customer recommends a skincare product is **largely
+  recoverable from what they write** (text ROC-AUC ~0.965). The structured
+  customer-product fit — skin-type match, category risk, brand, price tier, popularity —
+  is a **real but weaker, redundant** signal (~0.77–0.81) that reaches most of the way on
+  its own but adds little on top of the text. The text lead is partly co-authorship
+  (§6.6a).
+- **Uses:** *review-consistency QA* — flag reviews whose text disagrees with the ticked
+  recommendation (5★ + "would not repurchase"); *cold-start ranking* — the **tabular-only**
+  model (no text needed, ROC-AUC ~0.80) gives, per skin type / tone, which categories and
+  brands that segment tends to recommend, usable before any review exists;
+  *merchandising* — categories / price tiers with low recommend rates get better on-page
+  guidance and samples.
+- **What it cannot do:** it is retrospective (needs the review); its accuracy edge over a
+  plain text classifier is small — its added value is the *structured* view.
 
 ## 6.9 Deployment
 
@@ -233,95 +328,101 @@ could an e-commerce company use it?"*:
   ```
   User input → API request → validation → same preprocessing → saved model → prediction → result
   ```
-- The service loads `model/model_pipeline.joblib` (tabular `ColumnTransformer` +
-  fitted `TfidfVectorizer` + `LogisticRegression`) and **never re-fits** it. Leakage
-  rule: the deployed preprocessing is the object fitted on the training split only.
-- Inference flow for one request: raw order dict → pydantic `OrderInput` validation →
-  stateless `build_features()` (delivery_days / delay / is_late / freight_ratio /
-  has_comment / comment_clean / region / category group) → pipeline → `P(satisfied)` →
-  satisfied / dissatisfied at threshold 0.5.
-- Example response (the API's richer form):
+- The service loads `model/model_pipeline.joblib` (tabular `ColumnTransformer` + fitted
+  `TfidfVectorizer` + `LogisticRegression`) and **never re-fits** it. Leakage rule: the
+  deployed preprocessing is the object fitted on the training split only.
+- Inference flow for one request: raw review dict → pydantic `ReviewInput` validation →
+  stateless `build_features()` (review_age_days / price_missing / has_title /
+  n_ingredients / n_highlights / pos_feedback_ratio / lower-cased categoricals /
+  `review_all`) → pipeline → `P(recommend)` → recommend / not-recommend at threshold 0.5.
+- Example response (`api/README.md` has the full one):
   ```json
-  { "prediction": "dissatisfied", "confidence": 0.9252, "p_satisfied": 0.0748,
+  { "prediction": "not recommend", "confidence": 0.996, "p_recommend": 0.004,
     "threshold": 0.5,
-    "signals": { "days_vs_promise": 11.6, "late": true, "has_comment": true,
-                 "delivery_days": 30.2, "category_group": "bed_bath_table",
-                 "customer_region": "Southeast" },
-    "contributions": { "base_p": 0.63, "final_p": 0.075, "dataset_base_rate": 0.79,
-      "items": [ {"label": "Delivered 12 days late", "kind": "tabular", "effect": -0.47},
-                 {"label": "comment: \"atrasado\"", "kind": "text", "effect": -0.09} ],
-      "other_effect": -0.23 },
-    "model": "LogisticRegression", "representation": "tab+text" }
+    "review_terms": { "toward": [{"term":"love","effect":0.21}],
+                      "against": [{"term":"wanted love","effect":-1.80},
+                                  {"term":"broke","effect":-1.44},
+                                  {"term":"returned","effect":-1.07}] },
+    "signals": { "skin_type":"Oily", "category":"Moisturizers", "brand":"Skinfix",
+                 "price_usd":32.0, "price_tier":"mid", "review_tokens":27, "has_title":true },
+    "contributions": { "base_p": 0.8723, "final_p": 0.004, "dataset_base_rate": 0.846,
+      "items": [ {"label":"review term: wanted love","kind":"text","effect":-1.80},
+                 {"label":"Brand: Skinfix","kind":"tabular","effect":0.29} ],
+      "other_effect": -0.31 },
+    "model": "LogisticRegression(class_weight=balanced)",
+    "representation": "tabular + TF-IDF(text)" }
   ```
 - Web framework: **FastAPI** (`POST /predict`). Client: **React (Vite)**, a
-  **full-viewport 4-step wizard** (Product → Payment → Delivery & review → Review &
-  predict) then a full-screen result. Mobile: **Flutter** (REST client), two screens.
+  **full-viewport 3-step wizard** (Your skin profile → The product → The review) then a
+  full-screen result. Mobile: **Flutter** (REST client), two screens.
 - **`contributions` = an exact linear-SHAP decomposition** — no `shap` library. From
   `model/feature_means.joblib` (mean of every transformed feature over the fit set, plus
-  `coef`/`intercept`): $\phi_j = coef_j\,(x_j - \bar x_j)$, and
-  $\sigma(z_{base} + \sum_j \phi_j) = P(\text{satisfied})$ exactly, with
-  $z_{base} = intercept + coef\cdot\bar x$ so `base_p` ≈ the model's average prediction.
-  `base_p` ≈ 0.63 (below the 0.79 dataset positive rate because training used
-  `class_weight="balanced"`). The web renders it as a **diverging bar chart** (red =
-  pull toward a bad review, green = toward a good one) with a waterfall line
-  `63% → −50 pts → 8%`. Feature labels are built from the raw value
-  (`delivery_delay_days > 0` → "Delivered 12 days late", one-hot → "Category: …",
-  `txt__<tok>` → `comment: "<tok>"`).
-- 📸 **Screenshot N-inf — notebook §23**: the reload-from-disk inference test — one raw
-  order → `{ "prediction": "dissatisfied", "confidence": 0.9252 }`, and the
-  `disk == in-memory` assertion passing.
+  `coef`/`intercept`, 37,240 features): $\phi_j = coef_j\,(x_j - \bar x_j)$, and
+  $\sigma(z_{base} + \sum_j \phi_j) = P(\text{recommend})$ exactly, with
+  $z_{base} = intercept + coef\cdot\bar x$. `base_p` is the model's neutral point for an
+  average review (class-balanced, so not the 84.7% dataset rate). The web renders it as a
+  **diverging bar chart** (red = pull toward "won't recommend", green = toward
+  "recommends") with a waterfall line. Feature labels are built from the raw value
+  (`brand_name_skinfix` → "Brand: Skinfix", `txt__<tok>` → "review term: `<tok>`").
+  `review_terms` re-expresses the text branch as the words present in *this* review, split
+  by sign.
+- 📸 **Screenshot N-inf — notebook §23**: the reload-from-disk inference test — a positive
+  review → `{"prediction":"recommend","p_recommend":0.9376}`, a negative one →
+  `{"prediction":"not recommend","p_recommend":0.0026}`, and the `disk == in-memory`
+  assertion passing.
 
 ### Web application (Appendix D template)
 
 ```
-Web Application — Customer Behaviour (order satisfaction)
+Web Application — Customer Behaviour (product recommendation)
 Framework:  React + Vite (single-page client)  +  FastAPI (POST /predict)
 Endpoint:   POST http://<host>:8000/predict
-Input:      order value & freight (BRL), payment method & instalments, item/seller counts,
-            product category / weight / photos / description length, customer state,
-            purchase date, promised delivery date, actual delivery date, review comment (PT, optional)
-Output:     { prediction, confidence, p_satisfied, threshold, signals, contributions, model, representation }
+Input:      skin_type / skin_tone / eye_color / hair_color, secondary_category, brand_name,
+            price_usd, loves_count, reviews, review_title, review_text  (rating is NOT sent)
+Output:     { prediction, confidence, p_recommend, threshold, review_terms, signals,
+              contributions, model, representation }
 ```
 
-- 📸 **Screenshot W1 — wizard step 1 (Product)**: the category emoji tile + the order
-  fields, progress dots "Step 1 of 4". Caption: *the multi-step input, one section per
-  screen; `Next` is disabled until required fields are valid.*
-- 📸 **Screenshot W2 — wizard step 3 (Delivery & review)**: the live delivery-timeline
-  SVG showing a late delivery + the review-comment box with example chips.
-- 📸 **Screenshot W3 — the result screen**: *Negative review likely*, the `P(satisfied)`
-  gauge with the cut-off tick, and the **"Why this prediction" diverging-bar chart**
-  with the waterfall line `63% → −50 pts → 8%`. Caption: *the linear-SHAP breakdown —
-  each factor's pull in log-odds; "Delivered N days late" dominates.*
-- 📸 **Screenshot W4 — flip it**: use *Load a real order* to pick a 5★ example (or edit
-  the delivery date earlier) → *Positive review likely*, chart mostly green.
+- 📸 **Screenshot W1 — wizard step 1 (Your skin profile)**: the skin type / tone / eye /
+  hair dropdowns, the stepper "Step 1 of 3", API-connected pill. Caption: *the multi-step
+  input, one section per screen; `Next` is disabled until required fields are valid.*
+- 📸 **Screenshot W2 — wizard step 3 (The review)**: the title + body boxes with an
+  example loaded and the real-review chips.
+- 📸 **Screenshot W3 — the result screen (verdict + meter)**: *This customer probably
+  would not recommend*, the `P(recommend)` meter with the 50% cut-off tick and the
+  "read it as…" line, and the "what the model saw" key–value list.
+- 📸 **Screenshot W4 — the result screen (SHAP)**: the **"Why this prediction"
+  diverging-bar chart** with the waterfall line, and the review-term chips (toward /
+  against). Caption: *the linear-SHAP breakdown — each factor's pull in log-odds; review
+  terms dominate (§6.6a).*
 - 📸 **Screenshot W5 — FastAPI `/docs`** `POST /predict` "Try it out".
 
-**Figure explanation to write for each:** the input shown, the prediction returned,
-how to read the gauge, and how the contribution bars sum (with the base rate) to the
-final probability.
+**Figure explanation to write for each:** the input shown, the prediction returned, how
+to read the meter, and how the contribution bars sum (with the base rate) to the final
+probability.
 
 ### Mobile application (Appendix E template)
 
 ```
-Mobile Application — Customer Behaviour (order satisfaction)
+Mobile Application — Customer Behaviour (product recommendation)
 Framework:  Flutter
 Platform:   Android (emulator / device)
 API:        POST http://<host>:8000/predict   (same endpoint as the web app)
 ```
 
-- 📸 **Screenshot M1 — order form screen** (prefilled sample; required fields marked,
-  numeric validation). Caption: *mobile input screen, fields from `GET /questions`.*
-- 📸 **Screenshot M2 — result screen**: verdict, confidence, `P(satisfied)` bar,
-  signals list, comment-term chips, interpretation. Caption: *the prediction on the
-  device.*
-- 📸 **Screenshot M3 — result after editing** the delivery date earlier + clearing the
-  comment → flips to *Likely satisfied*. Caption: *re-submitting a changed order.*
+- 📸 **Screenshot M1 — review form screen** (prefilled sample; fields grouped by section
+  from `GET /questions`; required fields marked). Caption: *mobile input screen.*
+- 📸 **Screenshot M2 — result screen**: verdict, `P(recommend)` bar with the cut-off,
+  the "what the model saw" list, the review-term chips, interpretation. Caption: *the
+  prediction on the device.*
+- 📸 **Screenshot M3 — result after swapping in a positive example** → flips to *Would
+  probably recommend*. Caption: *re-submitting a changed review.*
 - 📸 **Screenshot M4 — evidence the app calls the API**: the Uvicorn access log line
-  `POST /predict 200` (or the run console) while the app is used. Caption: *inference
-  runs on the server; the app is a REST client (`Training ≠ Inference`).*
+  `POST /predict 200` while the app is used. Caption: *inference runs on the server; the
+  app is a REST client (`Training ≠ Inference`).*
 
-**Figure explanation to write:** how the mobile UI collects the order, POSTs it to
-`/predict`, and displays the returned verdict + confidence + signals.
+**Figure explanation to write:** how the mobile UI collects the review, POSTs it to
+`/predict`, and displays the returned verdict + probability + signals.
 
 ---
 
@@ -331,20 +432,22 @@ API:        POST http://<host>:8000/predict   (same endpoint as the web app)
 |---|---|
 | Python | 3.13 |
 | OS | Windows 11 |
-| Key libraries | numpy 2.5, pandas 3.0, scikit-learn 1.9.0, scipy 1.18, matplotlib 3.11 (notebook + API); fastapi + uvicorn + pydantic 2 (API); React 18 + Vite 5, Node 22 (web); Flutter 3.19+ (mobile) |
-| Random seed | `RANDOM_SEED = 42` (numpy + `random`; every split, subsample and estimator) |
-| Dataset source | Kaggle `olistbr/brazilian-ecommerce` (9 CSVs), downloaded 2026-09-03; reviews file read as Latin-1 |
-| Preprocessing | `ColumnTransformer`: median `SimpleImputer` → `log1p` (3 money cols) → `StandardScaler` (15 numeric); pass-through (2 binary); `OneHotEncoder(handle_unknown="ignore", min_frequency=30)` (3 categorical); `TfidfVectorizer(ngram_range=(1,2), min_df=5, max_features=20000, sublinear_tf=True)` on the cleaned comment. Fitted on train only. |
-| Feature representation | 20 tabular columns → `x_tab ∈ ℝ^{43}` after one-hot; `x_txt ∈ ℝ^{~13000}` sparse; combined `d ≈ 13,000`; `X` sparse CSR, `y ∈ {0,1}^N`, `N = 95,824` |
-| Train/val/test split | 70 / 15 / 15, stratified on `satisfied`, seed 42 (train 67,076 · val 14,374 · test 14,374); duplicate reviews collapsed before the split |
-| Model hyperparameters | `LogisticRegression(max_iter=2000, class_weight="balanced", random_state=42)` on the tab+text representation (full 6-model table: notebook §17) |
-| Evaluation metrics | test: Acc 0.862 · macro-F1 0.792 · ROC-AUC 0.859 · class-0 recall 0.672 · confusion `[[2034, 991], [997, 10352]]` |
-| Saved pipeline | `model/model_pipeline.joblib` (tabular transformer + TF-IDF + LogisticRegression) |
-| Saved model config | `model/feature_names.joblib`, `model/feature_means.joblib` (SHAP reference: transformed-feature means + `coef`/`intercept`), `model/input_schema.json` |
-| API code | `customer_behaviour/api/` (FastAPI: `config.py`, `features.py`, `inference.py`, `schema.py`, `main.py`) |
-| Web app code | `customer_behaviour/web/` (React + Vite) |
-| Mobile app code | `customer_behaviour/mobile/` (Flutter) |
-| Reproduce | execute `notebook/customer_behaviour.ipynb` (writes `model/`) → `pip install -r requirements.txt` → `uvicorn api.main:app --port 8000` → `npm --prefix web install && npm --prefix web run dev` → `flutter run` in `mobile/` |
+| Key libraries | numpy, pandas, scikit-learn **1.9.0**, scipy, matplotlib (notebook + API); fastapi + uvicorn + pydantic 2 (API); React 18 + Vite 5, Node (web); Flutter 3.19+ (mobile) |
+| Random seed | `RANDOM_SEED = 42` (numpy + `random`; every split and estimator) |
+| Dataset source | Kaggle `nadyinky/sephora-products-and-skincare-reviews` (CC0); `data/sephora/reviews_500-750.csv` joined to `product_info.csv` on `product_id` |
+| Rows | 116,262 raw → **104,313** after dropping blank-target / empty-text / duplicate rows; recommend rate **0.8465** |
+| Excluded features | the review's own `rating` (1–5) and `rating_product` (product average) — co-authored / near-circular with the label (§6.6a) |
+| Preprocessing | `ColumnTransformer`: median `SimpleImputer` → `log1p` (5 money/popularity/vote cols) → `StandardScaler`; scale (4 numeric); pass-through (6 binary); `OneHotEncoder(handle_unknown="ignore", min_frequency=25)` (6 categorical); `TfidfVectorizer(ngram_range=(1,2), min_df=10, max_features=40000, sublinear_tf=True, stop_words="english")` on `review_all`. Fitted on train only. |
+| Feature representation | 21 tabular columns → `x_tab ∈ ℝ^{138}` after one-hot; `x_txt ∈ ℝ^{~28,600}` sparse; combined `d ≈ 28,700`, sparse CSR; `y ∈ {0,1}^N`, `N = 104,313` |
+| Train/val/test split | `StratifiedGroupKFold(n_splits=5)` **grouped on `author_id`** (no reviewer spans splits; ~22% review > once) → train 62,587 · val 20,862 · test 20,864, each at recommend rate 0.8465 |
+| Model hyperparameters | `LogisticRegression(C=1.0, max_iter=1000, class_weight="balanced", random_state=42)` on the tabular + text representation (full 7-model table: notebook §17) |
+| Evaluation metrics | test: Acc 0.918 · macro-F1 0.858 · ROC-AUC 0.964 · class-0 recall 0.876 · confusion `[[2804, 398], [1315, 16347]]`; single-representation on the same test set: tab-only 0.801, text-only 0.963 |
+| Saved pipeline | `model/model_pipeline.joblib` (~2.0 MB — tabular transformer + TF-IDF + LogisticRegression) |
+| Saved model config | `model/feature_names.joblib`, `model/feature_means.joblib` (linear-SHAP reference: 37,240 transformed-feature means + `coef`/`intercept`), `model/input_schema.json` (raw fields, engineered fields, framing / leakage note) |
+| API code | `customer_behaviour/api/` (FastAPI: `config.py`, `features.py`, `inference.py`, `schema.py`, `main.py`, `make_samples.py`) |
+| Web app code | `customer_behaviour/web/` (React + Vite, 3-step wizard) |
+| Mobile app code | `customer_behaviour/mobile/` (Flutter, 2 screens) |
+| Reproduce | execute `notebook/customer_behaviour.ipynb` (writes `model/`) → `python -m venv .venv && . .venv/Scripts/activate` → `pip install -r api/requirements.txt` → `python api/make_samples.py` → `python -m uvicorn api.main:app --port 8000` (from `customer_behaviour/`) → `npm --prefix web install && npm --prefix web run dev` → `flutter run` in `mobile/` |
 
 ---
 
@@ -353,15 +456,32 @@ API:        POST http://<host>:8000/predict   (same endpoint as the web app)
 | Aspect | Customer Behaviour |
 |---|---|
 | Problem type | Binary classification |
-| One observation | one delivered order (aggregated from several transaction tables) |
-| Target | `satisfied` — `review_score ≥ 4` (0 / 1) |
-| Input representation | `x_tab ∈ ℝ^{43}` (one-hot + scaled) **‖** TF-IDF `x_txt ∈ ℝ^{~13000}`; combined `d ≈ 13,000`, sparse |
-| Data-quality issues | 59% missing comments; ~3% non-delivered orders dropped; 79% class imbalance; ~0.8–2.2% unmatched item/product rows; Latin-1 encoding |
-| Best model | Logistic Regression (tab + text) |
-| Main metric | Recall on the dissatisfied class — 0.672 at ROC-AUC 0.859 |
-| Web deployment | Yes (React + Vite client → FastAPI) |
+| One observation | one product review (reviewer profile + product join) |
+| Target | `recommended` — `is_recommended` (0 / 1), separate from the 1–5★ rating |
+| Input representation | `x_tab ∈ ℝ^{138}` (one-hot + scaled) **‖** TF-IDF `x_txt ∈ ℝ^{~28,600}`; combined `d ≈ 28,700`, sparse |
+| Data-quality issues | ~10% blank target dropped; 84.7% class imbalance; 2–17% missing skin-profile fields (kept as `__na__`); single category (Skincare); English-only text |
+| Best model | Logistic Regression (tabular + text) |
+| Main metric | Recall on the "does not recommend" class — **0.876** at ROC-AUC **0.964** |
+| Web deployment | Yes (React + Vite 3-step wizard → FastAPI) |
 | Mobile deployment | Yes (Flutter) |
-| Main limitation | order-level (not customer-level — ~97% single-order customers); misses dissatisfaction from causes not in the data (faulty product, wrong item) — those false negatives are ~100% on-time, ~85% comment-free; Portuguese-only text |
+| Main limitation | the review text is **co-authored** with the recommend tick, so ~0.96 is partly leakage — the leak-safe tabular signal is ~0.80 (§6.6a); retrospective only (needs the review); ~78% single-review reviewers so RFM Frequency is near-degenerate (Appendix B); one product category |
+
+---
+
+## Appendix B — customer segmentation (RFM + K-Means, notebook Appendix B)
+
+- Each reviewer → `x_i = [R_i, F_i, M_i, \overline{price}_i, \text{recommend-rate}_i,
+  \overline{rating}_i, C_{i1}, \dots, C_{ik}]` (recency days, review count, total spend,
+  mean price, recommend rate, mean rating, per-category share vector).
+- **73,819 reviewers**; `F ≥ 2` for **22.1%**, `F ≥ 3` for **7.7%** (median F = 1) — so
+  Frequency has little variance and the segmentation is driven by **recency**, **spend /
+  average price**, **recommend-rate**, **mean rating** and the **category-mix vector**.
+- After `log1p` on the skewed columns + `StandardScaler`, **K-Means** with `k = 5`
+  (the inertia curve is smooth and the silhouette rises slowly with `k`; `k = 5` is the
+  coarsest interpretable split). Report the profile table (median R/F/M, mean recommend
+  rate, dominant categories per segment) + the PCA(2) scatter.
+- 📸 **Screenshot N-B — notebook Appendix B**: the elbow/silhouette plots + the
+  5-segment profile table + the PCA scatter.
 
 ---
 
@@ -369,19 +489,22 @@ API:        POST http://<host>:8000/predict   (same endpoint as the web app)
 
 | ID | Where | Shows |
 |---|---|---|
-| N1 | notebook §4 | `df.info()` + `describe()` — assembled shape (98,673 × 25), dtypes, missingness |
+| N1 | notebook §4 | `df.info()` — assembled shape (116,262 × 30), dtypes, `is_recommended` non-null 104,459, skin-profile coverage |
 | N2 | notebook §5 | data-quality issue → amount → action table |
-| N3 | notebook §9 | IQR outlier counts + delivery-days band table + boxplots |
-| N4 | notebook §12 | raw order → tabular vector + shapes; `Comment → Tokens → IDs → E` with B, T, d |
+| N3 | notebook §9 | IQR outlier counts + price-band recommend-rate table + boxplots |
+| N4 | notebook §12 | raw review → tabular vector + shapes; `Comment → Tokens → IDs → E` with B, T, d |
 | N5 | notebook §10 | 2×2 EDA plot grid (plots 1–4) |
-| N6 | notebook §10 | correlation heatmap (plot 5) |
-| N7 | notebook §18 | 12-row model comparison + text-gain table + stability table |
-| N8 | notebook §19 | classification report + confusion matrix + ROC |
+| N6 | notebook §10 | topic-bucket table + spread / mutual-information table (plots 5–6) |
+| N7 | notebook §18 | 5-rung representation ladder + 7-model comparison table |
+| N7b | notebook §14a | representation-comparison + temporal-split prints (the leakage measurements) |
+| N8 | notebook §19 | classification report + confusion matrix + ROC curve |
+| N9 | notebook §20 | FN/FP mean-feature table + sample missed reviews |
 | N-inf | notebook §23 | reload-from-disk inference test + `disk == in-memory` assertion |
-| W1 | web app | wizard step 1 (Product) — category tile + fields + progress dots |
-| W2 | web app | wizard step 3 — live delivery timeline + review-comment box |
-| W3 | web app | result screen — verdict + gauge + SHAP diverging-bar chart + waterfall line |
-| W4 | web app | a flipped result (5★ example) — chart mostly green |
-| W5 | FastAPI `/docs` | the shared REST API |
-| M1–M3 | mobile app | order form / result / result after editing |
+| N-B | notebook Appendix B | elbow/silhouette + 5-segment profile table + PCA scatter |
+| W1 | web app | wizard step 1 (skin profile) — dropdowns + stepper |
+| W2 | web app | wizard step 3 (the review) — title/body + example chips |
+| W3 | web app | result screen — verdict + `P(recommend)` meter + "what the model saw" |
+| W4 | web app | result screen — SHAP diverging-bar chart + waterfall + review-term chips |
+| W5 | FastAPI `/docs` | the shared REST API `POST /predict` try-it |
+| M1–M3 | mobile app | review form / result / result after swapping the example |
 | M4 | API terminal | a `POST /predict 200` log line while the mobile app is used |

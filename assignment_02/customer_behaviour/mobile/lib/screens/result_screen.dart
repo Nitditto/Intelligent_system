@@ -3,21 +3,20 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models.dart';
 
-/// Shows one PredictResult: verdict, confidence, P(satisfied) bar, the delivery
-/// / comment signals that drove it, comment terms, and a short interpretation.
+/// Shows one PredictResult: verdict, P(recommend) bar, the profile/product
+/// signals, the review terms that moved it, and a short interpretation.
 class ResultScreen extends StatelessWidget {
   final PredictResult result;
   const ResultScreen({super.key, required this.result});
 
   String _pct(double x) => '${(x * 100).toStringAsFixed(1)}%';
+  String? _s(dynamic v) => (v == null) ? null : v.toString();
 
   @override
   Widget build(BuildContext context) {
     final good = result.good;
     final color = verdictColor(good);
     final s = result.signals;
-    final daysVsPromise = s['days_vs_promise'];
-    final late = s['late'] == true;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Prediction')),
@@ -27,39 +26,39 @@ class ResultScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.10),
+              color: color.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(
-                    good
-                        ? 'Likely satisfied'
-                        : 'At risk — likely a bad review',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: color),
-                  ),
+                Text(
+                  good
+                      ? 'Would probably recommend'
+                      : 'Probably would not recommend',
+                  style: TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold, color: color),
                 ),
-                Text('${_pct(result.confidence)} conf.',
-                    style: const TextStyle(color: Colors.black54)),
+                const SizedBox(height: 4),
+                Text(
+                  'Chance of a recommendation: ${_pct(result.pRecommend)} '
+                  '(we call it “recommends” above ${_pct(result.threshold)}).',
+                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
-          Text('P(satisfied) = ${_pct(result.pSatisfied)}',
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+          const Text('Chance of a recommendation',
+              style: TextStyle(fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
             child: Stack(
               children: [
                 LinearProgressIndicator(
-                  value: result.pSatisfied,
+                  value: result.pRecommend,
                   minHeight: 12,
                   backgroundColor: const Color(0xFFEDF0F4),
                   valueColor: AlwaysStoppedAnimation(color),
@@ -76,57 +75,54 @@ class ResultScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text('decision cut-off ${_pct(result.threshold)}',
-                style:
-                    const TextStyle(fontSize: 12, color: Colors.black54)),
+                style: const TextStyle(fontSize: 12, color: Colors.black54)),
           ),
           const SizedBox(height: 18),
 
-          const Text('Signals', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('What the model saw',
+              style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
+          _row('Skin type', _s(s['skin_type']) ?? '—', null),
+          _row('Category', _s(s['category']) ?? '—', null),
+          _row('Brand', _s(s['brand']) ?? '—', null),
           _row(
-            'Delivery vs. promise',
-            daysVsPromise == null
-                ? 'unknown'
-                : late
-                    ? '$daysVsPromise days late'
-                    : '${daysVsPromise.abs()} days early',
-            late ? verdictColor(false) : verdictColor(true),
+            'Price',
+            s['price_usd'] == null
+                ? '—'
+                : '\$${s['price_usd']}'
+                    '${s['price_tier'] != null ? ' · ${s['price_tier']}' : ''}',
+            null,
           ),
-          _row('Total delivery time', '${s['delivery_days'] ?? '—'} days', null),
-          _row('Customer left a comment', s['has_comment'] == true ? 'yes' : 'no',
-              null),
-          _row('Category / region',
-              '${s['category_group']} · ${s['customer_region']}', null),
+          _row('Product “loves”', _s(s['product_loves']) ?? '—', null),
+          _row('Review length', '${s['review_tokens'] ?? '—'} words', null),
           const SizedBox(height: 16),
 
-          if (result.termsNegative.isNotEmpty || result.termsPositive.isNotEmpty)
-            _Terms(neg: result.termsNegative, pos: result.termsPositive),
+          if (result.termsAgainst.isNotEmpty || result.termsToward.isNotEmpty)
+            _Terms(against: result.termsAgainst, toward: result.termsToward),
 
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4F6F9),
-              border: const Border(
+            decoration: const BoxDecoration(
+              color: Color(0xFFF4F6F9),
+              border: Border(
                   left: BorderSide(color: Color(0xFF2F6FED), width: 3)),
             ),
             child: Text(
               good
-                  ? 'The order looks on track — on-time delivery and no strong '
-                      'negative language in the comment. No proactive support '
-                      'action needed.'
-                  : 'This order matches the pattern of purchases that end in a '
-                      '1–3 star review — most often driven by late delivery '
-                      'relative to the promised date and confirmed by the '
-                      'comment. Consider a proactive support contact before the '
-                      'review is posted.',
+                  ? 'Text and profile agree the customer is satisfied — safe to '
+                      'surface this review for similar skin types.'
+                  : 'The review reads negative — flag for review-consistency QA '
+                      'and check whether the product page over-promises for this '
+                      'skin type.',
               style: const TextStyle(fontSize: 13),
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Text(
-            'model: ${result.model} (${result.representation})  ·  '
-            'POST /predict',
+            'model: ${result.model} (${result.representation})  ·  POST /predict\n'
+            'The review text is written alongside the recommend tick, so it '
+            'strongly signals the outcome — see notebook §14a.',
             style: const TextStyle(fontSize: 11, color: Colors.black45),
           ),
           const SizedBox(height: 16),
@@ -134,7 +130,7 @@ class ResultScreen extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => Navigator.of(context).pop(),
               icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit the order'),
+              label: const Text('Edit the review'),
             ),
           ),
         ],
@@ -147,9 +143,11 @@ class ResultScreen extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 5, child: Text(k, style: const TextStyle(fontSize: 13))),
             Expanded(
-              flex: 4,
+                flex: 5,
+                child: Text(k, style: const TextStyle(fontSize: 13))),
+            Expanded(
+              flex: 5,
               child: Text(v,
                   style: TextStyle(
                       fontSize: 13,
@@ -162,13 +160,13 @@ class ResultScreen extends StatelessWidget {
 }
 
 class _Terms extends StatelessWidget {
-  final List<String> neg;
-  final List<String> pos;
-  const _Terms({required this.neg, required this.pos});
+  final List<TermPull> against;
+  final List<TermPull> toward;
+  const _Terms({required this.against, required this.toward});
 
   @override
   Widget build(BuildContext context) {
-    Widget chips(String title, List<String> items, Color c) => Column(
+    Widget chips(String title, List<TermPull> items, Color c) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
@@ -183,7 +181,8 @@ class _Terms extends StatelessWidget {
               runSpacing: 6,
               children: items
                   .map((t) => Chip(
-                        label: Text(t, style: const TextStyle(fontSize: 12)),
+                        label: Text(t.term,
+                            style: const TextStyle(fontSize: 12)),
                         visualDensity: VisualDensity.compact,
                         materialTapTargetSize:
                             MaterialTapTargetSize.shrinkWrap,
@@ -197,10 +196,13 @@ class _Terms extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (neg.isNotEmpty)
-          chips('COMMENT TERMS PUSHING NEGATIVE', neg, verdictColor(false)),
-        if (pos.isNotEmpty)
-          chips('TERMS PUSHING POSITIVE', pos, verdictColor(true)),
+        const Text('Words in the review that moved the call',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        if (against.isNotEmpty)
+          chips('TOWARD “WON’T RECOMMEND”', against, verdictColor(false)),
+        if (toward.isNotEmpty)
+          chips('TOWARD “RECOMMENDS”', toward, verdictColor(true)),
       ],
     );
   }

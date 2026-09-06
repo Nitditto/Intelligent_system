@@ -1,85 +1,76 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import ThemeToggle from './ThemeToggle.jsx'
 import ExamplePicker from './ExamplePicker.jsx'
-import StepProduct from '../steps/StepProduct.jsx'
-import StepPayment from '../steps/StepPayment.jsx'
-import StepDelivery from '../steps/StepDelivery.jsx'
-import StepReview from '../steps/StepReview.jsx'
-import { STEP_DEFINITIONS, STEP_REQUIRED_FIELDS } from '../lib/labels.js'
-import { exampleToValues } from '../lib/order.js'
+import Field from './Field.jsx'
+import { exampleToValues } from '../lib/sephora.js'
 
-export default function Wizard({
-  values,
-  setValues,
-  samples,
-  apiUp,
-  onSubmit,
-  busy,
-  error,
-  setError,
-}) {
+const STEP_META = [
+  { title: 'Your skin profile', sub: 'Who is writing the review — the customer-product fit signal.' },
+  { title: 'The product', sub: 'Category, brand, price and popularity.' },
+  { title: 'The review', sub: 'What the customer wrote — the model leans on this most.' },
+]
+const REQUIRED = { 0: [], 1: ['price_usd'], 2: ['review_text'] }
+
+export default function Wizard({ meta, values, setValues, samples, apiUp, onSubmit, busy, error, setError }) {
   const [step, setStep] = useState(0)
-  const [stepErrors, setStepErrors] = useState({})
+  const [touched, setTouched] = useState(false)
 
-  function handleLoadExample(ex) {
+  const onChange = (k, v) => setValues((s) => ({ ...s, [k]: v }))
+
+  const sections = meta?.sections || STEP_META.map((s) => s.title)
+  const fieldsBySection = useMemo(() => {
+    const map = {}
+    for (const f of meta?.fields || []) (map[f.section] ??= []).push(f)
+    return map
+  }, [meta])
+
+  const stepFields = fieldsBySection[sections[step]] || []
+  const reviewExamples = (meta?.fields || []).find((f) => f.field === 'review_text')?.examples || []
+
+  const missing = (REQUIRED[step] || []).filter((k) => {
+    const v = values[k]
+    return v === '' || v == null
+  })
+  const canNext = missing.length === 0
+
+  function loadExample(ex) {
     setError(null)
-    setStepErrors({})
+    setTouched(false)
     setValues(exampleToValues(ex, samples?.defaults))
-    setStep(3) // Jump directly to Review & Predict step for instant preview
+    setStep(2)
   }
 
-  function validateCurrentStep() {
-    const requiredKeys = STEP_REQUIRED_FIELDS[step] || []
-    const errs = {}
-    let valid = true
-
-    for (const key of requiredKeys) {
-      const val = values[key]
-      if (val === '' || val == null) {
-        errs[key] = 'This field is required'
-        valid = false
-      }
-    }
-
-    setStepErrors(errs)
-    return valid
-  }
-
-  function handleNext() {
+  function next() {
     setError(null)
-    if (!validateCurrentStep()) {
+    if (!canNext) {
+      setTouched(true)
       return
     }
-    if (step < STEP_DEFINITIONS.length - 1) {
-      setStep(s => s + 1)
-      setStepErrors({})
-    } else {
-      onSubmit()
-    }
+    setTouched(false)
+    if (step < sections.length - 1) setStep((s) => s + 1)
+    else onSubmit()
   }
 
-  function handleBack() {
+  function back() {
     setError(null)
-    setStepErrors({})
-    if (step > 0) {
-      setStep(s => s - 1)
-    }
+    setTouched(false)
+    if (step > 0) setStep((s) => s - 1)
   }
 
-  const currentStepDef = STEP_DEFINITIONS[step]
+  const isLast = step === sections.length - 1
 
   return (
     <div className="wiz-shell">
-      {/* 1. Fixed Top Bar */}
       <header className="wiz-hdr">
         <div className="wiz-hdr__left">
-          <h1 className="wiz-hdr__title">Order Satisfaction Predictor</h1>
-          <span className="wiz-hdr__sub">Full-Viewport Wizard</span>
+          <h1 className="wiz-hdr__title">Will this customer recommend the product?</h1>
+          <span className="wiz-hdr__sub">
+            Sephora skincare reviews · predicts <code>is_recommended</code>
+          </span>
         </div>
-
         <div className="wiz-hdr__right">
           {samples?.examples?.length > 0 && (
-            <ExamplePicker examples={samples.examples} onPick={handleLoadExample} />
+            <ExamplePicker examples={samples.examples} onPick={loadExample} />
           )}
           <ThemeToggle />
           <span className={`pill ${apiUp === false ? 'pill--bad' : apiUp ? 'pill--good' : ''}`}>
@@ -90,75 +81,86 @@ export default function Wizard({
 
       {apiUp === false && (
         <div className="banner banner--top">
-          <span>API isn&apos;t reachable. Run <code>uvicorn api.main:app --port 8000</code> in <code>customer_behaviour/</code>.</span>
+          <span>
+            API isn&apos;t reachable. Run <code>python -m uvicorn api.main:app --port 8000</code> in{' '}
+            <code>customer_behaviour/</code>.
+          </span>
         </div>
       )}
 
-      {/* 2. Scrollable Step Body */}
       <main className="wiz-body">
+        <ol className="stepper" aria-label="Progress">
+          {sections.map((title, i) => (
+            <li
+              key={title}
+              className={`stepper__item${i === step ? ' is-active' : i < step ? ' is-done' : ''}`}
+            >
+              <button
+                type="button"
+                className="stepper__dot"
+                disabled={i > step}
+                onClick={() => i < step && setStep(i)}
+              >
+                {i < step ? '✓' : i + 1}
+              </button>
+              <span className="stepper__label">{title}</span>
+            </li>
+          ))}
+        </ol>
+
         <div className="wiz-step-hdr">
-          <div className="wiz-step-badge">Step {step + 1} of 4</div>
-          <h2 className="wiz-step-title">{currentStepDef.title}</h2>
-          <p className="wiz-step-sub">{currentStepDef.sub}</p>
+          <p className="wiz-step-badge">Step {step + 1} of {sections.length}</p>
+          <h2 className="wiz-step-title">{sections[step]}</h2>
+          <p className="wiz-step-sub">{STEP_META[step]?.sub}</p>
         </div>
 
-        <div className="wiz-step-content">
-          {step === 0 && <StepProduct values={values} setValues={setValues} errors={stepErrors} />}
-          {step === 1 && <StepPayment values={values} setValues={setValues} errors={stepErrors} />}
-          {step === 2 && <StepDelivery values={values} setValues={setValues} errors={stepErrors} />}
-          {step === 3 && (
-            <StepReview
-              values={values}
-              onSubmit={onSubmit}
-              busy={busy}
-              error={error}
+        <div className="field-grid">
+          {stepFields.map((f) => (
+            <Field
+              key={f.field}
+              f={f}
+              value={values[f.field]}
+              onChange={onChange}
+              invalid={touched && missing.includes(f.field)}
             />
-          )}
+          ))}
         </div>
+
+        {isLast && reviewExamples.length > 0 && (
+          <div className="examples">
+            <span className="examples__lbl">Try a real review:</span>
+            <div className="examples__chips">
+              {reviewExamples.map(([title, text]) => (
+                <button
+                  type="button"
+                  key={title}
+                  className="examples__chip"
+                  title={text}
+                  onClick={() => setValues((s) => ({ ...s, review_title: title, review_text: text }))}
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && <p className="form-error" role="alert">{error}</p>}
       </main>
 
-      {/* 3. Sticky Footer Navigation */}
       <footer className="wiz-foot">
         <div className="wiz-foot__container">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            disabled={step === 0 || busy}
-            onClick={handleBack}
-          >
+          <button type="button" className="btn btn--ghost" disabled={step === 0 || busy} onClick={back}>
             ← Back
           </button>
-
-          {/* Progress Dots */}
-          <div className="wiz-dots">
-            {STEP_DEFINITIONS.map((def, idx) => (
-              <button
-                key={idx}
-                type="button"
-                className={`wiz-dot ${idx === step ? 'is-active' : idx < step ? 'is-done' : ''}`}
-                title={def.title}
-                onClick={() => {
-                  if (idx < step || validateCurrentStep()) {
-                    setStep(idx)
-                  }
-                }}
-              >
-                <span className="wiz-dot__num">{idx + 1}</span>
-              </button>
-            ))}
-          </div>
-
           <button
             type="button"
-            className={`btn ${step === STEP_DEFINITIONS.length - 1 ? 'btn--primary btn--glow' : 'btn--primary'}`}
-            disabled={busy}
-            onClick={handleNext}
+            className="btn btn--primary"
+            disabled={busy || (!canNext && touched)}
+            title={!canNext ? `Fill in: ${missing.join(', ')}` : undefined}
+            onClick={next}
           >
-            {step === STEP_DEFINITIONS.length - 1 ? (
-              busy ? 'Running model…' : '⚡ Predict Order'
-            ) : (
-              'Next Step →'
-            )}
+            {isLast ? (busy ? 'Scoring…' : 'Predict') : 'Next →'}
           </button>
         </div>
       </footer>

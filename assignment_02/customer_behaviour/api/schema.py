@@ -1,4 +1,4 @@
-"""Pydantic request / response models for the customer-behaviour API."""
+"""Pydantic request / response models for the customer-behaviour API (Sephora)."""
 from __future__ import annotations
 
 from typing import Optional
@@ -6,61 +6,62 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class OrderInput(BaseModel):
-    """One raw order, exactly as the notebook's section-23 ``raw_order`` dict.
+class ReviewInput(BaseModel):
+    """One review, matching the notebook's persisted ``raw_input_fields`` (§22).
 
-    Every field is optional except the three the model leans on most (order value,
-    freight, and the three dates that define delivery lateness). Missing numeric
-    fields are median-imputed inside the pipeline; missing categoricals fall back
-    to a sentinel level.
+    Only ``review_text`` and ``price_usd`` are effectively required; every other
+    field is optional. Missing numerics are median-imputed inside the pipeline;
+    missing categoricals fall back to a ``__na__`` one-hot level.
     """
-    price_total: float = Field(..., ge=0, description="Sum of item prices, BRL")
-    freight_total: float = Field(..., ge=0, description="Sum of freight values, BRL")
-    order_purchase_timestamp: str = Field(..., description="ISO datetime")
-    order_estimated_delivery_date: str = Field(..., description="ISO datetime — promised date")
-    order_delivered_customer_date: str = Field(..., description="ISO datetime — actual delivery")
+    review_text: str = Field(..., min_length=1, description="Body of the review")
+    price_usd: float = Field(..., ge=0, description="Product retail price, USD")
 
-    payment_value_total: Optional[float] = Field(None, ge=0)
-    n_items: Optional[int] = Field(None, ge=1)
-    n_sellers: Optional[int] = Field(None, ge=1)
-    n_payment_types: Optional[int] = Field(None, ge=1)
-    max_installments: Optional[int] = Field(None, ge=0, le=24)
-    main_payment_type: Optional[str] = Field(None, examples=["credit_card"])
-    customer_state: Optional[str] = Field(None, examples=["SP"], max_length=2)
-    category: Optional[str] = Field(None, examples=["bed_bath_table"])
-    product_weight_g: Optional[float] = Field(None, ge=0)
-    product_desc_len: Optional[float] = Field(None, ge=0)
-    product_photos_qty: Optional[float] = Field(None, ge=0)
-    review_comment_message: Optional[str] = Field(None, description="Portuguese free text")
+    review_title: Optional[str] = Field(None, description="Short review headline")
+    skin_type: Optional[str] = Field(None, examples=["combination"])
+    skin_tone: Optional[str] = Field(None, examples=["light"])
+    eye_color: Optional[str] = Field(None, examples=["brown"])
+    hair_color: Optional[str] = Field(None, examples=["brown"])
+    secondary_category: Optional[str] = Field(None, examples=["Moisturizers"])
+    brand_name: Optional[str] = Field(None, examples=["Skinfix"])
+    loves_count: Optional[float] = Field(None, ge=0)
+    reviews: Optional[float] = Field(None, ge=0, description="Product's total review count")
+    ingredients: Optional[str] = Field(None, description="Raw ingredients list (comma-separated)")
+    highlights: Optional[str] = Field(None, description="Raw product highlights (comma-separated)")
+    limited_edition: Optional[int] = Field(None, ge=0, le=1)
+    new: Optional[int] = Field(None, ge=0, le=1)
+    online_only: Optional[int] = Field(None, ge=0, le=1)
+    sephora_exclusive: Optional[int] = Field(None, ge=0, le=1)
+    total_feedback_count: Optional[float] = Field(None, ge=0)
+    total_pos_feedback_count: Optional[float] = Field(None, ge=0)
+    total_neg_feedback_count: Optional[float] = Field(None, ge=0)
+    submission_time: Optional[str] = Field(None, description="ISO date the review was posted")
 
     model_config = {
         "json_schema_extra": {
             "examples": [{
-                "price_total": 129.90, "freight_total": 18.30,
-                "payment_value_total": 148.20, "n_items": 1, "n_sellers": 1,
-                "max_installments": 3, "main_payment_type": "credit_card",
-                "customer_state": "SP", "category": "bed_bath_table",
-                "product_weight_g": 1200, "product_desc_len": 850, "product_photos_qty": 3,
-                "order_purchase_timestamp": "2018-05-01 10:00:00",
-                "order_estimated_delivery_date": "2018-05-20 00:00:00",
-                "order_delivered_customer_date": "2018-05-31 14:00:00",
-                "review_comment_message": "Produto chegou muito atrasado e a embalagem estava danificada.",
+                "skin_type": "oily", "skin_tone": "light", "eye_color": "brown",
+                "hair_color": "brown", "secondary_category": "Moisturizers",
+                "brand_name": "Skinfix", "price_usd": 32.0, "loves_count": 21000,
+                "reviews": 1800, "submission_time": "2023-02-10",
+                "review_title": "Not for oily skin",
+                "review_text": "Broke me out within a week and felt greasy all day. "
+                               "Smells strongly of perfume. Wanted to love it but returned it.",
             }]
         }
     }
 
 
 class BatchInput(BaseModel):
-    orders: list[OrderInput]
+    reviews: list[ReviewInput]
 
 
 class Prediction(BaseModel):
-    prediction: str
+    prediction: str                       # "recommend" | "not recommend"
     confidence: float
-    p_satisfied: float
+    p_recommend: float
     threshold: float
-    review_terms: Optional[dict] = None
+    review_terms: Optional[dict] = None   # {"toward": [...], "against": [...]}
     signals: dict
-    contributions: Optional[dict] = None   # linear-SHAP breakdown (None if model not linear)
+    contributions: Optional[dict] = None  # linear-SHAP breakdown (None if not linear)
     model: str
     representation: str

@@ -1,52 +1,57 @@
-# Order-satisfaction — Web app (React + Vite)
+# Product-recommendation — Web app (React + Vite)
 
-A full-viewport, multi-step client over the FastAPI service. It runs **no model in
-the browser** — the prediction is one `POST /predict` call.
+A full-viewport, 3-step client over the FastAPI service. It runs **no model in the
+browser** — the prediction is one `POST /predict` call.
 
 ```
 Browser (React wizard)  ->  REST API  ->  build_features + preprocessing + LogisticRegression
-                        <-  JSON       <-  verdict + P(satisfied) + linear-SHAP contributions
+                        <-  JSON       <-  verdict + P(recommend) + linear-SHAP contributions
 ```
+
+Target: **`is_recommended`** — did the reviewer tick "recommends this product". Dataset:
+~104k Sephora skincare reviews (product-id shard 500–750).
 
 ## The flow
 
-A sticky top bar (title · **Load a real order** picker · light/dark/auto theme · API
-status) sits above the **wizard**: a horizontal stepper (`① Product ─ ② Payment ─
-③ Delivery & review ─ ④ Review`; done steps get a ✓ and are clickable to jump back),
-the step in a panel card, and `← Back` / `Next →` (→ `Predict this order` on step 4)
-inline at the foot of that card.
+A sticky top bar (title · **Load a real review** picker · light/dark/auto theme · API
+status) sits above the **wizard**: a horizontal stepper (`① Your skin profile ─
+② The product ─ ③ The review`; done steps get a ✓ and are clickable to jump back),
+the step's fields in a grid card, `← Back` / `Next →` (→ **Predict** on step 3) at the
+foot.
 
-| Step | Left (hardcoded visual) | Right (fields) | `Next` needs |
-|---|---|---|---|
-| **1 Product** | category emoji tile | category · order value · quantity · seller count · photo count · weight | order value **> 0** |
-| **2 Payment** | 💳 + region | payment method · instalments · shipping paid · total charged · customer state | shipping paid |
-| **3 Delivery & review** | live SVG delivery timeline (ordered → promised → delivered) | order date · promised date · actual date · review comment (+ PT example chips) | the 3 dates |
-| **4 Review & predict** | — | read-back of everything + the "assumed" line + big **Predict** button | — |
+| Step | Fields | `Next` needs |
+|---|---|---|
+| **1 Your skin profile** | skin type · skin tone · eye colour · hair colour | — |
+| **2 The product** | category · brand · price · “loves” · total reviews | price **> 0** |
+| **3 The review** | review title · review text (+ real-review example chips) | review text |
 
-Two fields are **not asked for** and filled server-side (`GET /questions` →
-`fixed_inputs`): listing description length (607) and payment-methods-used (1).
+Fields the form does not ask for are filled server-side (`GET /questions` →
+`fixed_inputs`): the edition flags, the community feedback-vote counts (a new review has
+none), and the ingredient / highlight counts (imputed to the dataset median).
 
-**Load a real order** picks one of ~40 real Olist orders from `GET /samples`, fills all
-steps, and jumps to step 4 so you can review then predict.
+**Load a real review** picks one of ~42 real Sephora reviews from `GET /samples`, fills
+the form, and jumps to step 3.
 
 ## Result screen (full width)
 
-- **Verdict** — "Positive/Negative review likely", the % chance of *that* outcome, the
-  main driver in one sentence.
-- **Gauge** — `P(satisfied)` with the 50% cut-off tick and a 0→100 scale.
-- **"Why this prediction" — a diverging bar chart** of the linear-SHAP contributions:
-  each factor's pull in log-odds, red = toward a bad review, green = toward a good one,
-  with a waterfall line `63% → −50 pts → 13%` (`base_p` = the model's class-balanced
-  neutral point; the dataset positive rate 79% is noted).
-- **Signals** — delivery lateness, total delivery time, comment presence, category/region,
-  each with a "why it matters" note.
-- **Words in the comment** — the TF-IDF terms pulling each way (only when a comment exists).
-- **Suggested action** + a "Start over".
+- **Verdict** — "This customer would / would not recommend the product", plus the %
+  chance of a recommendation.
+- **Meter** — `P(recommend)` with the 50% cut-off tick and a 0→100 scale, and a
+  plain-language "read it as…" line.
+- **What the model saw** — skin type, category, brand, price tier, product “loves”,
+  review length — with a note that the structured block alone reaches ROC-AUC ~0.8 and
+  the review text takes it to ~0.96.
+- **Words in the review that moved the call** — the TF-IDF terms pulling each way.
+- **"Why this prediction"** — a diverging bar chart of the linear-SHAP contributions:
+  each factor's pull in log-odds, red = toward "won't recommend", green = toward
+  "recommends", with a waterfall line.
+- **How to use this** + a "How this works" `<details>` (including the §14a note that the
+  review text is co-authored with the recommend tick).
 
 ## Run
 
 ```bash
-# API first: from customer_behaviour/  ->  uvicorn api.main:app --port 8000
+# API first: from customer_behaviour/  ->  python -m uvicorn api.main:app --port 8000
 cd web
 npm install
 npm run dev            # http://localhost:5174   (proxies /api/* to :8000)
@@ -59,24 +64,22 @@ npm run dev            # http://localhost:5174   (proxies /api/* to :8000)
 
 ```
 web/src/
-  main.jsx  App.jsx                 shell: load meta/samples/model, hold values + step + result
+  main.jsx  App.jsx                 shell: load meta/samples/model, hold values + result
   api.js                            fetch wrapper
-  lib/order.js                      timestamp <-> "days late / delivery days" maths
-  lib/labels.js                     category -> emoji
+  lib/sephora.js                    presentational label maps
   components/
-    Wizard.jsx                      step shell, footer nav, summary step
-    Field.jsx                       one /questions field (number/choice/date/text + example chips)
-    CategoryTile.jsx  DeliveryTimeline.jsx     the per-step left visuals
+    Wizard.jsx                      3-step shell + stepper + footer nav
+    Field.jsx                       one /questions field (choice/number/text/textarea)
     ShapChart.jsx                   diverging-bar contribution chart
-    ResultScreen.jsx               full-screen result (verdict + gauge + SHAP + signals)
+    ResultScreen.jsx                full-screen result (verdict + meter + signals + SHAP)
     ExamplePicker.jsx  ThemeToggle.jsx
   styles.css                        one token-based sheet, light + dark
 ```
 
 ## Screenshots for the report (IDs W1–W5)
 
-1. **W1** — step 1 (Product) with the category tile and fields.
-2. **W2** — step 3 (Delivery & review) with the live timeline showing a late delivery.
-3. **W3** — step 4 (Review & predict) summary.
-4. **W4** — result screen: negative verdict + the SHAP diverging-bar chart + waterfall line.
+1. **W1** — step 1 (skin profile).
+2. **W2** — step 3 (the review) with an example loaded.
+3. **W3** — result screen: "won't recommend" verdict + the meter.
+4. **W4** — result screen: the SHAP diverging-bar chart + waterfall line + review-term chips.
 5. **W5** — `http://localhost:8000/docs` `POST /predict` try-it (evidence the app calls the API).

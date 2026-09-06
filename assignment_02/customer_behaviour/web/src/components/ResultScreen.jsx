@@ -1,173 +1,123 @@
 import React from 'react'
 import ShapChart from './ShapChart.jsx'
+import { titleCase } from '../lib/sephora.js'
 
-export default function ResultScreen({ result, onRestart }) {
+export default function ResultScreen({ result, model, onRestart }) {
   if (!result) return null
 
-  const isSatisfied = result.prediction === 'satisfied'
-  const pSat = Math.round(result.p_satisfied * 100)
-  const pDissat = 100 - pSat
-  const { signals, contributions } = result
+  const rec = result.prediction === 'recommend'
+  const pRec = Math.round(result.p_recommend * 100)
+  const { signals = {}, contributions, review_terms } = result
 
-  // Extract text sentiment items from contributions
-  const textItems = contributions?.items?.filter(it => it.kind === 'text') || []
-  const badWords = textItems.filter(it => it.effect < 0).map(it => it.label.replace('comment: "', '').replace('"', ''))
-  const goodWords = textItems.filter(it => it.effect > 0).map(it => it.label.replace('comment: "', '').replace('"', ''))
+  const toward = (review_terms?.toward || []).map((t) => t.term)
+  const against = (review_terms?.against || []).map((t) => t.term)
+
+  const framing = model?.framing || ''
 
   return (
     <div className="res-dashboard">
-      {/* Top Navigation Bar */}
       <header className="res-nav">
         <div className="res-nav__left">
           <button type="button" className="btn btn--ghost" onClick={onRestart}>
-            ← Predict Another Order
+            ← Score another review
           </button>
         </div>
-
         <div className="res-nav__right">
-          <span className="pill pill--model">
-            🤖 Model: <b>{result.model}</b>
-          </span>
-          <span className="pill pill--thresh">
-            🎯 Cutoff: <b>{Math.round(result.threshold * 100)}%</b>
-          </span>
+          <span className="pill">Model: <b>{result.model}</b></span>
+          <span className="pill">Cut-off: <b>{Math.round(result.threshold * 100)}%</b></span>
         </div>
       </header>
 
-      {/* Main Dashboard Grid */}
       <main className="res-grid">
-        {/* LEFT COLUMN */}
         <div className="res-col res-col--left">
-          {/* 1. Hero Verdict Card */}
-          <div className={`hero-card ${isSatisfied ? 'hero-card--good' : 'hero-card--bad'}`}>
-            <div className="hero-card__top">
-              <div className="hero-card__stars">
-                {isSatisfied ? '★★★★★' : '★☆☆☆☆'}
-              </div>
-              <span className={`hero-card__status-badge ${isSatisfied ? 'hero-card__status-badge--good' : 'hero-card__status-badge--bad'}`}>
-                {isSatisfied ? '✨ SATISFACTION LIKELY' : '⚠️ AT-RISK ORDER'}
-              </span>
-            </div>
-
+          {/* verdict */}
+          <div className={`hero-card ${rec ? 'hero-card--good' : 'hero-card--bad'}`}>
+            <span className={`hero-card__status-badge ${rec ? 'hero-card__status-badge--good' : 'hero-card__status-badge--bad'}`}>
+              {rec ? '👍 RECOMMENDS' : '👎 WON’T RECOMMEND'}
+            </span>
             <h2 className="hero-card__title">
-              {isSatisfied ? 'Positive Review Likely (4–5★)' : 'Negative Review Likely (1–3★)'}
+              {rec
+                ? 'This customer would probably recommend the product'
+                : 'This customer probably would not recommend the product'}
             </h2>
-
             <p className="hero-card__subtitle">
-              About <b>{isSatisfied ? pSat : pDissat}% chance</b> of a{' '}
-              <b>{isSatisfied ? '4–5★ (positive)' : '1–3★ (negative)'}</b> review.
+              The model puts the chance the reviewer ticks “recommend” at <b>{pRec}%</b>. We call it
+              “recommends” above {Math.round(result.threshold * 100)}%.
             </p>
           </div>
 
-          {/* 2. Arc Gauge Card */}
-          <div className="card arc-gauge-card">
-            <div className="arc-gauge">
-              <div className="arc-gauge__svg-wrapper">
-                <svg viewBox="0 0 180 100" className="arc-gauge__svg" aria-hidden="true">
-                  {/* track */}
-                  <path d="M 18 90 A 72 72 0 0 1 162 90" fill="none"
-                        stroke="var(--c-surface-2)" strokeWidth="11" strokeLinecap="round"
-                        pathLength="100" />
-                  {/* fill = P(satisfied) */}
-                  <path d="M 18 90 A 72 72 0 0 1 162 90" fill="none"
-                        stroke={isSatisfied ? 'var(--c-good)' : 'var(--c-bad)'}
-                        strokeWidth="11" strokeLinecap="butt"
-                        pathLength="100" strokeDasharray={`${pSat} 100`}
-                        className="arc-gauge__meter" />
-                  {/* 50% decision cut-off marker */}
-                  <path d="M 18 90 A 72 72 0 0 1 162 90" fill="none"
-                        stroke="var(--c-text)" strokeWidth="13"
-                        pathLength="100" strokeDasharray="0.8 100" strokeDashoffset="-49.6"
-                        opacity="0.45" />
-                </svg>
-
-                <div className="arc-gauge__overlay">
-                  <span className="arc-gauge__num">{pSat}%</span>
-                  <span className="arc-gauge__lbl">chance of a good review</span>
-                </div>
+          {/* probability meter */}
+          <div className="card">
+            <h4 className="card-section-title">Chance of a recommendation</h4>
+            <div className="meter">
+              <div className="meter__track">
+                <span
+                  className={`meter__fill ${rec ? 'meter__fill--good' : 'meter__fill--bad'}`}
+                  style={{ width: `${pRec}%` }}
+                />
+                <span className="meter__threshold" style={{ left: `${Math.round(result.threshold * 100)}%` }} />
               </div>
-
-              <div className="arc-gauge__footnote">
-                <span>0% · bad</span>
-                <span className="arc-gauge__cutoff-tag">↑ 50% cut-off</span>
-                <span>good · 100%</span>
+              <div className="meter__scale">
+                <span>0% · won’t recommend</span>
+                <span>{Math.round(result.threshold * 100)}% cut-off</span>
+                <span>recommends · 100%</span>
               </div>
             </div>
+            <p className="card-hint">
+              Read it as: “{pRec} times out of 100, a reviewer who wrote this, with this profile and
+              product, ticked <i>recommend</i>.”
+            </p>
           </div>
 
-          {/* 3. Key Order Signals Grid */}
+          {/* signals */}
           <div className="card signals-card">
-            <h4 className="card-section-title">KEY SIGNALS</h4>
-            
-            <div className="signals-grid-2x2">
-              <div className="sig-tile">
-                <div className="sig-tile__icon">⚡</div>
-                <div className="sig-tile__info">
-                  <span className="sig-tile__lbl">Delivery vs. Promised</span>
-                  <span className={`sig-tile__val ${signals?.late ? 'text-bad' : 'text-good'}`}>
-                    {signals?.days_vs_promise != null
-                      ? signals.days_vs_promise > 0
-                        ? `${signals.days_vs_promise} days late`
-                        : `${Math.abs(signals.days_vs_promise)} days early`
-                      : '—'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="sig-tile">
-                <div className="sig-tile__icon">📦</div>
-                <div className="sig-tile__info">
-                  <span className="sig-tile__lbl">Transit Time</span>
-                  <span className="sig-tile__val">
-                    {signals?.delivery_days != null ? `${signals.delivery_days} days` : '—'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="sig-tile">
-                <div className="sig-tile__icon">💬</div>
-                <div className="sig-tile__info">
-                  <span className="sig-tile__lbl">Review Comment</span>
-                  <span className="sig-tile__val">
-                    {signals?.has_comment ? 'Present' : 'None'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="sig-tile">
-                <div className="sig-tile__icon">📍</div>
-                <div className="sig-tile__info">
-                  <span className="sig-tile__lbl">Category & Region</span>
-                  <span className="sig-tile__val">
-                    {signals?.category_group || 'bed_bath_table'} · {signals?.customer_region || 'Southeast'}
-                  </span>
-                </div>
-              </div>
+            <h4 className="card-section-title">What the model saw</h4>
+            <div className="kv-grid">
+              <span className="kv__k">Skin type</span>
+              <span className="kv__v">{signals.skin_type ? titleCase(signals.skin_type) : '—'}</span>
+              <span className="kv__k">Category</span>
+              <span className="kv__v">{signals.category || '—'}</span>
+              <span className="kv__k">Brand</span>
+              <span className="kv__v">{signals.brand || '—'}</span>
+              <span className="kv__k">Price</span>
+              <span className="kv__v">
+                {signals.price_usd != null ? `$${signals.price_usd}` : '—'}
+                {signals.price_tier ? ` · ${signals.price_tier}` : ''}
+              </span>
+              <span className="kv__k">Product “loves”</span>
+              <span className="kv__v">
+                {signals.product_loves != null ? Number(signals.product_loves).toLocaleString() : '—'}
+              </span>
+              <span className="kv__k">Review length</span>
+              <span className="kv__v">{signals.review_tokens} words</span>
             </div>
+            <p className="card-hint">
+              Skin type is the main <i>structured</i> signal — a product that suits dry skin often
+              disappoints oily reviewers. On its own the structured block reaches ROC-AUC ~0.8; the
+              review text takes it to ~0.96.
+            </p>
           </div>
 
-          {/* 4. Words Reaction Card */}
-          {(badWords.length > 0 || goodWords.length > 0) && (
+          {/* review terms */}
+          {(toward.length > 0 || against.length > 0) && (
             <div className="card words-card">
-              <h4 className="card-section-title">COMMENT WORDS</h4>
-              
-              {badWords.length > 0 && (
+              <h4 className="card-section-title">Words in the review that moved the call</h4>
+              {against.length > 0 && (
                 <div className="words-group">
-                  <span className="words-group__lbl text-bad">🔴 BAD REVIEW SIGNALS</span>
+                  <span className="words-group__lbl text-bad">▼ toward “won’t recommend”</span>
                   <div className="words-chips">
-                    {badWords.map((word, i) => (
-                      <span key={i} className="word-chip word-chip--bad">{word}</span>
+                    {against.map((w, i) => (
+                      <span key={i} className="word-chip word-chip--bad">{w}</span>
                     ))}
                   </div>
                 </div>
               )}
-
-              {goodWords.length > 0 && (
+              {toward.length > 0 && (
                 <div className="words-group">
-                  <span className="words-group__lbl text-good">🟢 GOOD REVIEW SIGNALS</span>
+                  <span className="words-group__lbl text-good">▲ toward “recommends”</span>
                   <div className="words-chips">
-                    {goodWords.map((word, i) => (
-                      <span key={i} className="word-chip word-chip--good">{word}</span>
+                    {toward.map((w, i) => (
+                      <span key={i} className="word-chip word-chip--good">{w}</span>
                     ))}
                   </div>
                 </div>
@@ -175,23 +125,32 @@ export default function ResultScreen({ result, onRestart }) {
             </div>
           )}
 
-          {/* 5. Retention Playbook */}
-          <div className={`retention-playbook ${isSatisfied ? 'retention-playbook--good' : 'retention-playbook--bad'}`}>
+          {/* interpretation */}
+          <div className={`retention-playbook ${rec ? 'retention-playbook--good' : 'retention-playbook--bad'}`}>
             <div className="retention-playbook__head">
-              <span className="retention-playbook__icon">{isSatisfied ? '✅' : '🚨'}</span>
-              <span className="retention-playbook__title">SUGGESTED ACTION</span>
+              <span className="retention-playbook__icon">{rec ? '✅' : '⚠️'}</span>
+              <span className="retention-playbook__title">How to use this</span>
             </div>
             <p className="retention-playbook__text">
-              {isSatisfied
-                ? 'Standard order fulfillment workflow.'
-                : 'Reach out to customer or offer a goodwill voucher before review is posted.'}
+              {rec
+                ? 'Text and profile agree the customer is satisfied — safe to surface this review and product for similar skin types.'
+                : 'The review reads negative despite the star rating context — flag for review-consistency QA and check whether the product page over-promises for this skin type.'}
             </p>
           </div>
+
+          <details className="how-it-works">
+            <summary>How this works</summary>
+            <p>
+              Trained on ~104k Sephora skincare reviews (product-id shard 500–750). One
+              <b> Logistic Regression</b> over the reviewer&apos;s skin profile + the product
+              (category, brand, price, popularity) <b>and</b> a TF-IDF of the review title + body.
+              Inference runs server-side. {framing}
+            </p>
+          </details>
         </div>
 
-        {/* RIGHT COLUMN (SHAP CHART) */}
         <div className="res-col res-col--right">
-          <div className="card shap-executive-card">
+          <div className="card">
             <ShapChart contributions={contributions} />
           </div>
         </div>

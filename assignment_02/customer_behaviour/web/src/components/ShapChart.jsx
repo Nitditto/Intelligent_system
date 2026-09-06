@@ -1,11 +1,12 @@
 import React from 'react'
 
+// Diverging bar chart of the linear model's per-feature pull (log-odds).
+// left / --c-bad  = pushes toward "not recommend"
+// right / --c-good = pushes toward "recommend"
 export default function ShapChart({ contributions }) {
-  if (!contributions || !contributions.items || !contributions.items.length) {
-    return null
-  }
+  if (!contributions?.items?.length) return null
 
-  const { base_p, final_p, items, other_effect } = contributions
+  const { base_p, final_p, items, other_effect, dataset_base_rate } = contributions
   const rows = [...items]
   if (other_effect && Math.abs(other_effect) >= 0.01) {
     rows.push({ label: 'Other smaller factors combined', kind: 'other', effect: other_effect })
@@ -19,13 +20,15 @@ export default function ShapChart({ contributions }) {
   const finalPct = Math.round(final_p * 100)
   const netDelta = finalPct - basePct
 
+  const tagText = { text: 'review', tabular: 'profile', other: 'other' }
+
   return (
     <div className="shap-box">
       <div className="shap-box__head">
         <h3 className="shap-box__title">Why this prediction — each factor&apos;s pull</h3>
         <p className="shap-box__sub">
-          <span className="shap-legend shap-legend--neg" /> pulls toward a bad review &nbsp;·&nbsp;
-          <span className="shap-legend shap-legend--pos" /> pulls toward a good one
+          <span className="shap-legend shap-legend--neg" /> toward “won&apos;t recommend” &nbsp;·&nbsp;
+          <span className="shap-legend shap-legend--pos" /> toward “recommends”
         </p>
       </div>
 
@@ -36,9 +39,11 @@ export default function ShapChart({ contributions }) {
             <div key={idx} className={`shap-row${it.kind === 'other' ? ' shap-row--other' : ''}`}>
               <div className="shap-row__label">
                 <span className={`shap-tag shap-tag--${it.kind === 'text' ? 'txt' : it.kind === 'other' ? 'other' : 'tab'}`}>
-                  {it.kind === 'text' ? 'comment' : it.kind === 'other' ? 'other' : 'order'}
+                  {tagText[it.kind] || 'profile'}
                 </span>
-                <span className="shap-row__name" title={it.label}>{it.label}</span>
+                <span className="shap-row__name" title={it.label}>
+                  {it.label}
+                </span>
               </div>
               <div className="shap-row__track">
                 <span
@@ -66,16 +71,17 @@ export default function ShapChart({ contributions }) {
         </div>
         <span className="shap-wf-arrow">→</span>
         <div className="shap-wf-step shap-wf-step--final">
-          <span className="shap-wf-lbl">Final chance of a good review</span>
+          <span className="shap-wf-lbl">Chance of a recommendation</span>
           <span className="shap-wf-val">{finalPct}%</span>
         </div>
       </div>
 
       <p className="shap-footnote">
-        Bars are each factor&apos;s effect in log-odds. The starting point ({basePct}%) is the
-        model&apos;s neutral prediction — lower than the {Math.round((contributions.dataset_base_rate ?? 0.79) * 100)}%
-        dataset average because the model treats the rarer &ldquo;bad review&rdquo; class as
-        equally important.
+        Bars are each factor&apos;s effect in log-odds. The starting point ({basePct}%) is where the
+        model sits for an average review before this one&apos;s specifics are added (the classes are
+        weighted equally in training, so it is not the {Math.round((dataset_base_rate ?? 0.85) * 100)}%
+        dataset recommend rate). Review terms dominate because the text is written alongside the
+        recommend tick (notebook §14a).
       </p>
     </div>
   )

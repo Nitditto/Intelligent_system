@@ -1,19 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../main.dart';
 import '../models.dart';
 import 'result_screen.dart';
 
-/// One screen: enter an order, submit, see the prediction (on the next screen).
-class OrderFormScreen extends StatefulWidget {
-  const OrderFormScreen({super.key});
+/// One screen: enter a review, submit, see the prediction (on the next screen).
+class ReviewFormScreen extends StatefulWidget {
+  const ReviewFormScreen({super.key});
 
   @override
-  State<OrderFormScreen> createState() => _OrderFormScreenState();
+  State<ReviewFormScreen> createState() => _ReviewFormScreenState();
 }
 
-class _OrderFormScreenState extends State<OrderFormScreen> {
+class _ReviewFormScreenState extends State<ReviewFormScreen> {
   final _formKey = GlobalKey<FormState>();
   List<FormFieldSpec>? _fields;
   String? _loadError;
@@ -21,30 +20,23 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
   String _modelName = '';
   bool _busy = false;
 
-  // field -> current value (String for text/choice/number, DateTime for date)
   final Map<String, dynamic> _values = {};
 
-  static final _fmt = DateFormat('yyyy-MM-dd');
-
-  // Prefilled "late + damaged" sample so the form is usable immediately.
+  // Prefilled "oily skin, broke me out" sample so the form is usable immediately.
   static final Map<String, dynamic> _sample = {
-    'category': 'bed_bath_table',
-    'price_total': '129.90',
-    'freight_total': '18.30',
-    'payment_value_total': '148.20',
-    'n_items': '1',
-    'n_sellers': '1',
-    'main_payment_type': 'credit_card',
-    'max_installments': '3',
-    'customer_state': 'SP',
-    'product_weight_g': '1200',
-    'product_photos_qty': '3',
-    'product_desc_len': '850',
-    'order_purchase_timestamp': DateTime(2018, 5, 1),
-    'order_estimated_delivery_date': DateTime(2018, 5, 20),
-    'order_delivered_customer_date': DateTime(2018, 5, 31),
-    'review_comment_message':
-        'Produto chegou muito atrasado e a embalagem estava danificada.',
+    'skin_type': 'oily',
+    'skin_tone': 'light',
+    'eye_color': 'brown',
+    'hair_color': 'brown',
+    'secondary_category': 'Moisturizers',
+    'brand_name': 'Skinfix',
+    'price_usd': '32',
+    'loves_count': '21000',
+    'reviews': '1800',
+    'review_title': 'Not for oily skin',
+    'review_text':
+        'Broke me out within a week and felt greasy all day. Smells strongly '
+        'of perfume. Wanted to love it but returned it.',
   };
 
   @override
@@ -72,9 +64,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
     for (final f in _fields!) {
       final v = _values[f.field];
       if (v == null || (v is String && v.trim().isEmpty)) continue;
-      if (v is DateTime) {
-        p[f.field] = '${_fmt.format(v)} 12:00:00';
-      } else if (f.type == 'number') {
+      if (f.type == 'number') {
         p[f.field] = num.tryParse(v.toString());
       } else {
         p[f.field] = v;
@@ -94,8 +84,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -103,11 +92,19 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final fields = _fields;
+    final sections = <String>[];
+    if (fields != null) {
+      for (final f in fields) {
+        if (!sections.contains(f.section)) sections.add(f.section);
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Will this order get a good review?'),
+        title: const Text('Will this customer recommend it?'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(24),
+          preferredSize: const Size.fromHeight(22),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 6, left: 16, right: 16),
             child: Align(
@@ -120,9 +117,8 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                         : 'connecting…',
                 style: TextStyle(
                   fontSize: 12,
-                  color: _apiUp == false
-                      ? Colors.red.shade100
-                      : Colors.white70,
+                  color:
+                      _apiUp == false ? Colors.red.shade100 : Colors.white70,
                 ),
               ),
             ),
@@ -131,7 +127,7 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
       ),
       body: _loadError != null
           ? _ErrorView(message: _loadError!, onRetry: _load)
-          : _fields == null
+          : fields == null
               ? const Center(child: CircularProgressIndicator())
               : Form(
                   key: _formKey,
@@ -139,17 +135,32 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                     children: [
                       const Text(
-                        'Predicts review_score ≥ 4 from delivery, payment and '
-                        'product details plus the customer comment. Nothing runs '
+                        'Predicts is_recommended from the reviewer’s skin '
+                        'profile + the product + the review text. Nothing runs '
                         'on the device — this is a POST /predict call.',
                         style: TextStyle(color: Colors.black54, fontSize: 13),
                       ),
                       const SizedBox(height: 12),
-                      for (final f in _fields!) _buildField(f),
+                      for (final sec in sections) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6, bottom: 8),
+                          child: Text(
+                            sec.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.6,
+                              color: Colors.black45,
+                            ),
+                          ),
+                        ),
+                        for (final f in fields.where((x) => x.section == sec))
+                          _buildField(f),
+                      ],
                     ],
                   ),
                 ),
-      floatingActionButton: _fields == null
+      floatingActionButton: fields == null
           ? null
           : FloatingActionButton.extended(
               onPressed: _busy ? null : _submit,
@@ -159,60 +170,29 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
                       height: 18,
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.assessment_outlined),
-              label: Text(_busy ? 'Predicting…' : 'Predict satisfaction'),
+                  : const Icon(Icons.reviews_outlined),
+              label: Text(_busy ? 'Scoring…' : 'Predict'),
             ),
     );
   }
 
   Widget _buildField(FormFieldSpec f) {
-    final pad = const EdgeInsets.only(bottom: 14);
+    const pad = EdgeInsets.only(bottom: 14);
     switch (f.type) {
       case 'choice':
         return Padding(
           padding: pad,
           child: DropdownButtonFormField<String>(
-            value: _values[f.field] as String?,
+            initialValue: _values[f.field] as String?,
             isExpanded: true,
             decoration: _dec(f),
             items: [
               const DropdownMenuItem(value: null, child: Text('—')),
-              ...f.options.map(
-                (o) => DropdownMenuItem(value: o, child: Text(o)),
-              ),
+              ...f.options
+                  .map((o) => DropdownMenuItem(value: o, child: Text(o))),
             ],
-            validator: (v) =>
-                f.required && (v == null) ? 'Required' : null,
+            validator: (v) => f.required && v == null ? 'Required' : null,
             onChanged: (v) => setState(() => _values[f.field] = v),
-          ),
-        );
-      case 'date':
-        final dt = _values[f.field] as DateTime?;
-        return Padding(
-          padding: pad,
-          child: InputDecorator(
-            decoration: _dec(f),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(dt == null ? '—' : _fmt.format(dt)),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: dt ?? DateTime(2018, 5, 1),
-                      firstDate: DateTime(2016),
-                      lastDate: DateTime(2020),
-                    );
-                    if (picked != null) {
-                      setState(() => _values[f.field] = picked);
-                    }
-                  },
-                  child: const Text('Pick'),
-                ),
-              ],
-            ),
           ),
         );
       case 'text':
@@ -220,9 +200,44 @@ class _OrderFormScreenState extends State<OrderFormScreen> {
           padding: pad,
           child: TextFormField(
             initialValue: _values[f.field] as String?,
-            maxLines: 3,
             decoration: _dec(f),
             onChanged: (v) => _values[f.field] = v,
+          ),
+        );
+      case 'textarea':
+        return Padding(
+          padding: pad,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextFormField(
+                initialValue: _values[f.field] as String?,
+                maxLines: 5,
+                decoration: _dec(f),
+                validator: (v) => f.required && (v == null || v.trim().isEmpty)
+                    ? 'Required'
+                    : null,
+                onChanged: (v) => setState(() => _values[f.field] = v),
+              ),
+              if (f.examples.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: f.examples
+                        .map((ex) => ActionChip(
+                              label: Text(ex[0],
+                                  style: const TextStyle(fontSize: 12)),
+                              onPressed: () => setState(() {
+                                _values['review_title'] = ex[0];
+                                _values[f.field] = ex[1];
+                              }),
+                            ))
+                        .toList(),
+                  ),
+                ),
+            ],
           ),
         );
       default: // number

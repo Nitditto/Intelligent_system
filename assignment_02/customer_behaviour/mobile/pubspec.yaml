@@ -1,5 +1,5 @@
-name: order_satisfaction
-description: Mobile client for the Olist order-satisfaction API (Assignment 02, Application 3).
+name: product_recommendation
+description: Mobile client for the Sephora product-recommendation API (Assignment 02, Application 3).
 publish_to: "none"
 version: 1.0.0+1
 

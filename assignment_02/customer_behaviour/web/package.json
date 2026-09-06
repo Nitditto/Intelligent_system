@@ -1,9 +1,9 @@
 {
   "name": "customer-behaviour-web",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
-  "description": "Olist order-satisfaction web client (React + Vite) over the FastAPI service.",
+  "description": "Sephora product-recommendation web client (React + Vite) over the FastAPI service.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

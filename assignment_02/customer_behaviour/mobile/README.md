@@ -1,65 +1,46 @@
-# Order-satisfaction — Mobile app (Flutter)
+# Product-recommendation — Mobile app (Flutter)
 
 A thin **client** of the FastAPI service. It trains and runs **no model** — it
-collects one order, `POST`s it to `/predict`, and shows the response.
+collects one review, `POST`s it to `/predict`, and shows the response.
 
-```
-Mobile UI  ->  REST API  ->  build_features + preprocessing + LogisticRegression
-           <-  JSON       <-  prediction + confidence + signals
-```
+Target: **`is_recommended`** — will the reviewer tick "recommends this product".
 
-Two screens:
+## Screens
 
-| Screen | Contents |
-|---|---|
-| **Order form** (`order_form_screen.dart`) | fields rendered from `GET /questions` — number / choice / date / free-text. Prefilled with a "late + damaged" sample. Client-side validation (required fields, numeric ranges). A **Predict satisfaction** button. Header shows API status + the model name from `GET /model-info`. |
-| **Result** (`result_screen.dart`) | satisfied / at-risk verdict, a **confidence** value, a `P(satisfied)` bar with the decision cut-off marked, the delivery / comment **signals**, the comment **terms** pushing each way, and a one-paragraph interpretation. "Edit the order" returns to the form. |
-
-## Prerequisites
-
-- Flutter 3.19+ (`flutter --version`)
-- The API reachable from the device/emulator. On the **Android emulator**,
-  `http://10.0.2.2:8000` is the host's localhost (the default in `api_client.dart`).
+1. **Review form** — fields grouped by section, rendered from `GET /questions`
+   (skin profile · the product · the review). A prefilled "oily skin, broke me
+   out" sample; tap an example chip on the review field to swap in a real review.
+   Floating **Predict** button → `POST /predict`.
+2. **Result** — verdict ("Would / would not recommend"), `P(recommend)` bar with
+   the 50% cut-off, the profile/product signals, the review terms pulling each
+   way, a plain-language interpretation, and a model/`§14a` footer.
 
 ## Run
 
 ```bash
+# API first: from customer_behaviour/  ->  python -m uvicorn api.main:app --port 8000
 cd mobile
-flutter create .            # generate android/ ios/ … for this package (first time only)
 flutter pub get
-flutter run --dart-define=API_URL=http://10.0.2.2:8000
+flutter run --dart-define=API_URL=http://10.0.2.2:8000   # Android emulator -> host
 ```
 
-For a physical device on the same Wi-Fi, use the host's LAN IP:
-
-```bash
-flutter run --dart-define=API_URL=http://192.168.1.20:8000
-```
-
-Android also needs cleartext HTTP for a plain `http://` URL — after `flutter create .`,
-add `android:usesCleartextTraffic="true"` to the `<application>` tag in
-`android/app/src/main/AndroidManifest.xml` (or point `API_URL` at an `https` tunnel).
+`10.0.2.2` is the Android emulator's alias for the host's `localhost`. On a real
+device pass your machine's LAN IP.
 
 ## Layout
 
 ```
-mobile/
-  pubspec.yaml   analysis_options.yaml
-  lib/
-    main.dart                    app + theme + verdict colour
-    api_client.dart              health / questions / model-info / predict
-    models.dart                  FormFieldSpec, PredictResult
-    screens/
-      order_form_screen.dart     the input form (from /questions) + validation + submit
-      result_screen.dart         the prediction view
+mobile/lib/
+  main.dart                     app shell + verdict colour helper
+  api_client.dart               REST client (/healthz /questions /model-info /predict)
+  models.dart                   FormFieldSpec · TermPull · PredictResult
+  screens/
+    order_form_screen.dart      the review form (ReviewFormScreen)
+    result_screen.dart          the prediction screen
 ```
 
-## Screenshots for the report (IDs M1–M4)
+## Screenshots for the report (IDs M1–M3)
 
-1. **M1** — the order form filled in (the prefilled sample).
-2. **M2** — the result for that order: *at risk*, low `P(satisfied)`, "days late" signal.
-3. **M3** — edit the delivery date to before the promised date, clear the comment,
-   predict again → *likely satisfied*.
-4. **M4** — a snippet showing the request going to `API_URL` (e.g. the run console, or
-   the API's Uvicorn access log with the `POST /predict` line) as evidence the app
-   calls the REST service.
+1. **M1** — review form with the sample loaded.
+2. **M2** — result screen: "won't recommend" verdict + `P(recommend)` bar.
+3. **M3** — result screen scrolled to the review-term chips + interpretation.

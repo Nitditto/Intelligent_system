@@ -1,4 +1,4 @@
-# API image for the customer-behaviour (Olist order-satisfaction) service.
+# API image for the customer-behaviour (Sephora product-recommendation) service.
 # Build context is customer_behaviour/ (so both api/ and model/ are available):
 #     docker build -f api/Dockerfile -t cb-api .
 # Compose does this for you.

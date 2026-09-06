@@ -1,9 +1,10 @@
-"""Model loading and the core prediction path.
+"""Model loading and the core prediction path (Sephora is_recommended model).
 
 Loads the persisted pipeline once (``model/model_pipeline.joblib``), rebuilds the
-feature frame with the same stateless ``build_features()`` used in the notebook,
-turns P(satisfied) into a decision, and — for the deployed linear model — returns
-an exact per-feature contribution breakdown (linear SHAP around the training mean).
+feature frame with the same stateless ``build_features()`` used in the notebook, turns
+P(recommend) into a decision, and — the deployed model is Logistic Regression — returns
+an exact per-feature contribution breakdown (linear SHAP around the training mean) plus
+the review terms pushing the prediction each way.
 """
 from __future__ import annotations
 
@@ -19,7 +20,7 @@ from .features import build_features
 
 _LOCK = threading.Lock()
 _PIPELINE = None
-_EXPL = None            # {names, means, intercept, coef}  or  None if not linear
+_EXPL = None            # {names, means, coef, intercept}  or  None if artifact missing
 
 
 def get_pipeline():
@@ -33,8 +34,6 @@ def get_pipeline():
 
 
 def _explainer():
-    """Loads model/feature_means.joblib once. Returns None if the deployed model
-    is not linear (no coef) or the artifact is missing."""
     global _EXPL
     if _EXPL is not None:
         return _EXPL or None
@@ -62,152 +61,168 @@ def _score(frame: pd.DataFrame) -> float:
 
 
 # --------------------------------------------------------------------------- main
-def predict_one(raw_order: dict) -> dict:
-    # pin the fields the wizard doesn't ask for (client value wins if supplied)
-    merged = {**C.FIXED_INPUTS, **{k: v for k, v in raw_order.items() if v is not None}}
+def predict_one(raw_review: dict) -> dict:
+    merged = {**C.FIXED_INPUTS, **{k: v for k, v in raw_review.items() if v is not None}}
     feat = build_features(pd.DataFrame([merged]))
-    p_sat = _score(feat)
-    label = "satisfied" if p_sat >= C.DECISION_THRESHOLD else "dissatisfied"
-    confidence = p_sat if label == "satisfied" else 1.0 - p_sat
-
+    p = _score(feat)
+    label = "recommend" if p >= C.DECISION_THRESHOLD else "not recommend"
+    confidence = p if label == "recommend" else 1.0 - p
     return {
         "prediction": label,
         "confidence": round(confidence, 4),
-        "p_satisfied": round(p_sat, 4),
+        "p_recommend": round(p, 4),
         "threshold": C.DECISION_THRESHOLD,
+        "review_terms": _review_terms(feat),
         "signals": _signals(feat),
-        "contributions": _contributions(feat, p_sat),
+        "contributions": _contributions(feat, p),
         "model": C.CHOSEN_MODEL,
         "representation": C.REPRESENTATION,
     }
 
 
-def predict_batch(raw_orders: list[dict]) -> list[dict]:
-    return [predict_one(o) for o in raw_orders]
+def predict_batch(raw_reviews: list[dict]) -> list[dict]:
+    return [predict_one(o) for o in raw_reviews]
 
 
-# ------------------------------------------------------------------ SHAP-ish part
-_NUM_PRETTY = {
-    "price_total": "Order value", "freight_total": "Shipping cost",
-    "payment_value_total": "Total charged", "freight_ratio": "Shipping-to-value ratio",
-    "n_items": "Item count", "n_sellers": "Seller count",
-    "max_installments": "Instalments", "n_payment_types": "Payment methods used",
-    "product_weight_g": "Product weight", "product_desc_len": "Listing description length",
-    "product_photos_qty": "Listing photo count", "comment_len": "Comment length",
-    "estimated_days": "Promised delivery window",
-}
+# --------------------------------------------------------------- transformed row
+def _transform(feat: pd.DataFrame):
+    """Return (names, x) — the pipeline's preprocessed feature vector for one review."""
+    pipe = get_pipeline()
+    pre = pipe.named_steps["prep"]
+    Xt = pre.transform(feat)
+    x = np.asarray(Xt.todense()).ravel() if hasattr(Xt, "todense") else np.asarray(Xt).ravel()
+    try:
+        names = list(pre.get_feature_names_out())
+    except Exception:
+        names = [f"f{i}" for i in range(len(x))]
+    return names, x
 
 
-def _pretty_label(name: str, feat_row: pd.Series, x_transformed: float) -> str:
-    """name is a get_feature_names_out() entry like 'tab__std__delivery_delay_days'
-    or 'tab__cat__category_grp_bed_bath_table' or 'txt__atrasado'."""
-    if name.startswith("txt__"):
-        return f'comment: "{name[5:]}"'
-
-    parts = name.split("__")
-    branch = parts[1] if len(parts) > 2 else ""
-    rest = parts[-1]
-
-    # one-hot columns
-    if branch == "cat":
-        for col, tpl in (("category_grp_", "Category: {}"),
-                         ("customer_region_", "Region: {}"),
-                         ("main_payment_type_", "Paid by {}")):
-            if rest.startswith(col):
-                return tpl.format(rest[len(col):].replace("infrequent_sklearn", "other"))
-        return rest
-
-    def _raw(col):
-        v = feat_row.get(col)
-        return None if v is None or (isinstance(v, float) and np.isnan(v)) else float(v)
-
-    if rest == "delivery_delay_days":
-        v = _raw("delivery_delay_days")
-        if v is None:
-            return "Delivery timing unknown"
-        if v > 0.5:
-            return f"Delivered {round(v)} days late"
-        if v < -0.5:
-            return f"Delivered {abs(round(v))} days early"
-        return "Delivered on the promised date"
-    if rest == "delivery_days":
-        v = _raw("delivery_days")
-        return f"Took {round(v)} days to arrive" if v is not None else "Delivery time unknown"
-    if rest == "is_late":
-        return "Order arrived late" if _raw("is_late") else "Order arrived on time"
-    if rest == "has_comment":
-        return "Customer left a comment" if _raw("has_comment") else "No comment left"
-
-    pretty = _NUM_PRETTY.get(rest, rest.replace("_", " "))
-    side = "above average" if x_transformed >= 0 else "below average"
-    return f"{pretty}: {side}"
-
-
-def _contributions(feat: pd.DataFrame, p_sat: float, top_k: int = 12) -> dict | None:
+# ------------------------------------------------------------------ review terms
+def _review_terms(feat: pd.DataFrame, k: int = 8) -> dict | None:
     ex = _explainer()
     if ex is None:
         return None
-    pipe = get_pipeline()
-    try:
-        pre = pipe.named_steps["prep"]
-        Xt = pre.transform(feat)
-        x = np.asarray(Xt.todense()).ravel() if hasattr(Xt, "todense") else np.asarray(Xt).ravel()
-        names, means, coef, b0 = ex["names"], ex["means"], ex["coef"], ex["intercept"]
-        if not (len(x) == len(means) == len(coef) == len(names)):
-            return None
-    except Exception:
+    names, x = _transform(feat)
+    if len(names) != len(ex["names"]) or len(x) != len(ex["coef"]):
+        return None
+    coef = ex["coef"]
+    toward, against = [], []
+    for j, nm in enumerate(names):
+        if not nm.startswith("txt__") or x[j] <= 0:
+            continue
+        eff = float(coef[j] * x[j])
+        term = nm.split("__", 1)[1]
+        (toward if eff > 0 else against).append((term, round(eff, 4)))
+    toward.sort(key=lambda t: -t[1])
+    against.sort(key=lambda t: t[1])
+    if not toward and not against:
+        return None
+    return {
+        "toward": [{"term": t, "effect": e} for t, e in toward[:k]],
+        "against": [{"term": t, "effect": e} for t, e in against[:k]],
+    }
+
+
+# ------------------------------------------------------------------ contributions
+_TAB_PRETTY = {
+    "price_usd": "Price", "loves_count": "Product loves", "reviews": "Product review count",
+    "total_feedback_count": "Feedback votes on this review",
+    "total_neg_feedback_count": "Not-helpful votes",
+    "n_ingredients": "Ingredient-list length", "n_highlights": "Product highlights",
+    "review_age_days": "Review age", "pos_feedback_ratio": "Share of helpful votes",
+    "price_missing": "Price missing", "has_title": "Has a review title",
+    "limited_edition": "Limited edition", "new": "New product",
+    "online_only": "Online only", "sephora_exclusive": "Sephora exclusive",
+}
+_CAT_PRETTY = {
+    "skin_type_": "Skin type: {}", "skin_tone_": "Skin tone: {}",
+    "eye_color_": "Eye colour: {}", "hair_color_": "Hair colour: {}",
+    "secondary_category_": "Category: {}", "brand_name_": "Brand: {}",
+}
+
+
+def _pretty(name: str, x_val: float) -> str:
+    if name.startswith("txt__"):
+        return 'review term: ' + name.split('__', 1)[1]
+    rest = name.split("__")[-1]
+    for pre, tpl in _CAT_PRETTY.items():
+        if rest.startswith(pre):
+            v = rest[len(pre):].replace("infrequent_sklearn", "other").replace("_", " ").title()
+            return tpl.format(v)
+    label = _TAB_PRETTY.get(rest, rest.replace("_", " ").capitalize())
+    if rest in ("price_missing", "has_title", "limited_edition", "new", "online_only", "sephora_exclusive"):
+        return label
+    return f"{label}: {'above average' if x_val >= 0 else 'below average'}"
+
+
+def _contributions(feat: pd.DataFrame, p: float, top_k: int = 12) -> dict | None:
+    ex = _explainer()
+    if ex is None:
+        return None
+    names, x = _transform(feat)
+    means, coef, b0 = ex["means"], ex["coef"], ex["intercept"]
+    if not (len(x) == len(means) == len(coef) == len(names)):
         return None
 
     phi = coef * (x - means)                       # per-feature log-odds contribution
-    base_logit = b0 + float(coef @ means)
-    base_p = float(expit(base_logit))
+    base_p = float(expit(b0 + float(coef @ means)))
+    has_text = bool(str(feat.iloc[0].get(C.TEXT_COLUMN, "") or "").strip())
 
-    row = feat.iloc[0]
-    has_comment = bool(str(row.get(C.TEXT_COLUMN, "") or "").strip())
-    idx = np.argsort(-np.abs(phi))
-    items, shown = [], 0
-    other = 0.0
-    for j in idx:
+    items, other = [], 0.0
+    for j in np.argsort(-np.abs(phi)):
         e = float(phi[j])
         is_txt = names[j].startswith("txt__")
-        # an empty comment still gives tiny non-zero text phi (coef * -mean_j) —
-        # fold those into "other" so the chart doesn't show phantom words
-        if abs(e) < 1e-4 or (is_txt and not has_comment):
+        if abs(e) < 1e-4 or (is_txt and (not has_text or x[j] <= 0)):
             other += e
             continue
-        if shown < top_k:
+        if len(items) < top_k:
             items.append({
-                "label": _pretty_label(names[j], row, float(x[j])),
-                "kind": "text" if names[j].startswith("txt__") else "tabular",
+                "label": _pretty(names[j], float(x[j])),
+                "kind": "text" if is_txt else "tabular",
                 "effect": round(e, 4),
             })
-            shown += 1
         else:
             other += e
 
     return {
         "base_p": round(base_p, 4),
-        "final_p": round(p_sat, 4),
+        "final_p": round(p, 4),
         "dataset_base_rate": C.DATASET_BASE_RATE,
         "items": items,
         "other_effect": round(other, 4),
-        "note": "bars are log-odds contributions; reference = the model's average order "
-                "(class-balanced, so lower than the 79% dataset positive rate)",
+        "note": "bars are log-odds contributions; reference (base_p) = the model's neutral "
+                "point for an average review, class-balanced so not the 85% dataset rate",
     }
 
 
 # ------------------------------------------------------------------------ signals
 def _signals(feat: pd.DataFrame) -> dict:
     row = feat.iloc[0]
-    delay = row.get("delivery_delay_days")
-    ddays = row.get("delivery_days")
+
+    def num(c):
+        v = row.get(c)
+        return None if v is None or (isinstance(v, float) and np.isnan(v)) else round(float(v), 1)
+
+    txt = str(row.get(C.TEXT_COLUMN, "") or "")
+    price = num("price_usd")
+    tier = None
+    if price is not None:
+        tier = "budget" if price < 25 else "mid" if price < 55 else "premium"
+    def clean(c):
+        v = row.get(c)
+        return None if v in (None, "__na__") else str(v).title()
+
     return {
-        "days_vs_promise": None if pd.isna(delay) else round(float(delay), 1),
-        "late": bool(row.get("is_late", 0)),
-        "has_comment": bool(row.get("has_comment", 0)),
-        "delivery_days": None if pd.isna(ddays) else round(float(ddays), 1),
-        "category_group": row.get("category_grp"),
-        "customer_region": row.get("customer_region"),
+        "skin_type": clean("skin_type"),
+        "skin_tone": clean("skin_tone"),
+        "category": clean("secondary_category"),
+        "brand": None if row.get("brand_name") in (None, "__na__") else str(row.get("brand_name")).title(),
+        "price_usd": price,
+        "price_tier": tier,
+        "product_loves": num("loves_count"),
+        "review_tokens": len(txt.split()),
+        "has_title": bool(row.get("has_title", 0)),
     }
 
 
@@ -219,7 +234,9 @@ def model_info() -> dict:
         "chosen_model": C.CHOSEN_MODEL,
         "representation": C.REPRESENTATION,
         "target": schema["target"],
+        "framing": schema.get("framing", ""),
         "decision_threshold": C.DECISION_THRESHOLD,
+        "dataset_base_rate": C.DATASET_BASE_RATE,
         "random_seed": C.RANDOM_SEED,
         "sklearn_version": C.SKLEARN_VERSION,
         "pipeline_steps": [s[0] for s in pipe.steps],

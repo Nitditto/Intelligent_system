@@ -1,8 +1,12 @@
-"""Static configuration for the customer-behaviour API.
+"""Static configuration for the customer-behaviour API (Sephora skincare reviews).
 
-Filesystem paths and the small pieces of metadata the client needs to render its
-form. Nothing here is fitted or learned — the fitted objects live in
+Filesystem paths and the small pieces of metadata the web / mobile clients need to
+render their form. Nothing here is fitted or learned — the fitted objects live in
 ``model/model_pipeline.joblib`` and the contract in ``model/input_schema.json``.
+
+Task: predict whether the reviewer recommends the product (``is_recommended``) from
+their skin profile + the product + the review text.  Model: Logistic Regression on
+tabular + TF-IDF(text)  (notebook §22).
 """
 from __future__ import annotations
 
@@ -12,156 +16,125 @@ from pathlib import Path
 API_DIR = Path(__file__).resolve().parent          # customer_behaviour/api
 APP_DIR = API_DIR.parent                             # customer_behaviour
 MODEL_DIR = APP_DIR / "model"
-DATA_DIR = APP_DIR / "data"
+DATA_DIR = APP_DIR / "data" / "sephora"
 
 MODEL_PIPELINE_PATH = MODEL_DIR / "model_pipeline.joblib"
 FEATURE_NAMES_PATH = MODEL_DIR / "feature_names.joblib"
 MODEL_MEANS_PATH = MODEL_DIR / "feature_means.joblib"
 INPUT_SCHEMA_PATH = MODEL_DIR / "input_schema.json"
 
-# decision threshold on P(satisfied); below it -> "dissatisfied" (the class we act on)
+# decision threshold on P(recommend); below it -> "not recommend" (the class we act on)
 DECISION_THRESHOLD = 0.50
 
-# share of orders that were positive (>=4 star) in the cleaned training data — shown
+# share of reviews that were is_recommended == 1 in the cleaned training data — shown
 # as context next to the model's own (class-balanced) reference point.
-DATASET_BASE_RATE = 0.79
+DATASET_BASE_RATE = 0.846
 
-# fields the web wizard does not ask for — filled server-side with a fixed value
-# (dataset medians). Keeps the form short without changing the model contract.
-FIXED_INPUTS = {
-    "product_desc_len": 607,   # listing description length (chars) — median
-    "n_payment_types": 1,      # almost every order uses a single payment method
-}
+_SNAPSHOT = "2023-03-22"     # notebook build_features() reference date (max review date + 1)
 
 # ------------------------------------------------------------------ schema-derived
 _SCHEMA = json.loads(INPUT_SCHEMA_PATH.read_text(encoding="utf-8"))
 
 RAW_INPUT_FIELDS: list[str] = _SCHEMA["raw_input_fields"]
 TABULAR_FEATURE_ORDER: list[str] = _SCHEMA["tabular_feature_order"]
-TEXT_COLUMN: str = _SCHEMA["text_column"]
-TOP_CATEGORIES: list[str] = _SCHEMA["top_categories"]
-STATE_TO_REGION: dict[str, str] = _SCHEMA["state_to_region"]
-CHOSEN_MODEL: str = _SCHEMA["chosen_model"]
-REPRESENTATION: str = _SCHEMA["representation"]
+TEXT_COLUMN: str = _SCHEMA["text_col"]
+CHOSEN_MODEL: str = _SCHEMA.get("model", "LogisticRegression")
+REPRESENTATION: str = _SCHEMA.get("representation", "tabular + TF-IDF(text)")
 RANDOM_SEED: int = _SCHEMA["random_seed"]
 SKLEARN_VERSION: str = _SCHEMA["sklearn_version"]
+TARGET_DESC: str = _SCHEMA["target"]
+FRAMING_NOTE: str = _SCHEMA.get("framing", "")
 
-PAYMENT_TYPES = ["credit_card", "boleto", "voucher", "debit_card"]
-BRAZIL_STATES = sorted(STATE_TO_REGION.keys())
-
-# Portuguese example comments (with an English gloss) the client can offer as
-# one-click fills for the review field.
-COMMENT_EXAMPLES = [
-    ["Produto excelente, chegou antes do prazo. Recomendo!",
-     "Great product, arrived before the deadline. Recommend!"],
-    ["Entrega rápida e produto conforme o anúncio.",
-     "Fast delivery and product as advertised."],
-    ["Até agora não recebi o produto.",
-     "I still haven't received the product."],
-    ["Veio com defeito e a caixa estava toda amassada.",
-     "Came defective and the box was all crushed."],
-    ["Produto diferente do que foi anunciado no site.",
-     "Product different from what was advertised on the site."],
+# ------------------------------------------------------------------ vocab (from data)
+SKIN_TYPES = ["dry", "combination", "normal", "oily"]
+SKIN_TONES = ["porcelain", "fair", "fairLight", "light", "lightMedium", "medium",
+              "mediumTan", "tan", "olive", "deep", "rich", "dark"]
+EYE_COLORS = ["brown", "blue", "hazel", "green", "gray"]
+HAIR_COLORS = ["black", "brown", "brunette", "blonde", "auburn", "red", "gray"]
+CATEGORIES = ["Cleansers", "Eye Care", "High Tech Tools", "Lip Balms & Treatments",
+              "Masks", "Mini Size", "Moisturizers", "Self Tanners", "Sunscreen",
+              "Treatments", "Value & Gift Sets", "Wellness"]
+BRANDS = [
+    "Peter Thomas Roth", "Dr. Jart+", "SEPHORA COLLECTION", "Supergoop!", "Skinfix",
+    "Dermalogica", "KORA Organics", "WASO", "St. Tropez", "The INKEY List", "Murad",
+    "Kiehl's Since 1851", "Fenty Skin", "Caudalie", "OLEHENRIKSEN", "First Aid Beauty",
+    "Farmacy", "Summer Fridays", "Shiseido", "Drunk Elephant", "Youth To The People",
+    "REN Clean Skincare", "fresh", "TULA Skincare", "Sunday Riley", "JLo Beauty",
+    "Biossance", "Moon Juice", "La Mer", "Benefit Cosmetics", "The Ordinary", "Wishful",
+    "IT Cosmetics", "Paula's Choice", "CLINIQUE", "Dior", "Herbivore", "Glow Recipe",
+    "Isle of Paradise", "Origins", "KORRES", "Augustinus Bader", "Sulwhasoo", "Josie Maran",
 ]
 
-# The client renders its wizard from this list. Fields carry a `section` (= wizard
-# step) and a plain-language `note`. `product_desc_len` and `n_payment_types` are
-# not asked for — see FIXED_INPUTS.
-#   type:  "number" | "choice" | "date" | "text"
-FORM_FIELDS = [
-    # =============================== step 1: Product ===============================
-    {"field": "category", "type": "choice", "label": "Product category",
-     "options": TOP_CATEGORIES + ["__other__"], "required": False, "section": "Product",
-     "note": "The kind of product the order is for. Some categories (furniture, home) "
-             "draw more complaints than others (watches, books)."},
-    {"field": "price_total", "type": "number", "label": "Order value (R$)",
-     "min": 0, "required": True, "section": "Product",
-     "note": "Total price of the items, in Brazilian reais — shipping not included."},
-    {"field": "n_items", "type": "number", "label": "Quantity (item units)", "min": 1,
-     "required": False, "section": "Product",
-     "note": "How many units are in the order (1 for a single product)."},
-    {"field": "n_sellers", "type": "number", "label": "Seller count", "min": 1,
-     "required": False, "section": "Product",
-     "note": "How many different sellers the order is split across. More sellers = more "
-             "shipments that can go wrong."},
-    {"field": "product_photos_qty", "type": "number", "label": "Photo count in listing",
-     "min": 0, "required": False, "section": "Product",
-     "note": "How many photos the product page showed. Thin listings lead to "
-             "“not as described” complaints."},
-    {"field": "product_weight_g", "type": "number", "label": "Main product weight (g)",
-     "min": 0, "required": False, "section": "Product",
-     "note": "Weight of the main product in grams. Heavy or bulky items arrive damaged "
-             "or late more often."},
-
-    # =============================== step 2: Payment ==============================
-    {"field": "main_payment_type", "type": "choice", "label": "Payment method",
-     "options": PAYMENT_TYPES, "required": False, "section": "Payment",
-     "note": "How the customer paid. “boleto” = Brazilian bank slip, "
-             "“voucher” = store credit."},
-    {"field": "max_installments", "type": "number", "label": "Instalments",
-     "min": 1, "max": 24, "required": False, "section": "Payment",
-     "note": "Monthly instalments the payment was split into (1 = paid in full)."},
-    {"field": "freight_total", "type": "number", "label": "Shipping paid (R$)",
-     "min": 0, "required": True, "section": "Payment",
-     "note": "Freight cost the customer paid, in reais."},
-    {"field": "payment_value_total", "type": "number", "label": "Total charged (R$)",
-     "min": 0, "required": False, "section": "Payment",
-     "note": "Amount actually charged (items + shipping). Leave blank and we use "
-             "order value + shipping."},
-    {"field": "customer_state", "type": "choice", "label": "Customer's state (Brazil)",
-     "options": BRAZIL_STATES, "required": False, "section": "Payment",
-     "note": "Two-letter Brazilian state code (e.g. SP = São Paulo). Used only to "
-             "derive the customer's region."},
-
-    # ========================= step 3: Delivery & review =========================
-    {"field": "order_purchase_timestamp", "type": "date", "label": "Order placed on",
-     "required": True, "section": "Delivery & review",
-     "note": "When the customer placed the order."},
-    {"field": "order_estimated_delivery_date", "type": "date", "label": "Delivery promised by",
-     "required": True, "section": "Delivery & review",
-     "note": "The delivery date the customer was shown at checkout."},
-    {"field": "order_delivered_customer_date", "type": "date", "label": "Actually delivered on",
-     "required": True, "section": "Delivery & review",
-     "note": "When the order really reached the customer. Later than the promised date "
-             "= “late”, and lateness is the single biggest cause of a bad review."},
-    {"field": "review_comment_message", "type": "text", "label": "Review comment the customer wrote",
-     "required": False, "section": "Customer & review", "examples": COMMENT_EXAMPLES,
-     "note": "The free-text comment left with the star rating (optional). The model "
-             "learned from Brazilian-Portuguese comments, so Portuguese works best — "
-             "other languages are accepted but barely move the prediction. Use an example "
-             "below to see the effect."},
-]
-
-DESC_LEN_DEFAULT = 607
-
-# Human-friendly label mapping for machine feature names in SHAP contributions chart
-PRETTY_LABELS = {
-    "tab__log__price_total": "Order value (price)",
-    "tab__log__freight_total": "Shipping paid (freight)",
-    "tab__log__payment_value_total": "Total amount charged",
-    "tab__std__freight_ratio": "Shipping-to-price ratio",
-    "tab__std__n_items": "Item quantity count",
-    "tab__std__n_sellers": "Number of sellers",
-    "tab__std__max_installments": "Payment instalments",
-    "tab__std__n_payment_types": "Number of payment methods",
-    "tab__std__product_weight_g": "Product weight",
-    "tab__std__product_desc_len": "Product description length",
-    "tab__std__product_photos_qty": "Listing photo count",
-    "tab__std__delivery_days": "Actual delivery time (days)",
-    "tab__std__estimated_days": "Promised delivery time (days)",
-    "tab__std__delivery_delay_days": "Days late vs promise",
-    "tab__std__comment_len": "Comment length (chars)",
-    "tab__bin__is_late": "Delivered late vs promised",
-    "tab__bin__has_comment": "Customer left review comment",
-    "tab__cat__main_payment_type_boleto": "Payment: Bank slip (boleto)",
-    "tab__cat__main_payment_type_credit_card": "Payment: Credit card",
-    "tab__cat__main_payment_type_debit_card": "Payment: Debit card",
-    "tab__cat__main_payment_type_voucher": "Payment: Store voucher",
-    "tab__cat__customer_region_Centre-West": "Customer region: Centre-West",
-    "tab__cat__customer_region_North": "Customer region: North",
-    "tab__cat__customer_region_Northeast": "Customer region: Northeast",
-    "tab__cat__customer_region_South": "Customer region: South",
-    "tab__cat__customer_region_Southeast": "Customer region: Southeast",
+# fields the client form does not ask for — filled server-side (client value still wins).
+# ingredients/highlights are omitted so build_features emits NaN and the pipeline's
+# median imputer fills them exactly as fitted; the edition flags default to 0; the
+# engagement vote counts default to 0 (a brand-new review); submission_time -> NaN ->
+# imputed median review age.
+FIXED_INPUTS = {
+    "limited_edition": 0, "new": 0, "online_only": 0, "sephora_exclusive": 0,
+    "total_feedback_count": 0, "total_pos_feedback_count": 0, "total_neg_feedback_count": 0,
 }
 
-WIZARD_STEPS = ["Product", "Payment", "Delivery & review"]
+# one-click example review texts the client can offer as fills for the review box
+REVIEW_EXAMPLES = [
+    ["Best Pimple Patches",
+     "These are the only pimple patches I've used that actually work on hormonal acne. Thin, invisible under makeup, and they flatten a spot overnight."],
+    ["Holy grail moisturizer",
+     "Completely fixed my winter dryness. Absorbs fast, no scent, layers well under sunscreen and makeup. On my third jar."],
+    ["Broke me out",
+     "Wanted to love this but it broke me out within a week and felt greasy all day. The fragrance is also really strong. Returned it."],
+    ["Just okay for the price",
+     "It's fine — hydrating enough, nothing special. For this price I expected more. Wouldn't repurchase, there are cheaper options that do the same."],
+    ["Too harsh for sensitive skin",
+     "Stung on application and left my cheeks red and flaky for days. Might work for tougher skin but not for me."],
+]
+
+# form metadata — the client renders its fields from this list.
+#   type:  "number" | "choice" | "text" | "textarea"
+#   section = form group heading
+FORM_FIELDS = [
+    # ------------------------- Your skin profile -------------------------
+    {"field": "skin_type", "type": "choice", "label": "Skin type",
+     "options": SKIN_TYPES, "required": False, "section": "Your skin profile",
+     "note": "Your skin type. A product built for dry skin often under-delivers for oily "
+             "reviewers and vice-versa — this is the main structured signal the model uses."},
+    {"field": "skin_tone", "type": "choice", "label": "Skin tone",
+     "options": SKIN_TONES, "required": False, "section": "Your skin profile",
+     "note": "Self-reported skin tone (Sephora's own scale, light → deep)."},
+    {"field": "eye_color", "type": "choice", "label": "Eye colour",
+     "options": EYE_COLORS, "required": False, "section": "Your skin profile",
+     "note": "Part of the reviewer profile Sephora collects; a weak signal on its own."},
+    {"field": "hair_color", "type": "choice", "label": "Hair colour",
+     "options": HAIR_COLORS, "required": False, "section": "Your skin profile",
+     "note": "Part of the reviewer profile Sephora collects; a weak signal on its own."},
+
+    # ------------------------- The product -------------------------
+    {"field": "secondary_category", "type": "choice", "label": "Product category",
+     "options": CATEGORIES, "required": False, "section": "The product",
+     "note": "Skincare sub-category. Riskier categories (peels/treatments, self-tanners) "
+             "draw fewer recommendations than moisturisers or gift sets."},
+    {"field": "brand_name", "type": "choice", "label": "Brand",
+     "options": BRANDS, "required": False, "section": "The product",
+     "note": "Recommend rates range from ~0.56 to ~0.97 across brands — a real signal."},
+    {"field": "price_usd", "type": "number", "label": "Price (US$)",
+     "min": 0, "required": True, "section": "The product",
+     "note": "Retail price in US dollars. Median on this dataset is about $42."},
+    {"field": "loves_count", "type": "number", "label": "“Loves” on the product page",
+     "min": 0, "required": False, "section": "The product",
+     "note": "How many shoppers saved the product to their Loves list — a popularity proxy."},
+    {"field": "reviews", "type": "number", "label": "Total reviews on the product",
+     "min": 0, "required": False, "section": "The product",
+     "note": "How many reviews the product page already has."},
+
+    # ------------------------- The review -------------------------
+    {"field": "review_title", "type": "text", "label": "Review title",
+     "required": False, "section": "The review",
+     "note": "The short headline of the review (optional — about 31% of reviews have none)."},
+    {"field": "review_text", "type": "textarea", "label": "Review text",
+     "required": True, "section": "The review", "examples": REVIEW_EXAMPLES,
+     "note": "The body of the review. This is what the model leans on most — it is written "
+             "in the same session as the recommend tick, so it strongly signals the "
+             "outcome (see notebook §14a on why that is partly leakage). Try an example."},
+]
+
+FORM_SECTIONS = ["Your skin profile", "The product", "The review"]
