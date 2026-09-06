@@ -44,12 +44,12 @@ Per application:
 
 | Field | Diabetes | House Price | Customer Behavior |
 |---|---|---|---|
-| Dataset | «Pima Indians Diabetes Database» | «Housing Prices Dataset (yasserh)» | «Women's E-Commerce Clothing Reviews» |
-| Kaggle URL | «kaggle.com/datasets/uciml/pima-indians-diabetes-database» | «kaggle.com/datasets/yasserh/housing-prices-dataset» | «kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews» |
-| Problem | Flag patients at risk so they get a confirmatory blood test | Estimate a fair listing price from house attributes | Predict whether a customer recommends a product, to drive ranking |
-| Selected model | «Random Forest — best recall at acceptable precision» | «Gradient Boosting Regressor — lowest RMSE, robust to skew» | «Logistic Regression on tabular+TF-IDF — best F1, cheap to serve» |
-| Headline metric | «Recall = 0.78, F1 = 0.74, ROC-AUC = 0.83» | «RMSE = «1,150,000 VND-units», R² = 0.68» | «F1 = 0.88, Accuracy = 0.86, ROC-AUC = 0.92» |
-| Deployment | «FastAPI + Flutter» | «FastAPI + Flutter» | «FastAPI + Flutter» |
+| Dataset | «Pima Indians Diabetes Database» | «Housing Prices Dataset (yasserh)» | **Sephora Products and Skincare Reviews** (`nadyinky`) |
+| Kaggle URL | «kaggle.com/datasets/uciml/pima-indians-diabetes-database» | «kaggle.com/datasets/yasserh/housing-prices-dataset» | kaggle.com/datasets/nadyinky/sephora-products-and-skincare-reviews |
+| Problem | Flag patients at risk so they get a confirmatory blood test | Estimate a fair listing price from house attributes | Predict whether a skincare reviewer recommends the product (`is_recommended`), from their skin profile + the product + the review text |
+| Selected model | «Random Forest — best recall at acceptable precision» | «Gradient Boosting Regressor — lowest RMSE, robust to skew» | Logistic Regression on tabular + TF-IDF text — best macro-F1 / minority recall, one small CPU artifact |
+| Headline metric | «Recall = 0.78, F1 = 0.74, ROC-AUC = 0.83» | «RMSE = «1,150,000 VND-units», R² = 0.68» | test ROC-AUC 0.964, macro-F1 0.858, recall on "won't recommend" 0.876, accuracy 0.918 |
+| Deployment | «FastAPI + Flutter» | «FastAPI + Flutter» | FastAPI + React/Vite web + Flutter mobile |
 
 ---
 
@@ -75,7 +75,7 @@ Real-world object → Raw data → Numerical representation → Tensor → Model
 |---|---|---|
 | Diabetes | CSV, 1 row = 1 patient | scaled feature matrix, d = «8» |
 | House Price | CSV, 1 row = 1 house | one-hot + scaled matrix, d = ««13 → 20 after encoding»» |
-| Customer Behavior | CSV, 1 row = 1 review (already customer-level here) | tabular matrix (d = «7») ⊕ TF-IDF vector (d_text = «5 000») → d = «5 007» |
+| Customer Behaviour | CSV + review text, 1 row = 1 review | tabular one-hot+scaled matrix (d_tab = 138) ⊕ TF-IDF vector (d_text = 28 595) → d = 28 733 (sparse) |
 
 Answer for **each** application (example = diabetes):
 
@@ -95,7 +95,7 @@ General notation used throughout:
 
 - Model input: `X ∈ ℝ^{N×d}` — `N` = rows in the batch, `d` = features after encoding.
 - Target: `y ∈ ℝ^N` (regression) or `y ∈ {0,1,…,K−1}^N` (classification).
-- Text (App 3): `E ∈ ℝ^{B×T×d}` — `B` = «32» comments per batch, `T` = «60» tokens (padded), `d` = «100» embedding dims. (If TF-IDF is used instead of embeddings, the text part is a 2-D matrix `ℝ^{B×V}` with `V` = vocabulary size «5 000».)
+- Text (App 3): `E ∈ ℝ^{B×T×d}` demo — `B` = 1 review, `T` = 40 tokens (padded), `d` = 16 embedding dims → `ℝ^{1×40×16}`. The deployed model uses TF-IDF instead: a 2-D sparse matrix `ℝ^{B×V}`, `V` = 28 595 (training vocabulary).
 
 ---
 
@@ -302,95 +302,117 @@ Screenshots + figure explanations.
 
 ---
 
-## 6. Application 3 — E-Commerce Customer Behavior and Interest
+## 6. Application 3 — E-Commerce Customer Behaviour and Interest
+
+> **Full written section: `customer_behaviour/Report_App3.md`** (real numbers,
+> screenshot placeholders, and the App-3 cells for the shared tables). Summary below.
 
 ### 6.1 Problem description
 
-- Objective: discover customer interest / behavior from e-commerce data, using customer
-  fields **and review text**.
-- **Chosen supervised target:** «`Recommended IND` — will this customer recommend the
-  product they reviewed? (binary)». (Other valid choices: predict `Department Name` the
-  customer is interested in = multiclass; predict repeat purchase; customer segment.)
-- `X` = customer/review features (Age, Rating, Positive Feedback Count, Division/Department/Class)
-  **+** text representation of `Review Text`. `y` = `Recommended IND ∈ {0,1}`.
+- Objective: analyse **customer behaviour and interest** on a beauty marketplace and
+  predict, from the reviewer's profile **and their review text**, whether they recommend
+  the product.
+- **Target:** `recommended = is_recommended ∈ {0,1}` — a field *separate* from the 1–5 star
+  rating (which is excluded as leakage, §6.6a). Binary classification; one observation =
+  one product review.
+- `X` = skin profile (`skin_type/skin_tone/eye_color/hair_color`) + product
+  (`price_usd`, `secondary_category`, `brand_name`, `loves_count`, review count, flags) +
+  review timing/engagement **+** TF-IDF of `review_title + review_text`. `y = recommended`.
 
 ### 6.2 Dataset
 
 | Field | Value |
 |---|---|
-| Name / URL | «Women's E-Commerce Clothing Reviews» / «kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews» |
-| Rows | «23 486 reviews» (1 row = 1 review; already customer-review level, no transaction aggregation needed) |
-| Features | «Age, Title, Review Text, Rating, Recommended IND, Positive Feedback Count, Division Name, Department Name, Class Name» |
-| Target | «`Recommended IND`» |
+| Name / URL | **Sephora Products and Skincare Reviews** (`nadyinky`, CC0) / kaggle.com/datasets/nadyinky/sephora-products-and-skincare-reviews |
+| Files | `reviews_500-750.csv` joined to `product_info.csv` on `product_id` |
+| Rows | **116 262** raw → **104 313** after cleaning (§6.4); 1 row = 1 review; positive rate **0.8465** |
+| Scope | 249 products · ~79 brands · 12 `secondary_category` values, all in the Skincare category |
 
-> **If your dataset is transaction-level instead** (one row = one order line, e.g. "Online
-> Retail"), you must aggregate first: `Transactions → Customer Profile → Feature Vector`,
-> e.g. per customer compute recency R, frequency F, monetary value M, and per-category
-> counts C₁…C_k, giving `xᵢ = [Rᵢ, Fᵢ, Mᵢ, Cᵢ₁, …, C_ik]`.
+### 6.3 Customer representation
 
-### 6.3 Customer Representation
+- **Tabular:** 21 columns (9 numeric log/scale, 4 numeric scale, 6 binary, 6 one-hot
+  categorical) → `x_tab ∈ ℝ^{138}` after one-hot.
+- **Text — required `Comment → Tokens → Token IDs → Embedding` demo** on a real review:
+  40 tokens → 40 IDs (index into a 41-row vocab, 0 = PAD) → `E ∈ ℝ^{T×d} = ℝ^{40×16}`,
+  batched `E_batch ∈ ℝ^{B×T×d} = ℝ^{1×40×16}`. `B` = reviews per batch, `T` = padded
+  token length, `d` = embedding width. The **deployed** model uses the sparse **TF-IDF**
+  form (`ngram_range=(1,2)`, `min_df=10`, ≤ 40 000 features) → `x_txt ∈ ℝ^{28 595}` on
+  the training vocabulary.
+- **Combined:** `X = [x_tab ‖ x_txt] ∈ ℝ^{104 313 × 28 733}` sparse.
 
-- **Tabular part:** `xᵢ = [Age, Rating, PositiveFeedbackCount, DivisionName(1-hot), DepartmentName(1-hot), ClassName(1-hot)]` → `d_tab = ««3 + 17 one-hot = 20»»`.
-- **Text part — required demonstration** on a real comment:
+### 6.4 Data cleaning
 
-  ```
-  Comment  : "I love this dress, the fabric is soft and it fits perfectly"
-  Tokens   : ["i", "love", "this", "dress", "the", "fabric", "is", "soft", "and", "it", "fits", "perfectly"]
-  Token IDs: [12, 88, 5, 431, 3, 902, 7, 1544, 9, 21, 677, 2103]      (index into a vocabulary)
-  Vector   : TF-IDF row  ∈ ℝ^{1 × «5000»}      (or embedding E ∈ ℝ^{T × d})
-  ```
+Drop 11 803 blank-target + 125 empty-body + a few duplicate reviews (116 262 → 104 313).
+Skin-profile blanks → explicit `__na__` one-hot level (missingness is a behaviour).
+Incidental numeric gaps → `SimpleImputer(median)` fitted **on train only**. Lower-case all
+categoricals; merge `eye_color "grey" → "gray"`. Outliers kept (genuine — `log1p` handles
+the skew). The review's own `rating` and `rating_product` are quarantined to the leakage
+demo (§6.6a). State *why* for each.
 
-  Report `B = «32»` (batch), `T = «60»` (padded token length), `d = «100»` (embedding dim)
-  → `E ∈ ℝ^{B×T×d} = ℝ^{32×60×100}`. (With TF-IDF the text block is 2-D: `ℝ^{B×5000}`.)
+### 6.5 Interest discovery / EDA
 
-- **Combined model input:** horizontally stack tabular + text → `X ∈ ℝ^{N × (d_tab + d_text)} = ℝ^{«23486 × 5020»}` (sparse).
+Six figures (each Observation / Interpretation / ML implication): class balance 84.7%
+recommend; recommend rate by skin type (spread ~0.03) and category (~0.16) and brand
+(~0.40); recommend rate vs the excluded star rating (0.01 → 1.00 — the leak); topic
+buckets (texture ~42%, skin outcome ~39%, irritation ~23%, scent ~26%, price ~13%) +
+frequent terms; mutual information (excluded `rating` 0.35, `log_loves` 0.037, category
+0.002). Plus customer segmentation: reviewer `xᵢ = [Rᵢ, Fᵢ, Mᵢ, avg_priceᵢ, recommend-rateᵢ,
+avg-ratingᵢ, Cᵢ₁…C_ik]`, K-Means `k = 5` (73 819 reviewers, `F ≥ 2` for 22%).
 
-### 6.4 Data Cleaning
+### 6.6 Model development
 
-Tabular: missing `Review Text` («845 rows» → drop or treat as empty string), missing
-`Department Name` («14 rows» → mode impute), duplicate reviews, `Age` outliers, inconsistent
-category spellings.
-Text: strip whitespace, lowercase, remove punctuation/digits, drop empty comments, tokenize.
-State **why** for each (e.g. lowercasing so "Soft" and "soft" map to one token).
+**Eight pipelines** — the assignment's six (Logistic Regression, Decision Tree, Random
+Forest, Linear SVM, a text-based linear classifier `SGD(log_loss)`, and `HistGradientBoosting`
+as the extra justified model) plus Complement Naive Bayes and the deployed Logistic
+Regression on tab+text. Validation:
 
-### 6.5 Interest Discovery
+| Representation | ROC-AUC | macro-F1 | recall(0) |
+|---|---|---|---|
+| Tabular only (best: HistGradientBoosting) | 0.811 | 0.664 | 0.678 |
+| Tabular only (linear / Decision Tree) | ~0.77 | ~0.62 | ~0.68 |
+| **Text only** (SGD log-loss, TF-IDF) | 0.965 | 0.856 | 0.885 |
+| **Tabular + text** (deployed) | **0.966** | **0.861** | **0.885** |
 
-Frequent categories, purchase/review frequency, average rating, recency; word-frequency bar
-chart / word cloud of positive vs negative reviews; most predictive keywords.
+→ Both representations carry real skill; the text is well ahead; adding it to the tabular
+block gives a small, consistent lift (macro-F1 0.856 → 0.861). Ladder: skin profile 0.536
+→ + product 0.656 → full tabular 0.768 → + text 0.966.
 
-### 6.6 Model Development
+### 6.6a Data leakage (assignment requirement)
 
-**Six models:** Logistic Regression, Decision Tree, Random Forest, SVM, a text-based linear
-classifier (Logistic Regression / LinearSVC on TF-IDF alone), and one more justified
-(Gradient Boosting or KNN).
-Also compare **tabular-only vs tabular+text** and report whether text helps:
-
-| Representation | F1 | ROC-AUC |
-|---|---|---|
-| Tabular only | «0.81» | «0.85» |
-| Tabular + TF-IDF text | «**0.88**» | «**0.92**» |
-
-→ «Text adds +0.07 F1; `Rating` + review wording carry most signal.»
+(1) The review text is **co-authored** with the recommend tick — the text model partly
+*reads* the verdict; the ~0.965 is a retrospective upper bound. (2) The review's own star
+`rating` **is** the label in another column — adding it → ROC-AUC ~0.985; excluded.
+(3) Engagement vote counts are post-publication — kept for this retrospective model; a
+prospective variant that drops them falls to ROC-AUC ~0.66. No preprocessing object is
+fitted on validation/test/user input.
 
 ### 6.7 Evaluation
 
-Accuracy, Precision, Recall, F1, ROC-AUC, confusion matrix (interpreted). If you chose a
-multiclass target (department interest), report macro-F1 and a per-class table instead.
+Deployed Logistic Regression (tab + text), held-out test (`N = 20 864`): **accuracy
+0.918, macro-F1 0.858, ROC-AUC 0.964**, **recall on "does not recommend" = 0.876**.
+Confusion `[[2804, 398], [1315, 16347]]` — FN (1 315) = a customer who won't recommend,
+predicted as recommending (the costly miss); FP (398) = a happy customer flagged (cheap).
+Most important metric: **recall(0)**. Error analysis: 22% of the false negatives carry a
+4–5★ rating — a positive-reading review with a hidden veto — the irreducible ceiling.
 
-### 6.8 Business Interpretation
+### 6.8 Business interpretation
 
-«The model identifies which reviews signal genuine product satisfaction. An e-commerce
-company can: surface recommended items higher in search, trigger a retention email when a
-customer posts a non-recommending review, feed predicted category interest into the
-recommender, and target promotions at high-value segments.»
+Whether a customer recommends is **mostly in what they write** (text ~0.965); the
+structured fit (skin-type match, category, brand, price, popularity) is a real but weaker,
+redundant signal (~0.8). Uses: review-consistency QA (flag 5★ + "would not repurchase"),
+cold-start ranking from the **tabular-only** model (no text needed, ~0.8), merchandising
+on low-recommend categories. It is retrospective — it needs the review.
 
 ### 6.9 Deployment
 
-Web + mobile. Input customer info + review text → predicted interest / behavior:
-```json
-{ "interest": "electronics", "confidence": 0.87 }
-```
-(or `{ "recommended": true, "confidence": 0.88 }` for the binary target). Screenshots + explanations.
+`POST /predict` (FastAPI) → `{ prediction, confidence, p_recommend, threshold,
+review_terms, signals, contributions, model, representation }`. The service loads
+`model/model_pipeline.joblib` (`ColumnTransformer` + `TfidfVectorizer` + `LogisticRegression`)
+and **never re-fits** it. `contributions` = an exact linear-SHAP decomposition
+(`φⱼ = coefⱼ·(xⱼ − x̄ⱼ)`) rendered as a diverging bar chart + waterfall. **Web** = React +
+Vite 3-step wizard (skin profile → product → review) then a result screen; **mobile** =
+Flutter, two screens, same design tokens (light + dark). Screenshots W1–W5, M1–M4 — see
+`Report_App3.md`.
 
 ---
 
@@ -401,18 +423,18 @@ Web + mobile. Input customer info + review text → predicted interest / behavio
 | Problem type | Classification | Regression | Classification (chosen target) |
 | Raw data | CSV | CSV | CSV (+ review text) |
 | Observation (one row) | Patient | House | Customer review |
-| Input shape | `ℝ^{N×8}` | `ℝ^{N×20}` | `ℝ^{N×5020}` (tabular ⊕ text) |
+| Input shape | `ℝ^{N×8}` | `ℝ^{N×20}` | `ℝ^{N×28 733}` (tabular ⊕ TF-IDF text, sparse) |
 | Target | `{0,1}` | price ∈ ℝ⁺ | `{0,1}` |
 | Representation | scaled numeric matrix | one-hot + scaled matrix | matrix + TF-IDF text vectors |
-| Best model | «Random Forest» | «Gradient Boosting» | «LogReg tabular+text» |
-| Main metric | «Recall / F1» | «RMSE / R²» | «F1 / ROC-AUC» |
-| Web deployment | Yes | Yes | Yes |
-| Mobile deployment | Yes | Yes | Yes |
-| Main limitation | «small N, single population» | «no location detail, 545 rows» | «reviews only, English only, one shop» |
+| Best model | «Random Forest» | «Gradient Boosting» | Logistic Regression (tabular + text) |
+| Main metric | «Recall / F1» | «RMSE / R²» | recall on "does not recommend" (0.876) at ROC-AUC 0.964 |
+| Web deployment | Yes | Yes | Yes (React + Vite 3-step wizard) |
+| Mobile deployment | Yes | Yes | Yes (Flutter, 2 screens) |
+| Main limitation | «small N, single population» | «no location detail, 545 rows» | review text is co-authored with the recommend tick (~0.96 is partly leakage; leak-safe tabular ~0.8); retrospective only; one product category; ~78% single-review reviewers (RFM Frequency near-degenerate) |
 
 Then discuss (1–8): dataset differences, representation differences, common vs
 app-specific preprocessing, why targets differ, why metrics differ, easiest to deploy
-(«diabetes — 8 numeric inputs»), most compute-heavy («e-commerce — 5 000-dim sparse text + 6 models»).
+(«diabetes — 8 numeric inputs»), most compute-heavy (e-commerce — ~28 700-dim sparse tabular+text, 8 models).
 
 ---
 
@@ -515,6 +537,6 @@ lesson, (2) biggest technical challenge, (3) most important data-representation 
 |---|---|---|---|
 | Diabetes | CSV / table | Scaled feature matrix | `B × d` = «B × 8» |
 | House price | CSV / table | One-hot + scaled feature matrix | `B × d` = «B × 20» |
-| E-commerce | CSV + comments | Tabular features + TF-IDF / embeddings | `B × d` = «B × 5020», and/or `B × T × d` = «32 × 60 × 100» |
+| E-commerce | CSV + review comments | tabular one-hot+scaled + TF-IDF text vectors | `B × d` = `N × 28 733` sparse (N = 104 313); embedding demo `B × T × d` = `1 × 40 × 16` |
 
 **Every dimension above must be explained** (what B, d, T mean and where the numbers come from).
