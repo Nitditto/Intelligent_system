@@ -79,7 +79,7 @@ Real-world object → Raw data → Numerical representation → Tensor → Model
 | House price | CSV, 1 row = 1 listing | median-impute → `log1p` (skewed) → `StandardScaler` (numeric); `OneHotEncoder(min_frequency=50)` (categorical) | `X ∈ ℝ^{201654 × 92}`, `y ∈ ℝ^N` (log1p million VND) |
 | Customer behaviour | CSV + review text, 1 row = 1 review | tabular one-hot+scaled (`d_tab = 138`) ⊕ TF-IDF 1–2-gram (`d_txt = 28 595`, training vocabulary) | `X = [x_tab ‖ x_txt] ∈ ℝ^{104313 × 28 733}` sparse; embedding demo `E ∈ ℝ^{1×40×16}` |
 
-**Per-application row/column meaning** (fill in the report):
+**Per-application row/column meaning:**
 
 | Question | Diabetes | House price | Customer behaviour |
 |---|---|---|---|
@@ -289,7 +289,7 @@ min_frequency=50)` on the 7 categoricals → **`X ∈ ℝ^{201654 × 92}`** (spa
 | *baseline — predict the median* | | 14 397 | 32 185 | −0.131 |
 
 **Held-out test — Random Forest, refit on full train:** MAE **10 626**, MSE
-722 146 400, RMSE **26 873**, **R² 0.186**, MAPE 350%. *(All money units = million VND.)*
+722 149 435, RMSE **26 873**, **R² 0.186**, MAPE 350%. *(All money units = million VND.)*
 
 **Interpretation.** RMSE 26 873 means the typical error is ~27 000 million VND; **R² 0.19**
 means the model explains only ~19% of price variance. This is a **property of the
@@ -297,8 +297,8 @@ dataset**, not the algorithm — the EDA shows almost no numeric feature correla
 price (`r(Area, Price) = 0.017`), 70–84% of the size fields are missing, and geolocation
 is 68% missing. The linear models (R² ≈ 0.03) confirm there is little linear signal; the
 tree ensembles recover what non-linear structure exists (location × property type). The
-huge MAPE is dominated by very cheap listings (median 50 million VND) where a small
-absolute error is a large relative one. **The honest headline is "a weak-signal regression
+huge MAPE is dominated by the many low-priced listings (most sit at 2–5 tỷ) where a modest
+absolute miss is a large percentage. **The honest headline is "a weak-signal regression
 problem"**, reported as a limitation.
 
 📸 **N7-H — §18** model table; 📸 **N8-H — §19** predicted-vs-actual + residual plots.
