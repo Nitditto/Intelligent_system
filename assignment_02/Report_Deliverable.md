@@ -27,7 +27,7 @@ Semester:     I.2026
 
 ## 1. Executive Summary
 
-This report builds three deployable intelligent systems from raw Kaggle data: a
+This report builds three deployable intelligent systems from real-world data (two Kaggle datasets, one scraped property corpus): a
 **diabetes screening classifier**, a **house-price regressor**, and an **e-commerce
 product-recommendation classifier that also uses review text**. Each is taken through the
 full pipeline and exposed as a FastAPI `POST /predict` service consumed by a React/Vite
@@ -42,7 +42,7 @@ web page and a Flutter mobile app.
 | Field | Diabetes | House Price | Customer Behaviour |
 |---|---|---|---|
 | Dataset | Diabetes Health Indicators (BRFSS 2015) | VN Real Estate Listings (Apr–Sept 2025) | Sephora Products and Skincare Reviews (`nadyinky`) |
-| Kaggle | kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset | **[fill in the exact Kaggle URL — missing in the notebook]** | kaggle.com/datasets/nadyinky/sephora-products-and-skincare-reviews |
+| Source | Kaggle `alexteboul/diabetes-health-indicators-dataset` | **Scraped VN property portal — not on Kaggle** (nearest Kaggle options: `nguyentiennhan/vietnam-housing-dataset-2024`, `ladcva/vietnam-housing-dataset-hanoi`, both smaller) | Kaggle `nadyinky/sephora-products-and-skincare-reviews` |
 | Rows (raw → clean) | 253 680 → 229 781 | 236 226 → 201 654 | 116 262 → 104 313 |
 | Target | `Diabetes_binary ∈ {0,1}` (17.3% positive) | `log1p(Price)` in million VND | `is_recommended ∈ {0,1}` (84.7% positive) |
 | Selected model | Random Forest | Random Forest | Logistic Regression on tabular + TF-IDF text |
@@ -230,7 +230,7 @@ precision/recall.
 
 | Field | Value |
 |---|---|
-| Name / file | **VN Real Estate Listings (April–September 2025)** — , scraped from a Vietnamese property portal. **Kaggle URL + licence are not recorded in the notebook — fill in before submitting.** |
+| Name / file | **VN Real Estate Listings (April–September 2025)** — `VN-real-estate-Apr-Sept-2025.csv`, scraped from a Vietnamese property-listing portal (`Scraped At` Sept 2025). **This is not a Kaggle dataset** — the assignment normally asks for a Kaggle URL. The nearest published Kaggle datasets are `nguyentiennhan/vietnam-housing-dataset-2024` and `ladcva/vietnam-housing-dataset-hanoi` (both much smaller); this larger scrape is used for volume and treated as research-use only. **Decide before submitting: keep the scrape with this caveat, or switch to a Kaggle dataset.** |
 | Rows | **236 226** → **201 654** after cleaning |
 | Numeric features | `Area, Width, Length, Bedrooms, Bathrooms, Floors, Alley Width, Agent Listing Count` + 3 `*_missing` indicators |
 | Categorical features | `Property Type, Position, Direction, Road Type, Province, Agent Role, district` |
@@ -498,7 +498,7 @@ test: reload == in-memory; positive review → `p_recommend = 0.9376`, negative 
 | Main metric | recall on diabetic class — **0.735** at ROC-AUC 0.809 | RMSE **26 873** / R² **0.186** (million VND) | recall on "does not recommend" — **0.876** at ROC-AUC 0.964 |
 | Web deployment | Yes (React + Vite) | Yes (React + Vite) | Yes (React + Vite 3-step wizard) |
 | Mobile deployment | Yes (Flutter) | Yes (Flutter) | Yes (Flutter, 2 screens) |
-| Main limitation | recall bought with low precision (0.36); survey self-report; one country/year | weak-signal dataset — R² ≈ 0.19; size fields unreliable and mostly missing | review text is co-authored with the recommend tick (~0.96 partly leakage; leak-safe tabular ~0.8); retrospective only; one product category |
+| Main limitation | recall bought with low precision (0.36); survey self-report; one country/year | **not a Kaggle dataset** (scraped — see §5.2); weak-signal data — R² ≈ 0.19, `corr(log Area, log Price) ≈ 0` even after cleaning; size fields mostly missing | review text is co-authored with the recommend tick (~0.96 partly leakage; leak-safe tabular ~0.8); retrospective only; one product category |
 
 **Discussion (1–8).** *(1) Datasets differ* — a balanced-ish health survey, a skewed
 real-estate log, and a review corpus with free text. *(2) Representations differ* — a
@@ -590,7 +590,7 @@ input, submit, and see the prediction + confidence + a short explanation.
 | Python / OS | 3.13 / Windows 11 | 3.13 / Windows 11 | 3.13 / Windows 11 |
 | Key libraries | scikit-learn 1.9.0, numpy, pandas, scipy, matplotlib; fastapi + uvicorn + pydantic 2 | + xgboost | + `TfidfVectorizer` (scikit-learn); React 18 + Vite 5; Flutter 3.19+ |
 | Random seed | `RANDOM_SEED = 42` (numpy + `random`, every split and estimator) | same | same |
-| Dataset | Kaggle Diabetes Health Indicators (BRFSS 2015),  — committed | VN Real Estate Listings Apr–Sept 2025,  — committed (Kaggle URL TBD) | Kaggle `nadyinky/sephora-products-and-skincare-reviews` — **not committed** (~505 MB), re-download `reviews_500-750.csv` + `product_info.csv` into `data/sephora/` |
+| Dataset | Kaggle Diabetes Health Indicators (BRFSS 2015), `diabetes_012_health_indicators_BRFSS2015.csv` — committed | VN Real Estate Listings Apr–Sept 2025, `VN-real-estate-Apr-Sept-2025.csv` — **not committed** (~210 MB), scraped (not on Kaggle) | Kaggle `nadyinky/sephora-products-and-skincare-reviews` — **not committed** (~505 MB), re-download `reviews_500-750.csv` + `product_info.csv` into `data/sephora/` |
 | Rows | 253 680 → 229 781 | 236 226 → 201 654 | 116 262 → 104 313 |
 | Split | stratified 70/15/15 (train 160 846 / val 34 467 / test 34 468) | 70/15/15 (train 141 157 / val 30 248 / test 30 249) | `StratifiedGroupKFold(5)` on `author_id` (train 62 587 / val 20 862 / test 20 864) |
 | Preprocessing | `SimpleImputer(median)` → `StandardScaler` (8 cols) + passthrough (15) | `SimpleImputer(median)` → `log1p` → `StandardScaler`; `OneHotEncoder(min_frequency=50)` | `SimpleImputer(median)` → `log1p` → `StandardScaler`; `OneHotEncoder(min_frequency=25)`; `TfidfVectorizer(ngram_range=(1,2), min_df=10, max_features=40000, sublinear_tf, stop_words="english")` — all fitted on train only |
