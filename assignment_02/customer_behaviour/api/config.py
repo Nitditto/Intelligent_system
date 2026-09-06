@@ -96,45 +96,42 @@ FORM_FIELDS = [
     # ------------------------- Your skin profile -------------------------
     {"field": "skin_type", "type": "choice", "label": "Skin type",
      "options": SKIN_TYPES, "required": False, "section": "Your skin profile",
-     "note": "Your skin type. A product built for dry skin often under-delivers for oily "
-             "reviewers and vice-versa — this is the main structured signal the model uses."},
+     "note": "Main structured signal — a product for dry skin often disappoints oily reviewers."},
     {"field": "skin_tone", "type": "choice", "label": "Skin tone",
      "options": SKIN_TONES, "required": False, "section": "Your skin profile",
-     "note": "Self-reported skin tone (Sephora's own scale, light → deep)."},
+     "note": "Sephora's scale, light → deep."},
     {"field": "eye_color", "type": "choice", "label": "Eye colour",
      "options": EYE_COLORS, "required": False, "section": "Your skin profile",
-     "note": "Part of the reviewer profile Sephora collects; a weak signal on its own."},
+     "note": "Reviewer profile; weak signal alone."},
     {"field": "hair_color", "type": "choice", "label": "Hair colour",
      "options": HAIR_COLORS, "required": False, "section": "Your skin profile",
-     "note": "Part of the reviewer profile Sephora collects; a weak signal on its own."},
+     "note": "Reviewer profile; weak signal alone."},
 
     # ------------------------- The product -------------------------
     {"field": "secondary_category", "type": "choice", "label": "Product category",
      "options": CATEGORIES, "required": False, "section": "The product",
-     "note": "Skincare sub-category. Riskier categories (peels/treatments, self-tanners) "
-             "draw fewer recommendations than moisturisers or gift sets."},
+     "note": "Peels/treatments and self-tanners get fewer recommendations than moisturisers."},
     {"field": "brand_name", "type": "choice", "label": "Brand",
      "options": BRANDS, "required": False, "section": "The product",
-     "note": "Recommend rates range from ~0.56 to ~0.97 across brands — a real signal."},
+     "note": "Recommend rate ranges ~0.56–0.97 across brands."},
     {"field": "price_usd", "type": "number", "label": "Price (US$)",
      "min": 0, "required": True, "section": "The product",
-     "note": "Retail price in US dollars. Median on this dataset is about $42."},
+     "note": "US dollars; dataset median ~$42."},
     {"field": "loves_count", "type": "number", "label": "“Loves” on the product page",
      "min": 0, "required": False, "section": "The product",
-     "note": "How many shoppers saved the product to their Loves list — a popularity proxy."},
+     "note": "Shoppers who saved it — a popularity proxy."},
     {"field": "reviews", "type": "number", "label": "Total reviews on the product",
      "min": 0, "required": False, "section": "The product",
-     "note": "How many reviews the product page already has."},
+     "note": "Reviews already on the product page."},
 
     # ------------------------- The review -------------------------
     {"field": "review_title", "type": "text", "label": "Review title",
      "required": False, "section": "The review",
-     "note": "The short headline of the review (optional — about 31% of reviews have none)."},
+     "note": "Optional — ~31% of reviews have none."},
     {"field": "review_text", "type": "textarea", "label": "Review text",
      "required": True, "section": "The review", "examples": REVIEW_EXAMPLES,
-     "note": "The body of the review. This is what the model leans on most — it is written "
-             "in the same session as the recommend tick, so it strongly signals the "
-             "outcome (see notebook §14a on why that is partly leakage). Try an example."},
+     "note": "What the model leans on most. Written with the recommend tick, so it "
+             "strongly signals the outcome (notebook §14a)."},
 ]
 
 FORM_SECTIONS = ["Your skin profile", "The product", "The review"]

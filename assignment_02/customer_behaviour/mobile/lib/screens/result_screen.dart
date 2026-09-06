@@ -38,7 +38,6 @@ class ResultScreen extends StatelessWidget {
 
     final against = result.termsAgainst.map((t) => t.term).toList();
     final toward = result.termsToward.map((t) => t.term).toList();
-    final framing = (modelInfo['framing'] ?? '').toString();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Prediction')),
@@ -49,11 +48,11 @@ class ResultScreen extends StatelessWidget {
             good: good,
             badge: good ? 'RECOMMENDS' : "WON’T RECOMMEND",
             title: good
-                ? 'This customer would probably recommend the product'
-                : 'This customer probably would not recommend the product',
+                ? 'This customer would probably recommend it'
+                : 'This customer probably would not recommend it',
             subtitle:
-                'The model puts the chance the reviewer ticks “recommend” at $pRec%. '
-                'We call it “recommends” above ${_pct(result.threshold)}.',
+                'Chance of a recommendation: $pRec% — we call it “recommends” above '
+                '${_pct(result.threshold)}.',
           ),
           const SizedBox(height: Sp.s4),
 
@@ -73,8 +72,7 @@ class ResultScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: Sp.s3),
                 Text(
-                  'Read it as: $pRec times out of 100, a reviewer who wrote this — '
-                  'with this profile and product — ticked “recommend”.',
+                  '$pRec of 100 reviewers who wrote this ticked “recommend”.',
                   style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
                 ),
               ],
@@ -92,9 +90,8 @@ class ResultScreen extends StatelessWidget {
                 KvGrid(kv),
                 const SizedBox(height: Sp.s3),
                 Text(
-                  'Skin type is the main structured signal — a product that suits dry '
-                  'skin often disappoints oily reviewers. The structured block alone '
-                  'reaches ROC-AUC ~0.8; the review text takes it to ~0.96.',
+                  'Structured signals alone reach ROC-AUC ~0.8; the review text takes '
+                  'it to ~0.96.',
                   style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
                 ),
               ],
@@ -107,7 +104,7 @@ class ResultScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SectionLabel('Words in the review that moved the call'),
+                  const SectionLabel('Review words that moved the call'),
                   const SizedBox(height: Sp.s3),
                   if (against.isNotEmpty) ...[
                     Text('▼ toward “won’t recommend”',
@@ -160,11 +157,8 @@ class ResultScreen extends StatelessWidget {
                 const SizedBox(height: Sp.s2),
                 Text(
                   good
-                      ? 'Text and profile agree the customer is satisfied — safe to '
-                          'surface this review for similar skin types.'
-                      : 'The review reads negative — flag for review-consistency QA '
-                          'and check whether the product page over-promises for this '
-                          'skin type.',
+                      ? 'Text and profile agree — safe to surface for similar skin types.'
+                      : 'Review reads negative — flag for review-consistency QA.',
                   style: TextStyle(fontSize: Ty.sm, color: c.text, height: 1.5),
                 ),
               ],
@@ -186,12 +180,11 @@ class ResultScreen extends StatelessWidget {
           ],
 
           const SizedBox(height: Sp.s4),
-          HowItWorks(
-            'Trained on ~104k Sephora skincare reviews (product-id shard 500–750). '
-            'One Logistic Regression over the reviewer’s skin profile + the product '
-            '(category, brand, price, popularity) and a TF-IDF of the review title + '
-            'body. Inference runs server-side (POST /predict). '
-            '${framing.isEmpty ? '' : framing}',
+          const HowItWorks(
+            '~104k Sephora skincare reviews. Logistic Regression over the skin profile '
+            '+ product + a TF-IDF of the review text. Inference is server-side; the '
+            'review text is written with the recommend tick, so it partly leaks the '
+            'outcome (§14a).',
           ),
 
           const SizedBox(height: Sp.s5),

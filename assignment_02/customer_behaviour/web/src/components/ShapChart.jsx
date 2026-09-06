@@ -59,29 +59,27 @@ export default function ShapChart({ contributions }) {
 
       <div className="shap-waterfall">
         <div className="shap-wf-step">
-          <span className="shap-wf-lbl">Neutral starting point</span>
+          <span className="shap-wf-lbl">Neutral start</span>
           <span className="shap-wf-val">{basePct}%</span>
         </div>
         <span className="shap-wf-arrow">→</span>
         <div className="shap-wf-step">
-          <span className="shap-wf-lbl">Net pull of the factors</span>
+          <span className="shap-wf-lbl">Net pull</span>
           <span className={`shap-wf-val ${netDelta >= 0 ? 'text-good' : 'text-bad'}`}>
             {netDelta >= 0 ? `+${netDelta}` : netDelta} pts
           </span>
         </div>
         <span className="shap-wf-arrow">→</span>
         <div className="shap-wf-step shap-wf-step--final">
-          <span className="shap-wf-lbl">Chance of a recommendation</span>
+          <span className="shap-wf-lbl">Recommends</span>
           <span className="shap-wf-val">{finalPct}%</span>
         </div>
       </div>
 
       <p className="shap-footnote">
-        Bars are each factor&apos;s effect in log-odds. The starting point ({basePct}%) is where the
-        model sits for an average review before this one&apos;s specifics are added (the classes are
-        weighted equally in training, so it is not the {Math.round((dataset_base_rate ?? 0.85) * 100)}%
-        dataset recommend rate). Review terms dominate because the text is written alongside the
-        recommend tick (notebook §14a).
+        Bars are log-odds pulls. Start ({basePct}%) is the model&apos;s neutral point — classes are
+        weighted equally, so not the {Math.round((dataset_base_rate ?? 0.85) * 100)}% dataset rate.
+        Review terms dominate: the text is written with the recommend tick (§14a).
       </p>
     </div>
   )

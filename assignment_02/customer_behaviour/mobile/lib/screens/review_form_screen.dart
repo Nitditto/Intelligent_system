@@ -324,11 +324,11 @@ class _ReviewFormScreenState extends State<ReviewFormScreen> {
   String _stepSub(int i) {
     switch (i) {
       case 0:
-        return 'Who is writing the review — the customer-product fit signal.';
+        return 'Who is writing the review.';
       case 1:
-        return 'Category, brand, price and popularity.';
+        return 'Category, brand, price, popularity.';
       default:
-        return 'What the customer wrote — the model leans on this most.';
+        return 'What the customer wrote — the model leans on this.';
     }
   }
 

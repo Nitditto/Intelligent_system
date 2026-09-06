@@ -5,9 +5,9 @@ import Field from './Field.jsx'
 import { exampleToValues } from '../lib/sephora.js'
 
 const STEP_META = [
-  { title: 'Your skin profile', sub: 'Who is writing the review — the customer-product fit signal.' },
-  { title: 'The product', sub: 'Category, brand, price and popularity.' },
-  { title: 'The review', sub: 'What the customer wrote — the model leans on this most.' },
+  { title: 'Your skin profile', sub: 'Who is writing the review.' },
+  { title: 'The product', sub: 'Category, brand, price, popularity.' },
+  { title: 'The review', sub: 'What the customer wrote — the model leans on this.' },
 ]
 const REQUIRED = { 0: [], 1: ['price_usd'], 2: ['review_text'] }
 

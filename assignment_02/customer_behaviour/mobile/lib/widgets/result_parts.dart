@@ -392,10 +392,9 @@ class ContribChart extends StatelessWidget {
         ),
         const SizedBox(height: Sp.s2),
         Text(
-          'Bars are each factor’s pull in log-odds. The $basePct% start is the '
-          'model’s neutral point for an average review (classes weighted equally, '
-          'so not the 85% dataset rate). Review terms dominate because the text is '
-          'written alongside the recommend tick (notebook §14a).',
+          'Bars are log-odds pulls. Start ($basePct%) is the model’s neutral point — '
+          'classes weighted equally, not the 85% dataset rate. Review terms dominate: '
+          'the text is written with the recommend tick (§14a).',
           style: TextStyle(fontSize: 10, color: c.textFaint, height: 1.5),
         ),
       ],

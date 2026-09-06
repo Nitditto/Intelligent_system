@@ -12,8 +12,6 @@ export default function ResultScreen({ result, model, onRestart }) {
   const toward = (review_terms?.toward || []).map((t) => t.term)
   const against = (review_terms?.against || []).map((t) => t.term)
 
-  const framing = model?.framing || ''
-
   return (
     <div className="res-dashboard">
       <header className="res-nav">
@@ -37,12 +35,12 @@ export default function ResultScreen({ result, model, onRestart }) {
             </span>
             <h2 className="hero-card__title">
               {rec
-                ? 'This customer would probably recommend the product'
-                : 'This customer probably would not recommend the product'}
+                ? 'This customer would probably recommend it'
+                : 'This customer probably would not recommend it'}
             </h2>
             <p className="hero-card__subtitle">
-              The model puts the chance the reviewer ticks “recommend” at <b>{pRec}%</b>. We call it
-              “recommends” above {Math.round(result.threshold * 100)}%.
+              Chance of a recommendation: <b>{pRec}%</b> — we call it “recommends” above{' '}
+              {Math.round(result.threshold * 100)}%.
             </p>
           </div>
 
@@ -64,8 +62,7 @@ export default function ResultScreen({ result, model, onRestart }) {
               </div>
             </div>
             <p className="card-hint">
-              Read it as: “{pRec} times out of 100, a reviewer who wrote this, with this profile and
-              product, ticked <i>recommend</i>.”
+              {pRec} of 100 reviewers who wrote this ticked <i>recommend</i>.
             </p>
           </div>
 
@@ -92,16 +89,14 @@ export default function ResultScreen({ result, model, onRestart }) {
               <span className="kv__v">{signals.review_tokens} words</span>
             </div>
             <p className="card-hint">
-              Skin type is the main <i>structured</i> signal — a product that suits dry skin often
-              disappoints oily reviewers. On its own the structured block reaches ROC-AUC ~0.8; the
-              review text takes it to ~0.96.
+              Structured signals alone reach ROC-AUC ~0.8; the review text takes it to ~0.96.
             </p>
           </div>
 
           {/* review terms */}
           {(toward.length > 0 || against.length > 0) && (
             <div className="card words-card">
-              <h4 className="card-section-title">Words in the review that moved the call</h4>
+              <h4 className="card-section-title">Review words that moved the call</h4>
               {against.length > 0 && (
                 <div className="words-group">
                   <span className="words-group__lbl text-bad">▼ toward “won’t recommend”</span>
@@ -133,18 +128,17 @@ export default function ResultScreen({ result, model, onRestart }) {
             </div>
             <p className="retention-playbook__text">
               {rec
-                ? 'Text and profile agree the customer is satisfied — safe to surface this review and product for similar skin types.'
-                : 'The review reads negative despite the star rating context — flag for review-consistency QA and check whether the product page over-promises for this skin type.'}
+                ? 'Text and profile agree — safe to surface for similar skin types.'
+                : 'Review reads negative — flag for review-consistency QA.'}
             </p>
           </div>
 
           <details className="how-it-works">
             <summary>How this works</summary>
             <p>
-              Trained on ~104k Sephora skincare reviews (product-id shard 500–750). One
-              <b> Logistic Regression</b> over the reviewer&apos;s skin profile + the product
-              (category, brand, price, popularity) <b>and</b> a TF-IDF of the review title + body.
-              Inference runs server-side. {framing}
+              ~104k Sephora skincare reviews. <b>Logistic Regression</b> over the skin profile +
+              product + a TF-IDF of the review text. Inference is server-side; the review text is
+              written with the recommend tick, so it partly leaks the outcome (§14a).
             </p>
           </details>
         </div>
