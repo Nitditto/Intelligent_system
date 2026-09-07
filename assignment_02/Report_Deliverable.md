@@ -4,8 +4,8 @@
 Framework applied identically to each app: `Data → Understand → Clean → Represent →
 Learn → Evaluate → Persist → Deploy`. Every number below is the executed value from the
 corresponding `notebook/*.ipynb` (Python 3.13, Windows 11, scikit-learn 1.9.0,
-`RANDOM_SEED = 42`). The 📸 markers below point at captured images in
-`report/screenshots/` — see that folder's `README.md` for the file-to-section index.
+`RANDOM_SEED = 42`). Each 📸 line labels the figure(s) embedded right below it; the image
+files live in `report/screenshots/` (that folder's `README.md` is the full index).
 
 ---
 
@@ -16,10 +16,10 @@ INTELLIGENT SYSTEM DEVELOPMENT
 ASSIGNMENT 02
 From Data Representation to Deployable Intelligent Systems
 
-Student name: ____________________
-Student ID:   ____________________
-Class:        ____________________
-Team:         ____________________
+Student name: Nguyễn Văn Trường
+Student ID:   B23DCCE095
+Class:        E23CNPM02
+Team:         (individual submission)
 Lecturer:     Dinh Que Tran, Ph.D., Assoc. Prof.
 Semester:     I.2026
 ```
@@ -122,6 +122,12 @@ stratified split, `class_weight="balanced"`, judge on recall / F1 / ROC-AUC not 
 
 📸 **N1-D — notebook §4** `df.info()` + `describe()`; 📸 **N2-D — §5** data-quality table.
 
+![N1-D — notebook §4: shape / head / info / describe](report/screenshots/NB_D_N1_sec4_inspect.png)
+
+![N2-D — notebook §5: missing / duplicate / invalid / imbalance](report/screenshots/NB_D_N2_sec5_quality.png)
+
+![§9: BMI outlier view (kept — sensitivity check moves ROC-AUC ≤ 0.003)](report/screenshots/NB_D_01_sec9.png)
+
 ### 4.4 Data cleaning
 
 | Operation | What | Why |
@@ -140,6 +146,8 @@ and `CardioRisk = (Stroke ∨ HeartDiseaseorAttack)` → 23 model features (8 co
 
 📸 **N4-D — §12**: the raw record + its 23-dim feature vector + the shape lines.
 
+![N4-D — notebook §12: one raw record → 23-dim feature vector → X shape / dtype](report/screenshots/NB_D_N4_sec12_representation.png)
+
 ### 4.6 Exploratory data analysis (≥ 3 plots, each Observation / Interpretation / ML)
 
 - **Target balance** — 17.3% positive → a majority classifier already scores 0.83
@@ -153,6 +161,10 @@ and `CardioRisk = (Stroke ∨ HeartDiseaseorAttack)` → 23 model features (8 co
   correlated with the target; lifestyle items (`Fruits, Veggies`) near zero.
 
 📸 **N5-D — §10** the plot grid; 📸 **N6-D — §10** the correlation heatmap.
+
+![N5-D — notebook §10: EDA plot grid](report/screenshots/NB_D_02_sec10.png)
+
+![N6-D — notebook §10: correlation heatmap](report/screenshots/NB_D_03_sec10.png)
 
 ### 4.7 Model development
 
@@ -202,6 +214,10 @@ missed diabetic is far worse than a wasted test; the class-weighted RF trades pr
 baseline because the model chooses to flag many at-risk people.
 
 📸 **N7-D — §18** comparison table; 📸 **N8-D — §19** report + confusion heatmap + ROC.
+
+![N7-D — notebook §18: five-model comparison + winner](report/screenshots/NB_D_N7_sec18_comparison.png)
+
+![N8-D — notebook §19: classification report + confusion matrix + ROC](report/screenshots/NB_D_04_sec19.png)
 
 ### 4.10 Model selection & deployment
 
@@ -263,6 +279,14 @@ min_frequency=50)` on the 7 categoricals → **`X ∈ ℝ^{201654 × 92}`** (spa
 
 📸 **N4-H — §12**: one raw listing + its 92-dim feature row + the shape lines.
 
+![N1-H — notebook §4: shape / head / info / describe](report/screenshots/NB_H_N1_sec4_inspect.png)
+
+![N2-H — notebook §5: missing / invalid / skew table](report/screenshots/NB_H_N2_sec5_quality.png)
+
+![§9: price / area outlier view (impossible rows dropped)](report/screenshots/NB_H_01_sec9.png)
+
+![N4-H — notebook §12: one raw listing → 92-dim feature row → X / y shape](report/screenshots/NB_H_N4_sec12_representation.png)
+
 ### 5.5 Exploratory data analysis
 
 - **10.1 Distributions** — `Price` raw skew 3.36 → `log1p` −0.07; `Area` 5.11 → 1.32.
@@ -275,6 +299,38 @@ min_frequency=50)` on the 7 categoricals → **`X ∈ ℝ^{201654 × 92}`** (spa
   indicators; the skew/QQ view justifies the `log1p` target.
 
 📸 **N5-H — §10.1** distributions; 📸 **N6-H — §10.2** correlation + η² bars.
+
+![N5-H — §10.1: Price distribution (raw vs log1p)](report/screenshots/NB_H_02_sec10.1.png)
+
+![N5-H — §10.1: Area distribution](report/screenshots/NB_H_03_sec10.1.png)
+
+![N5-H — §10.1: price-per-m² distribution](report/screenshots/NB_H_04_sec10.1.png)
+
+![N5-H — §10.1: log-target QQ / normality](report/screenshots/NB_H_05_sec10.1.png)
+
+![N5-H — §10.1: numeric-feature distributions](report/screenshots/NB_H_06_sec10.1.png)
+
+![N6-H — §10.2: numeric correlation heatmap](report/screenshots/NB_H_07_sec10.2.png)
+
+![N6-H — §10.2: |r| with log Price](report/screenshots/NB_H_08_sec10.2.png)
+
+![N6-H — §10.2: categorical η² with log Price](report/screenshots/NB_H_09_sec10.2.png)
+
+![N6-H — §10.2: Price by Province](report/screenshots/NB_H_10_sec10.2.png)
+
+![N6-H — §10.2: Price by Property Type](report/screenshots/NB_H_11_sec10.2.png)
+
+![N6-H — §10.2: Area vs Price scatter](report/screenshots/NB_H_12_sec10.2.png)
+
+![N6-H — §10.2: Bathrooms / Bedrooms vs Price](report/screenshots/NB_H_13_sec10.2.png)
+
+![§10.3: missingness by property type (justifies *_missing flags)](report/screenshots/NB_H_14_sec10.3.png)
+
+![§10.3: skew before / after log1p](report/screenshots/NB_H_15_sec10.3.png)
+
+![§10.3: QQ-plot of log1p(Price)](report/screenshots/NB_H_16_sec10.3.png)
+
+![§10.3: supporting view](report/screenshots/NB_H_17_sec10.3.png)
 
 ### 5.6 Regression models & 5.7 evaluation
 
@@ -303,6 +359,10 @@ absolute miss is a large percentage. **The honest headline is "a weak-signal reg
 problem"**, reported as a limitation.
 
 📸 **N7-H — §18** model table; 📸 **N8-H — §19** predicted-vs-actual + residual plots.
+
+![N7-H — notebook §18: five-model regression comparison + winner](report/screenshots/NB_H_N7_sec18_comparison.png)
+
+![N8-H — notebook §19: predicted-vs-actual + residuals](report/screenshots/NB_H_18_sec19.png)
 
 ### 5.8 Model selection & 5.9 deployment
 
@@ -366,6 +426,14 @@ stop-words) → `x_txt ∈ ℝ^{28 595}` on the training vocabulary. **Combined:
 📸 **N4-C — §12**: the raw review + tabular row + shapes, and the `B = 1, T = 40, d = 16`
 block.
 
+![N1-C — notebook §4: shape / head / info / describe](report/screenshots/NB_C_N1_sec4_inspect.png)
+
+![N2-C — notebook §5: blank-target / duplicate / imbalance table](report/screenshots/NB_C_N2_sec5_quality.png)
+
+![§9: numeric outlier view (kept; log1p handles the skew)](report/screenshots/NB_C_01_sec9.png)
+
+![N4-C — notebook §12: raw review → tabular row → shapes + the B=1,T=40,d=16 embedding demo](report/screenshots/NB_C_N4_sec12_representation.png)
+
 ### 6.4 Data cleaning
 
 Drop 11 803 blank-target + 125 empty-body + a few duplicate reviews (116 262 → 104 313).
@@ -391,6 +459,14 @@ recommend-rateᵢ, avg-ratingᵢ, Cᵢ₁…C_ik]`; 73 819 reviewers, `F ≥ 2` 
 
 📸 **N5-C — §10** plot grid; 📸 **N6-C — §10** topic-bucket + mutual-information tables;
 📸 **N-B-C — Appendix B** elbow/silhouette + segment profile + PCA scatter.
+
+![N5-C — notebook §10: EDA plot grid](report/screenshots/NB_C_02_sec10.png)
+
+![N6-C — notebook §10: topic-bucket recommend rates + mutual information](report/screenshots/NB_C_N6_sec10_topics_mi.png)
+
+![N-B-C — Appendix B: K-Means elbow / silhouette](report/screenshots/NB_C_NB_appendixB_kmeans_a.png)
+
+![N-B-C — Appendix B: 5-segment profile + PCA scatter](report/screenshots/NB_C_NB_appendixB_kmeans_b.png)
 
 ### 6.6 Model development
 
@@ -463,6 +539,12 @@ positive-reading review with a hidden veto — the irreducible ceiling.
 
 📸 **N7-C — §18** ladder + 8-model table; 📸 **N8-C — §19** report + confusion + ROC;
 📸 **N9-C — §20** FN/FP feature table + sample missed reviews.
+
+![N7-C — notebook §18: representation ladder + 8-model table](report/screenshots/NB_C_N7_sec18_comparison.png)
+
+![N8-C — notebook §19: classification report + confusion matrix + ROC](report/screenshots/NB_C_03_sec19.png)
+
+![N9-C — notebook §20: false-negative / false-positive feature comparison](report/screenshots/NB_C_N9_sec20_error_analysis.png)
 
 ### 6.8 Business interpretation
 
@@ -568,6 +650,24 @@ Output:    { "prediction": "not recommend", "p_recommend": 0.14, "review_terms":
 📸 **W1–W3 per app** — input screen, an example of valid input, and the result screen with
 its confidence/probability and one-line interpretation.
 
+![W1-D — Diabetes web: health questionnaire with a valid example entered](report/screenshots/W1-D_input.png)
+
+![W2-D — Diabetes web result: 82% High risk + SHAP force plot + similar respondents + what-if](report/screenshots/W2-D_result.png)
+
+![W-docs-D — Diabetes FastAPI /docs: POST /predict expanded](report/screenshots/W3-D_docs.png)
+
+![W1-H — House-price web: valuation wizard step 1, District-7 preset filled](report/screenshots/W1-H_input.png)
+
+![W2-H — House-price web result: predicted 9.90 tỷ VND + range + SHAP waterfall + summary](report/screenshots/W2-H_result.png)
+
+![W-docs-H — House-price FastAPI /docs: POST /predict expanded](report/screenshots/W3-H_docs.png)
+
+![W1-C — Customer-behaviour web: step 1 (skin profile), API connected](report/screenshots/W1-C_input.png)
+
+![W2-C — Customer-behaviour web result: WON'T RECOMMEND, P=0% + meter + signals + linear-SHAP](report/screenshots/W2-C_result.png)
+
+![W-docs-C — Customer-behaviour FastAPI /docs: POST /predict expanded](report/screenshots/W3-C_docs.png)
+
 ### Mobile application — per app
 
 ```
@@ -582,6 +682,18 @@ input, submit, and see the prediction + confidence + a short explanation.
 
 📸 **M1–M2 per app** — the input screen and the result screen. 📸 **M-evidence** — a
 `POST /predict 200` line in the Uvicorn log while the app is used.
+
+![M1-D — Diabetes mobile (Flutter): input screen](report/screenshots/M1-D_input.png)
+
+![M2-D — Diabetes mobile result: 27% Low, range 15–46%, why-this-score contributions (POST /predict 200)](report/screenshots/M2-D_result.png)
+
+![M1-H — House-price mobile: input screen, Rạch Giá preset, API Ready](report/screenshots/M1-H_input.png)
+
+![M2-H — House-price mobile result: ≈ 3.01 tỷ VND, unit-price card, analysis text (POST /predict 200)](report/screenshots/M2-H_result.png)
+
+![M1-C — Customer-behaviour mobile: step 1 (skin profile), API connected](report/screenshots/M1-C_input.png)
+
+![M2-C — Customer-behaviour mobile result: WON'T RECOMMEND, 0%, meter, signals, review terms (POST /predict 200)](report/screenshots/M2-C_result.png)
 
 ---
 
