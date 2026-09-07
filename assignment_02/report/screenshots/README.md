@@ -42,11 +42,23 @@ deployed service — `Training ≠ Inference`.
 
 ## Notebook figures (report §4–§6 EDA / evaluation, IDs N1–N9 per app)
 
-Extracted straight from the executed notebooks (`*/notebook/*.ipynb`).
+**Plots** — `image/png` outputs pulled straight from the executed notebooks
+(`sec<N>` in the filename is the source section):
 
-- `NB_D_*` — diabetes: §9 outliers, §10 EDA grid, §10 correlation heatmap, §19 confusion + ROC.
-- `NB_H_*` — house price: §9 outliers; §10.1 distribution set (price / area / unit price);
+- `NB_D_0*` — diabetes: §9 outliers, §10 EDA grid, §10 correlation heatmap, §19 confusion + ROC.
+- `NB_H_0*`/`NB_H_1*` — house price: §9 outliers; §10.1 distribution set (price / area / unit price);
   §10.2 correlation + η² views; §10.3 missingness / skew / QQ; §19 predicted-vs-actual + residuals.
-- `NB_C_*` — customer behaviour: §9 outliers, §10 EDA grid, §19 confusion + ROC, §23 inference-test plots.
+- `NB_C_0*` — customer behaviour: §9 outliers, §10 EDA grid, §19 confusion + ROC.
+- `NB_C_NB_appendixB_kmeans_a/b` — App 3 Appendix B: K-Means elbow/silhouette + segment profile / PCA scatter.
 
-`sec<N>` in each filename is the notebook section the figure came from.
+**Cell captures** — `NB_<app>_N<n>_*` are full notebook cells (code + rendered table/text
+output), rendered via `nbconvert --to html` and clipped. One set per app:
+
+| File stem | Report ID | Section | Shows |
+|---|---|---|---|
+| `N1_sec4_inspect` | N1 | §4 Dataset inspection | `df.shape` / `df.head` / `df.info` / `df.describe` |
+| `N2_sec5_quality` | N2 | §5 Data-quality analysis | NaN / duplicate / invalid / imbalance table |
+| `N4_sec12_representation` | N4 | §12 Data representation | one raw record → its feature vector → `X` shape / dtype (Part IV requirement) |
+| `N7_sec18_comparison` | N7 | §18 Model comparison | the 5-/8-model metric table + winner |
+| `N6_sec10_topics_mi` (App 3 only) | N6-C | §10 | topic-bucket recommend rates + mutual-information table |
+| `N9_sec20_error_analysis` (App 3 only) | N9-C | §20 | false-negative / false-positive feature comparison |
