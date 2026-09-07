@@ -4,10 +4,10 @@
 Framework applied identically to each app: `Data -> Understand -> Clean -> Represent ->
 Learn -> Evaluate -> Persist -> Deploy`. Every number below is the executed value from the
 corresponding `notebook/*.ipynb` (Python 3.13, Windows 11, scikit-learn 1.9.0,
-`RANDOM_SEED = 42`). Each **N-x** label names the figures for that section; a few key plots
-appear inline and the **full screenshot set (notebook / web / mobile) is in Appendix G**,
-kept out of the body so the counted length stays near the ~10-page target. Image files:
-`report/screenshots/` (its `README.md` is the full index).
+`RANDOM_SEED = 42`). Figures are numbered sequentially; each carries a written caption and,
+for exploratory plots, an Observation / Interpretation / ML-implication note, and for the
+web and mobile screens a Figure-explanation note, as required by the assignment. The image
+files are in `report/screenshots/` (indexed in that folder's `README.md`).
 
 ---
 
@@ -122,14 +122,20 @@ stratified split, `class_weight="balanced"`, judge on recall / F1 / ROC-AUC not 
 `BMI` has a long tail (12-98); `MentHlth` / `PhysHlth` are mostly 0 (31% / 37% non-zero
 "unhealthy days") - genuine survey answers, kept.
 
-**N1-D - notebook Sec. 4** `df.info()` + `describe()`; **N2-D - Sec. 5** data-quality table.
+**Figure 1. Diabetes dataset - inspection (notebook Section 4).** `df.shape` returns **(253 680, 22)**; `df.head()` and `df.info()` show every one of the 22 columns is numeric (`float64`) - 14 binary indicators, 4 ordinal survey codes (`GenHlth`, `Age`, `Education`, `Income`), 3 continuous (`BMI`, `MentHlth`, `PhysHlth`), 1 target (`Diabetes_binary`); `df.describe()` shows `BMI` spanning 12-98 and `MentHlth`/`PhysHlth` mostly 0.
+
+![Figure 1](report/screenshots/NB_D_N1_sec4_inspect.png){width=82%}
+
+**Figure 2. Diabetes dataset - data-quality checks (notebook Section 5).** `df.isna().sum()` is **0 for every column** (no missing values); `df.duplicated().sum()` is **23 899** exact duplicate rows; the target class balance is **17.3 % positive**. There are no categorical or text columns to encode and no invalid values; the only quality actions needed are duplicate removal and handling the class imbalance.
+
+![Figure 2](report/screenshots/NB_D_N2_sec5_quality.png){width=82%}
 
 ### 4.4 Data cleaning
 
 | Operation | What | Why |
 |---|---|---|
 | Drop exact duplicates | 23 899 rows removed **before** the split | otherwise an identical answer vector is in both train and test -> optimistic leakage |
-| Keep `BMI` outliers | no clip / drop | Sec. 9 sensitivity check (clip [12,80] / [14,60] / drop) moves ROC-AUC by <= 0.003 -> not worth discarding rows |
+| Keep `BMI` outliers | no clip / drop | Section 9 sensitivity check (clip [12,80] / [14,60] / drop) moves ROC-AUC by <= 0.003 -> not worth discarding rows |
 | Median imputer in the pipeline | fitted on train only | robustness to a missing field at inference, one code path |
 | Ordinal codes kept as numbers | `GenHlth/Age/Education/Income` | monotonic with risk; one-hot would add 30 sparse columns for no gain |
 
@@ -140,7 +146,9 @@ and `CardioRisk = (Stroke or HeartDiseaseorAttack)` -> 23 model features (8 cont
 `-> StandardScaler`, 15 binary/ordinal passthrough). `X in R^{229781 x 23}`, dense float64;
 `y in {0,1}^N`. One API request = `R^{1x23}`.
 
-**N4-D - Sec. 12**: the raw record + its 23-dim feature vector + the shape lines.
+**Figure 3. Diabetes - raw record to model input (notebook Section 12).** One raw survey row (`HighBP=1, HighChol=1, BMI=40.0, GenHlth=5, Age=9, ...`) is passed through `engineer()` (which adds `TotalUnhealthyDays` and `CardioRisk`) and the fitted `ColumnTransformer`, producing the feature vector `x = [x_1, x_2, ..., x_23]^T in R^23` (8 continuous columns standard-scaled, 15 binary/ordinal passed through). The full matrix is **X in R^(229 781 x 23)**, dense `float64`; the target is `y in {0,1}^229 781`; one API request is a single row `R^(1 x 23)`.
+
+![Figure 3](report/screenshots/NB_D_N4_sec12_representation.png){width=82%}
 
 ### 4.6 Exploratory data analysis (>= 3 plots, each Observation / Interpretation / ML)
 
@@ -154,13 +162,21 @@ and `CardioRisk = (Stroke or HeartDiseaseorAttack)` -> 23 model features (8 cont
 - **Correlation heatmap** - `HighBP, HighChol, GenHlth, DiffWalk, Age, BMI` most
   correlated with the target; lifestyle items (`Fruits, Veggies`) near zero.
 
-**N5-D - Sec. 10** the plot grid; **N6-D - Sec. 10** the correlation heatmap.
+**Figure 4. Diabetes - exploratory plot grid (notebook Section 10):** target balance, `GenHlth` vs diabetes rate, `BMI` distribution by class, and `Age` bracket vs rate.
 
-![N5-D - notebook Sec. 10: EDA plot grid](report/screenshots/NB_D_02_sec10.png){width=80%}
+![Figure 4](report/screenshots/NB_D_02_sec10.png){width=82%}
+
+**Observation.** The positive class is 17.3 % of rows; the diabetes rate rises monotonically from ~4 % at `GenHlth`="excellent" to ~35 % at "poor" and rises steadily with `Age`; diabetic respondents sit ~4 BMI points higher but the class distributions overlap heavily. **Interpretation.** Self-rated health and age carry a clear ordinal signal; BMI helps but does not separate the classes on its own; accuracy is a poor metric because a majority classifier already scores 0.83. **ML implication.** Keep `GenHlth`/`Age` as ordinal numbers, scale `BMI`, use a stratified split with `class_weight="balanced"`, and judge on recall / F1 / ROC-AUC.
+
+**Figure 5. Diabetes - feature/target correlation heatmap (notebook Section 10).**
+
+![Figure 5](report/screenshots/NB_D_03_sec10.png){width=72%}
+
+**Observation.** `HighBP`, `HighChol`, `GenHlth`, `DiffWalk`, `Age` and `BMI` are the columns most correlated with `Diabetes_binary`; lifestyle items (`Fruits`, `Veggies`) are near zero. **Interpretation.** The predictive signal is concentrated in a handful of clinical/'how you feel' items, not in diet questions. **ML implication.** All columns are kept (a tree ensemble is robust to weak features), but the heatmap sets expectations for `feature_importances_` and confirms no single feature dominates.
 
 ### 4.7 Model development
 
-**Five models** (notebook Sec. 17), same 25 000-row stratified training subsample and same
+**Five models** (notebook Section 17), same 25 000-row stratified training subsample and same
 preprocessing; the winner is refitted on the full training split.
 
 | model | hyperparameters |
@@ -205,9 +221,11 @@ missed diabetic is far worse than a wasted test; the class-weighted RF trades pr
 (0.357) for that recall deliberately. Accuracy (0.725) is *below* the 0.83 majority
 baseline because the model chooses to flag many at-risk people.
 
-**N7-D - Sec. 18** comparison table; **N8-D - Sec. 19** report + confusion heatmap + ROC.
+**Figure 6. Diabetes - held-out test evaluation (notebook Section 19):** classification report, confusion-matrix heatmap and ROC curve for the Random Forest refit on the full training split.
 
-![N8-D - notebook Sec. 19: classification report + confusion matrix + ROC](report/screenshots/NB_D_04_sec19.png){width=80%}
+![Figure 6](report/screenshots/NB_D_04_sec19.png){width=82%}
+
+**Reading the confusion matrix `[[20 612, 7 897], [1 579, 4 380]]`.** The 1 579 false negatives are diabetic people told they are fine - the dangerous error; the 7 897 false positives are healthy people sent for a blood test - a cost, not a harm. Recall on the diabetic class is **0.735** at **ROC-AUC 0.809**; the class-weighted model trades precision (0.357) for that recall on purpose, so overall accuracy (0.725) sits below the 0.83 majority baseline. The full five-model comparison table is in Section 4.8 above; a screenshot of the notebook's comparison cell is in Appendix F (Figure F1).
 
 ### 4.10 Model selection & deployment
 
@@ -216,7 +234,7 @@ baseline because the model chooses to flag many at-risk people.
 Regression is the documented lightweight fallback (coefficient-level interpretability, near
 the same ROC-AUC). Persisted as `diabetes/model/model_pipeline.joblib` (`Pipeline([prep,
 RandomForestClassifier])`) + `feature_names.joblib` + `input_schema.json`. Inference test
-(Sec. 23): reload-from-disk `predict_proba` == in-memory to 10 decimals; example raw input ->
+(Section 23): reload-from-disk `predict_proba` == in-memory to 10 decimals; example raw input ->
 `{"prediction": "diabetic", "confidence": 0.8496}`.
 
 ---
@@ -253,11 +271,19 @@ implausible (> 200 000 million VND) values -> **rows dropped**; `Area` similarly
 | Operation | What | Why |
 |---|---|---|
 | Drop impossible rows | `Price <= 0` or `> 200 000`, `Area <= 0` or `> 10 000` | not real prices/areas; would dominate the loss |
-| `*_missing` indicator features | `Bedrooms_missing`, `Bathrooms_missing`, `Floors_missing` | the *fact* that a field is blank is itself informative (Sec. 10.3.2) |
+| `*_missing` indicator features | `Bedrooms_missing`, `Bathrooms_missing`, `Floors_missing` | the *fact* that a field is blank is itself informative (Section 10.3.2) |
 | Median-impute the rest, in the pipeline | fitted on train only | one training/inference code path, no leakage |
 | `district` from `Location` string | parsed, one-hot with `min_frequency=50` | 63-province `Province` + district is the main price driver (eta^2 ~ 0.24) |
-| `log1p(Price)` target | | raw skew 3.36; the QQ-plot is straight after `log1p` (Sec. 10.3.3) |
+| `log1p(Price)` target | | raw skew 3.36; the QQ-plot is straight after `log1p` (Section 10.3.3) |
 | Drop `Listing ID`, `VIP Account` (constant), `Title` (embeds the price) | | ids leak nothing useful; a constant column is dead; the title literally contains the price string |
+
+**Figure 7. House-price dataset - inspection (notebook Section 4).** `df.shape` is **(236 226, ~30)**; `df.info()` separates the columns into numeric (`Area, Width, Length, Bedrooms, Bathrooms, Floors, Alley Width, Agent Listing Count`, plus `Latitude`/`Longitude`) and categorical/text (`Property Type, Position, Direction, Road Type, Province, Location, Title, Agent Role`); the target is `Price` in million VND. `df.describe()` shows `Price` and `Area` with extreme right tails.
+
+![Figure 7](report/screenshots/NB_H_N1_sec4_inspect.png){width=82%}
+
+**Figure 8. House-price dataset - data-quality checks (notebook Section 5).** `df.isna().sum()` shows structural missingness - `Bedrooms` 72 %, `Bathrooms` 84 %, `Floors` 79 %, `Length` 58 %, `Latitude`/`Longitude` 68 %; `df.duplicated().sum()` finds a small number of exact duplicates; invalid values include 611 non-positive and ~10 600 implausible (> 200 000 million VND) prices, and similarly out-of-range areas. These drive the cleaning table above.
+
+![Figure 8](report/screenshots/NB_H_N2_sec5_quality.png){width=82%}
 
 ### 5.4 Representation
 
@@ -267,7 +293,9 @@ min_frequency=50)` on the 7 categoricals -> **`X in R^{201654 x 92}`** (sparse);
 `y in R^N` = `log1p(Price)`. One API request -> `R^{1x92}`; the response inverts with
 `expm1`.
 
-**N4-H - Sec. 12**: one raw listing + its 92-dim feature row + the shape lines.
+**Figure 9. House-price - raw record to model input (notebook Section 12).** One raw listing (`Area=192, Price=2000, Property Type="Nha rieng", Location="Phuong Long Xuyen, An Giang"`) is passed through the fitted `ColumnTransformer` (`SimpleImputer(median) -> log1p -> StandardScaler` on the numeric block; `OneHotEncoder(handle_unknown="ignore", min_frequency=50)` on the 7 categoricals), producing a **92-dimensional** feature row. The full matrix is **X in R^(201 654 x 92)** (sparse), the target is `y in R^201 654` = `log1p(Price)`, and one API request is `R^(1 x 92)`; the response inverts the prediction with `expm1`.
+
+![Figure 9](report/screenshots/NB_H_N4_sec12_representation.png){width=82%}
 
 ### 5.5 Exploratory data analysis
 
@@ -280,13 +308,21 @@ min_frequency=50)` on the 7 categoricals -> **`X in R^{201654 x 92}`** (sparse);
 - **10.3 Supporting analyses** - missing-by-property-type justifies the `*_missing`
   indicators; the skew/QQ view justifies the `log1p` target.
 
-**N5-H - Sec. 10.1** distributions; **N6-H - Sec. 10.2** correlation + eta^2 bars.
+**Figure 10. House-price - target distribution (notebook Section 10.1):** `Price` raw vs `log1p(Price)`.
 
-![N6-H - Sec. 10.2: numeric correlation heatmap](report/screenshots/NB_H_07_sec10.2.png){width=80%}
+![Figure 10](report/screenshots/NB_H_02_sec10.1.png){width=72%}
+
+**Observation.** Raw `Price` has skew 3.36 with a long tail to ~200 ty VND; after `log1p` the skew is -0.07 and the histogram is close to symmetric. **Interpretation.** Price behaves multiplicatively, not additively. **ML implication.** The model is trained on `log1p(Price)` and every metric is reported back on the million-VND scale via `expm1`.
+
+**Figure 11. House-price - numeric correlation heatmap (notebook Section 10.2).**
+
+![Figure 11](report/screenshots/NB_H_07_sec10.2.png){width=72%}
+
+**Observation.** No numeric feature correlates strongly with `log(Price)`: `|r(log Area, log Price)| ~ 0.02`, `Bathrooms` at 0.215 is the strongest; the categorical correlation ratios are `Province` eta^2 ~ 0.24, `Property Type` ~ 0.12. **Interpretation.** Location and property type carry most of the (limited) signal; raw area is unreliable because it mixes land and built-up listings. **ML implication.** This is a weak-signal regression problem - a tree ensemble is used to capture the location x type structure, and the low R^2 is reported honestly as a data limitation. The remaining Section 10.1-10.3 figures (area, unit price, QQ/skew, missingness) are in Appendix F.
 
 ### 5.6 Regression models & 5.7 evaluation
 
-**Five models** (notebook Sec. 17), 50 000-row training subsample, same preprocessing:
+**Five models** (notebook Section 17), 50 000-row training subsample, same preprocessing:
 
 | model | hyperparameters | val MAE | val RMSE | val R^2 |
 |---|---|---|---|---|
@@ -310,9 +346,11 @@ huge MAPE is dominated by the many low-priced listings (most sit at 2-5 tỷ) wh
 absolute miss is a large percentage. **The honest headline is "a weak-signal regression
 problem"**, reported as a limitation.
 
-**N7-H - Sec. 18** model table; **N8-H - Sec. 19** predicted-vs-actual + residual plots.
+**Figure 12. House-price - held-out test evaluation (notebook Section 19):** predicted-vs-actual scatter and residuals-vs-actual for the Random Forest.
 
-![N8-H - notebook Sec. 19: predicted-vs-actual + residuals](report/screenshots/NB_H_18_sec19.png){width=80%}
+![Figure 12](report/screenshots/NB_H_18_sec19.png){width=82%}
+
+**Reading the plots.** Points hug the diagonal for mid-priced listings; the residual spread widens at high prices (heteroscedasticity), which is why the target is `log1p(Price)`. Test scores: MAE **10 626**, RMSE **26 873**, **R^2 0.186**, MAPE 350 % (all money in million VND). RMSE is ~2.5x the MAE, so a minority of listings are missed by far more than the typical one; R^2 0.19 beats the mean-only baseline (R^2 = -0.13) but confirms most price variance is not recoverable from these fields. The five-model comparison table is in Section 5.6; its notebook screenshot is Appendix F Figure F2.
 
 ### 5.8 Model selection & 5.9 deployment
 
@@ -320,7 +358,7 @@ problem"**, reported as a limitation.
 ~15 s to train, ms per prediction, bagging absorbs the price outliers. Persisted as
 `house_price/model/model_pipeline.joblib` (`Pipeline([prep, RandomForestRegressor])`) +
 `feature_names.joblib` + `input_schema.json` (records `price_unit = million VND` and the
-`log1p`/`expm1` convention). Sec. 23 inference test: disk == in-memory.
+`log1p`/`expm1` convention). Section 23 inference test: disk == in-memory.
 
 ---
 
@@ -330,7 +368,7 @@ problem"**, reported as a limitation.
 
 Predict whether a Sephora skincare reviewer **recommends the product**, from **who they
 are** and **what they wrote**. Target `recommended = is_recommended in {0,1}` - a field
-*separate* from the 1-5 star rating (excluded as leakage, Sec. 6.6a). **Binary
+*separate* from the 1-5 star rating (excluded as leakage, Section 6.6a). **Binary
 classification.** One observation = one product review. Supports review-consistency QA,
 cold-start ranking, and merchandising.
 
@@ -351,13 +389,17 @@ one-hot categorical (`skin_type, skin_tone, eye_color, hair_color, secondary_cat
 brand_name`), 1 text (`review_all = review_title + " . " + review_text`).
 **Excluded (leakage):** the review's own `rating` and the product average `rating_product`.
 
+**Figure 13. Customer-behaviour dataset - inspection (notebook Section 4).** After the review/product join, `df.shape` is **(116 262, ~30)**; `df.info()` shows numeric columns (`price_usd, loves_count, reviews, rating, n_ingredients, ...`), categorical columns (`skin_type, skin_tone, eye_color, hair_color, secondary_category, brand_name`), two text columns (`review_title, review_text`) and the binary target `is_recommended`; `df.describe()` shows the money/popularity columns heavily right-skewed.
+
+![Figure 13](report/screenshots/NB_C_N1_sec4_inspect.png){width=82%}
+
 ### 6.3 Customer representation
 
 **Tabular:** one raw review -> 21 columns -> `SimpleImputer(median) -> log1p` (money/
 popularity) `-> StandardScaler`; binary passthrough; `OneHotEncoder(handle_unknown=
 "ignore", min_frequency=25)` -> **`x_tab in R^{138}`**.
 
-**Text - required `Comment -> Tokens -> Token IDs -> Embedding` demo** (notebook Sec. 12) on a
+**Text - required `Comment -> Tokens -> Token IDs -> Embedding` demo** (notebook Section 12) on a
 real review:
 
 ```
@@ -373,8 +415,9 @@ The **deployed** model uses the sparse **TF-IDF** bag-of-words form
 stop-words) -> `x_txt in R^{28 595}` on the training vocabulary. **Combined:**
 `X = [x_tab || x_txt] in R^{104313 x 28 733}` sparse.
 
-**N4-C - Sec. 12**: the raw review + tabular row + shapes, and the `B = 1, T = 40, d = 16`
-block.
+**Figure 15. Customer behaviour - raw review to model input (notebook Section 12).** One raw review row (skin profile + product fields + `review_title` + `review_text`) is passed through the fitted `ColumnTransformer` (numeric `SimpleImputer(median) -> log1p -> StandardScaler`; binary passthrough; `OneHotEncoder(handle_unknown="ignore", min_frequency=25)`) to give the tabular block `x_tab in R^138`, and through the fitted `TfidfVectorizer(ngram_range=(1,2), min_df=10, max_features=40000, sublinear_tf, stop_words="english")` to give the sparse text block `x_txt in R^28 595`. Combined: **X = [x_tab || x_txt] in R^(104 313 x 28 733)** (sparse). The required tokenisation demo is also shown: one comment -> tokens -> token IDs -> an embedding table, giving `E in R^(T x d) = R^(40 x 16)` and a batch `E_batch in R^(B x T x d) = R^(1 x 40 x 16)`.
+
+![Figure 15](report/screenshots/NB_C_N4_sec12_representation.png){width=82%}
 
 ### 6.4 Data cleaning
 
@@ -383,7 +426,11 @@ Skin-profile blanks -> explicit `__na__` one-hot level (missingness is a real be
 Incidental numeric gaps -> `SimpleImputer(median)` fitted **on train only**. Lower-case all
 categoricals; merge `eye_color "grey" -> "gray"`. Outliers kept (genuine; `log1p` handles
 the skew). TF-IDF vocabulary built **on train only**. The review's own `rating` /
-`rating_product` are quarantined to the leakage demo (Sec. 6.6a). State *why* for each.
+`rating_product` are quarantined to the leakage demo (Section 6.6a).
+
+**Figure 14. Customer-behaviour dataset - data-quality checks (notebook Section 5).** `df.isna().sum()` shows 11 803 rows with a blank `is_recommended` target and many blank skin-profile fields; `df.duplicated().sum()` finds a few exact-duplicate reviews; 125 reviews have an empty body; the class balance is **84.7 % positive**. Actions: drop blank-target and empty-body rows, map skin-profile blanks to an explicit `__na__` level, median-impute incidental numeric gaps on the training split only, and lower-case/merge inconsistent categoricals (`eye_color "grey" -> "gray"`).
+
+![Figure 14](report/screenshots/NB_C_N2_sec5_quality.png){width=82%}
 
 ### 6.5 Interest discovery / EDA
 
@@ -399,10 +446,17 @@ returning, meh, just okay`. Mutual information with the target: excluded `rating
 recommend-rate_i, avg-rating_i, C_i_1...C_ik]`; 73 819 reviewers, `F >= 2` for 22%, `k = 5`
 (descriptive only, not fed to the classifier).
 
-**N5-C - Sec. 10** plot grid; **N6-C - Sec. 10** topic-bucket + mutual-information tables;
-**N-B-C - Appendix B** elbow/silhouette + segment profile + PCA scatter.
+**Figure 16. Customer behaviour - exploratory plot grid (notebook Section 10):** class balance, recommend rate by skin type / category / brand / price decile, recommend rate vs the excluded star rating, and topic-bucket rates.
 
-![N5-C - notebook Sec. 10: EDA plot grid](report/screenshots/NB_C_02_sec10.png){width=80%}
+![Figure 16](report/screenshots/NB_C_02_sec10.png){width=82%}
+
+**Observation.** 84.7 % of reviews recommend the product; the recommend rate barely moves with skin type (~0.03 spread) but spreads ~0.16 by category, ~0.40 by brand and ~0.14 by price decile; against the excluded star rating it runs 0.01 -> 1.00. **Interpretation.** The structured customer-product fit is a real but weak signal; the star rating is essentially the label and must be excluded. **ML implication.** Use `class_weight="balanced"`, group the split on `author_id`, quarantine `rating`, and expect the review text to carry most of the skill.
+
+**Figure 17. Customer behaviour - topic buckets and mutual information (notebook Section 10).**
+
+![Figure 17](report/screenshots/NB_C_N6_sec10_topics_mi.png){width=82%}
+
+**Observation.** Texture/feel and skin-outcome reviews recommend at ~0.89-0.90, irritation/scent/price buckets lower; mutual information with the target is 0.35 for the excluded `rating`, ~0.037 for `log_loves`, ~0.018 for `log_price`/`brand`, ~0 for the skin fields. **Interpretation.** What the reviewer writes about (irritation, breakouts, price regret) predicts the recommendation; demographics do not. **ML implication.** The deployed model concatenates the tabular block with a TF-IDF of the review text; a tabular-only fallback is kept for cold-start ranking. The K-Means customer segmentation is in Appendix C.
 
 ### 6.6 Model development
 
@@ -439,7 +493,7 @@ text reaches ~0.965. Adding text to the tabular block gives a small, consistent 
 (macro-F1 0.856 -> 0.861). They are **redundant more than complementary** - a customer who
 will withhold a recommendation has usually already said so in the review.
 
-### 6.6a Data leakage (assignment requirement - notebook Sec. 14a)
+### 6.6a Data leakage (assignment requirement - notebook Section 14a)
 
 1. **The review text is co-authored with the label** - `is_recommended` is a checkbox on
   the same form as the free-text box; a text model partly *reads* the verdict, so the
@@ -452,7 +506,7 @@ will withhold a recommendation has usually already said so in the review.
   prospective variant that drops them falls to ROC-AUC **~0.66**.
 
 No preprocessing object is fitted on validation, test or user input - the deployed API
-loads the exact pipeline fitted on `X_train` (Sec. 8).
+loads the exact pipeline fitted on `X_train` (Section 8).
 
 ### 6.7 Evaluation
 
@@ -473,10 +527,15 @@ is not the headline - the majority baseline scores 0.847 while catching zero unh
 reviewers. Error analysis: 22% of the false negatives carry a 4-5* rating - a
 positive-reading review with a hidden veto - the irreducible ceiling.
 
-**N7-C - Sec. 18** ladder + 8-model table; **N8-C - Sec. 19** report + confusion + ROC;
-**N9-C - Sec. 20** FN/FP feature table + sample missed reviews.
+**Figure 18. Customer behaviour - held-out test evaluation (notebook Section 19):** classification report, confusion-matrix heatmap and ROC curve for the deployed Logistic Regression on tabular + TF-IDF text.
 
-![N8-C - notebook Sec. 19: classification report + confusion matrix + ROC](report/screenshots/NB_C_03_sec19.png){width=80%}
+![Figure 18](report/screenshots/NB_C_03_sec19.png){width=82%}
+
+**Reading the confusion matrix `[[2 804, 398], [1 315, 16 347]]`.** The 1 315 false negatives are customers who will not recommend but are predicted as recommending - a misleading product page; the 398 false positives are happy customers flagged for QA - cheap. Recall on the "does not recommend" class is **0.876** at **ROC-AUC 0.964**; accuracy 0.918 is not the headline because the majority baseline already scores 0.847 while catching zero unhappy reviewers. The representation ladder and 8-model table are in Section 6.6; their notebook screenshot is Appendix F Figure F3.
+
+**Figure 19. Customer behaviour - error analysis (notebook Section 20).** False-negative vs false-positive feature comparison with sample missed reviews: 22 % of the false negatives carry a 4-5 star rating - a positive-reading review with a hidden veto, which is the irreducible ceiling for a text model.
+
+![Figure 19](report/screenshots/NB_C_N9_sec20_error_analysis.png){width=82%}
 
 ### 6.8 Business interpretation
 
@@ -496,7 +555,7 @@ Persisted as `customer_behaviour/model/model_pipeline.joblib` (`ColumnTransforme
 `coef`/`intercept`) + `input_schema.json`. `POST /predict` returns
 `{prediction, confidence, p_recommend, threshold, review_terms, signals, contributions,
 model, representation}`; `contributions` is an exact linear-SHAP decomposition
-(`phi_j = coef_j / (x_j - x_bar_j)`) rendered as a diverging bar chart + waterfall. Sec. 23 inference
+(`phi_j = coef_j / (x_j - x_bar_j)`) rendered as a diverging bar chart + waterfall. Section 23 inference
 test: reload == in-memory; positive review -> `p_recommend = 0.9376`, negative -> `0.0026`.
 
 ---
@@ -514,7 +573,7 @@ test: reload == in-memory; positive review -> `p_recommend = 0.9376`, negative -
 | Main metric | recall on diabetic class - **0.735** at ROC-AUC 0.809 | RMSE **26 873** / R^2 **0.186** (million VND) | recall on "does not recommend" - **0.876** at ROC-AUC 0.964 |
 | Web deployment | Yes (React + Vite) | Yes (React + Vite) | Yes (React + Vite 3-step wizard) |
 | Mobile deployment | Yes (Flutter) | Yes (Flutter) | Yes (Flutter, 2 screens) |
-| Main limitation | recall bought with low precision (0.36); survey self-report; one country/year | weak price signal - R^2 ~ 0.19; `corr(Area, Price) ~ 0.02` pooled (the land-vs-built mix cancels the area effect - notebook Sec. 10.2); Bedrooms/Bathrooms/Floors ~72-84% missing; total price needs finer location than `Province` | review text is co-authored with the recommend tick (~0.96 partly leakage; leak-safe tabular ~0.8); retrospective only; one product category |
+| Main limitation | recall bought with low precision (0.36); survey self-report; one country/year | weak price signal - R^2 ~ 0.19; `corr(Area, Price) ~ 0.02` pooled (the land-vs-built mix cancels the area effect - notebook Section 10.2); Bedrooms/Bathrooms/Floors ~72-84% missing; total price needs finer location than `Province` | review text is co-authored with the recommend tick (~0.96 partly leakage; leak-safe tabular ~0.8); retrospective only; one product category |
 
 **Discussion (1-8).** *(1) Datasets differ* - a balanced-ish health survey, a skewed
 real-estate log, and a review corpus with free text. *(2) Representations differ* - a
@@ -557,45 +616,107 @@ User Input -> API Request -> Validation -> SAME Preprocessing (loaded) -> Saved 
 **Data-leakage rule.** The service loads the preprocessing pipeline *fitted on training
 data* and **never calls `.fit()`** on a request. A scaler re-fitted on one request would
 standardise that request against itself. Training and inference apply *identical*
-transforms - this is verified in each notebook's Sec. 23 inference test (disk == in-memory).
+transforms - this is verified in each notebook's Section 23 inference test (disk == in-memory).
 
-### Web application - per app
+### 8.1 Web application evidence (assignment Section 13.3)
 
-```
-Web Application - Diabetes Prediction
-Framework: React + Vite + FastAPI (POST /predict)
-Input: 21 BRFSS survey items (HighBP, HighChol, BMI, GenHlth, Age, ...)
-Output: { "prediction": "diabetic", "confidence": 0.85 }
+Each web client is a React + Vite single page that holds no model; it renders its form from
+`GET /questions`, `POST`s the entered fields to `/predict`, and shows the returned
+prediction with a plain-language interpretation. The per-app field/endpoint template is in
+**Appendix A**.
 
-Web Application - House-Price Prediction
-Framework: React + Vite + FastAPI (POST /predict)
-Input: Area, Property Type, Province/district, Bedrooms, Bathrooms, Floors, Direction, Road Type, ...
-Output: { "predicted_price": 2150 } # million VND
+#### Web Application Screenshot - Diabetes
 
-Web Application - Customer Behaviour (product recommendation)
-Framework: React + Vite (3-step wizard) + FastAPI (POST /predict)
-Input: skin_type/skin_tone/eye_color/hair_color, secondary_category, brand_name,
-  price_usd, loves_count, reviews, review_title, review_text (rating NOT sent)
-Output: { "prediction": "not recommend", "p_recommend": 0.14, "review_terms": {...}, "contributions": {...} }
-```
+![Figure 20](report/screenshots/W1-D_input.png){width=60%}
 
-**W1-W3 per app** - input screen, an example of valid input, and the result screen with
-its confidence/probability and one-line interpretation.
+![Figure 21](report/screenshots/W2-D_result.png){width=60%}
 
-### Mobile application - per app
+![Figure 22](report/screenshots/W3-D_docs.png){width=60%}
 
-```
-Mobile Application - <app>
-Framework: Flutter Platform: Android (emulator / device)
-API: POST http://<host>:8000/predict (same endpoint as the web app)
-Request: JSON body of the fields above Response: the JSON above
-```
+**Figure explanation (Figures 20-22).** *Input (Fig. 20):* the user answers the health
+questionnaire - age band, sex, height/weight or BMI, and Yes/No condition and lifestyle
+items; blank fields are median-imputed and the result is flagged less certain. *Prediction
+(Fig. 21):* the service returns `p(diabetes) = 0.82` and the page shows the band
+"High risk - refer for a confirmatory blood test", a SHAP force plot of which answers
+pushed the estimate up (red) or down (blue), the five most similar survey respondents, and
+a what-if BMI slider. *Interpretation:* recall on the diabetic class is the priority, so a
+high-but-not-certain probability is deliberately surfaced as "refer for a test", not as a
+diagnosis. *Fig. 22* is the FastAPI `/docs` page with `POST /predict` expanded, showing the
+request and response schema - evidence the page calls the deployed API.
 
-The mobile app performs **no training** - `Training != Inference`. It lets the user enter
-input, submit, and see the prediction + confidence + a short explanation.
+#### Web Application Screenshot - House price
 
-**M1-M2 per app** - the input screen and the result screen. **M-evidence** - a
-`POST /predict 200` line in the Uvicorn log while the app is used.
+![Figure 23](report/screenshots/W1-H_input.png){width=60%}
+
+![Figure 24](report/screenshots/W2-H_result.png){width=60%}
+
+![Figure 25](report/screenshots/W3-H_docs.png){width=60%}
+
+**Figure explanation (Figures 23-25).** *Input (Fig. 23):* a multi-step form for area,
+frontage/depth, rooms and floors, province/district/position, property type, direction and
+road type (a "District 7 Apartment" preset is loaded here); only `Area > 0` is required.
+*Prediction (Fig. 24):* the service returns `predicted_price` and the page shows
+**9.90 ty VND** (about 151 million VND/m2) with a low-high range and a SHAP contribution
+waterfall (usable area +3 381 M, location +2 093 M, ...). *Interpretation:* the plain-
+language summary states the estimated market value for the entered property and district;
+the model is trained on `log1p(Price)` and the response inverts it with `expm1`. *Fig. 25*
+is `/docs` with `POST /predict` expanded.
+
+#### Web Application Screenshot - Customer behaviour
+
+![Figure 26](report/screenshots/W1-C_input.png){width=60%}
+
+![Figure 27](report/screenshots/W2-C_result.png){width=60%}
+
+![Figure 28](report/screenshots/W3-C_docs.png){width=60%}
+
+**Figure explanation (Figures 26-28).** *Input (Fig. 26):* a 3-step wizard - skin profile,
+then product (category, brand, price, popularity), then the review title and text; the star
+rating is never sent. *Prediction (Fig. 27):* the service returns
+`prediction = "not recommend"`, `p_recommend = 0.00`, and the page shows "WON'T RECOMMEND",
+a probability meter against the 50 % cut-off, the structured signals the model saw, the
+review words that moved the call, and an exact linear-SHAP contribution chart.
+*Interpretation:* a negative-reading review with a hidden veto is flagged for
+review-consistency QA. *Fig. 28* is `/docs` with `POST /predict` expanded.
+
+### 8.2 Mobile application evidence (assignment Section 14.3)
+
+Each mobile client is a Flutter app that performs **no training** (`Training != Inference`):
+it collects the same fields as the web form, sends them to the deployed
+`POST /predict` endpoint over HTTP, and renders the returned JSON. Every screenshot run
+below logged a `POST /predict 200` on the server, which is the required
+communication evidence. The per-app template is in **Appendix B**. (Screenshots were
+captured from the Flutter app built for web and driven at a 390 x 844 phone viewport.)
+
+#### Mobile Application Screenshot - Diabetes
+
+![Figure 29](report/screenshots/M1-D_input.png){width=45%}  ![Figure 30](report/screenshots/M2-D_result.png){width=45%}
+
+**Figure explanation (Figures 29-30).** The input screen (Fig. 29) collects the About-you,
+Body and Conditions fields with a "Not sure" option for anything unknown; on submit the app
+builds a JSON body and calls `POST http://<host>:8000/predict`. The result screen (Fig. 30)
+shows the returned probability as **27 % - Low**, the range 15-46 %, a "Why this score"
+contribution bar chart, and the nearest survey respondents - the same payload the web page
+receives.
+
+#### Mobile Application Screenshot - House price
+
+![Figure 31](report/screenshots/M1-H_input.png){width=45%}  ![Figure 32](report/screenshots/M2-H_result.png){width=45%}
+
+**Figure explanation (Figures 31-32).** The input screen (Fig. 31) is a single scrolling
+form (area, rooms, province/district, property type; a Rach Gia preset is loaded) with an
+"API Ready" health indicator. On "Estimate" the app `POST`s the fields to `/predict` on
+port 8002; the result screen (Fig. 32) shows **about 3.01 ty VND** (38.3 million VND/m2), a
+unit-price card and a one-line valuation summary, inverted from the model's `log1p` output.
+
+#### Mobile Application Screenshot - Customer behaviour
+
+![Figure 33](report/screenshots/M1-C_input.png){width=45%}  ![Figure 34](report/screenshots/M2-C_result.png){width=45%}
+
+**Figure explanation (Figures 33-34).** The input screen (Fig. 33) is the same 3-step
+wizard as the web client (skin profile / product / review). "Predict" sends the fields to
+`POST /predict`; the result screen (Fig. 34) shows "WON'T RECOMMEND" with a 0 % probability
+meter, the structured signals, and the review terms that moved the call.
 
 ---
 
@@ -684,7 +805,7 @@ software + deployment + user interaction**, not just a trained model.
   once on training data and applied *identically* in the notebook, the API and the tests.
 3. **Most important data-representation issue** - deciding what each raw column *is*
   (a real feature, a leak, a post-hoc signal, an id) before encoding it - most visible in
-  Application 3's Sec. 14a leakage analysis.
+  Application 3's Section 14a leakage analysis.
 4. **Most important ML lesson** - accuracy is the wrong headline on imbalanced or
   weak-signal data; the confusion matrix / recall on the class that matters, and R^2 vs a
   naive baseline, tell the real story.
@@ -704,7 +825,7 @@ software + deployment + user interaction**, not just a trained model.
 | House price | CSV / table | median-impute -> `log1p` -> scale (numeric) + one-hot (categorical) | `B x d` = `N x 92` sparse (N = 201 654); `y in R^N` = `log1p(Price)` |
 | E-commerce | CSV + review comments | tabular one-hot + scaled (+) TF-IDF 1-2-gram text vectors | `B x d` = `N x 28 733` sparse (N = 104 313); embedding demo `B x T x d` = `1 x 40 x 16` |
 
-**Every dimension explained.** `N` = cleaned rows (after Sec. 4/Sec. 5/Sec. 6 filtering). `d` for
+**Every dimension explained.** `N` = cleaned rows (after Section 4/Section 5/Section 6 filtering). `d` for
 diabetes = 8 scaled + 15 passthrough. `d` for house price = 11 numeric + 81 one-hot
 columns after `min_frequency=50`. `d` for e-commerce = 138 tabular columns after one-hot
 + 28 595 TF-IDF features on the training vocabulary. In the embedding demo `B = 1` review,
@@ -714,136 +835,151 @@ columns after `min_frequency=50`. `d` for e-commerce = 138 tabular columns after
 
 ---
 
-## Appendix G - Screenshot evidence
+---
 
-Excluded from the ~10-page body count (assignment Sec. 5: *approximately 10 pages, excluding source code and appendices*). Every stack was run locally on 2026-09-07 - FastAPI + Uvicorn backend, React/Vite web, and the Flutter client built for web at a 390 x 844 device viewport. See `report/screenshots/README.md` for the file index and ports.
+## Appendix A - Web application report (assignment Appendix D)
 
-### G.1 Notebook - Application 1 (Diabetes)
+The three web clients share one design: React 18 + Vite, `axios`, no model in the browser.
+Each renders its form from `GET /questions`, `POST`s to `/predict`, and shows the result.
+Screenshots are Figures 20-28 in Section 8.1.
 
-![N1-D - notebook Sec. 4: shape / head / info / describe](report/screenshots/NB_D_N1_sec4_inspect.png){width=48%}
+### A.1 Diabetes - `diabetes/web`
 
-![N2-D - notebook Sec. 5: missing / duplicate / invalid / imbalance](report/screenshots/NB_D_N2_sec5_quality.png){width=48%}
+| Item | Value |
+|---|---|
+| Framework | React 18 + Vite; dev server proxies `/api` to the FastAPI service |
+| Endpoint | `POST http://localhost:8000/predict` (also `GET /healthz`, `GET /questions`, `GET /model-info`) |
+| Input variables | 21 BRFSS items - `Age, Sex, HighBP, HighChol, CholCheck, BMI, Smoker, Stroke, HeartDiseaseorAttack, PhysActivity, Fruits, Veggies, HvyAlcoholConsump, AnyHealthcare, NoDocbcCost, GenHlth, MentHlth, PhysHlth, DiffWalk, Education, Income` (plus optional `height_cm`/`weight_kg` to derive BMI) |
+| Validation rules | Pydantic schema on the API: numeric ranges checked; any omitted field is median-imputed by the loaded pipeline and the result is marked less certain |
+| Preprocessing used | the saved `Pipeline` fitted on training data - `engineer()` feature build then `SimpleImputer(median) -> StandardScaler` on 8 continuous columns, 15 binary/ordinal passthrough; never re-fitted on a request |
+| Loaded model | `RandomForestClassifier(class_weight="balanced")` inside the same pipeline object |
+| Example request | `POST /predict` body `{ "Age": 9, "Sex": 1, "HighBP": 1, "HighChol": 1, "BMI": 34, "GenHlth": 4, "DiffWalk": 1, "Smoker": 1 }` |
+| Example response | `{ "prediction": "at risk", "confidence": 0.82, "band": "High", "contributions": [ ... ] }` |
 
-![Sec. 9: BMI outlier view (kept - sensitivity check moves ROC-AUC <= 0.003)](report/screenshots/NB_D_01_sec9.png){width=48%}
+### A.2 House price - `house_price/web`
 
-![N4-D - notebook Sec. 12: one raw record -> 23-dim feature vector -> X shape / dtype](report/screenshots/NB_D_N4_sec12_representation.png){width=48%}
+| Item | Value |
+|---|---|
+| Framework | React 18 + TypeScript + Vite; `axios` |
+| Endpoint | `POST http://localhost:8002/predict` (also `GET /healthz`) |
+| Input variables | `Area` (required, m2); optional `Width, Length, Bedrooms, Bathrooms, Floors, "Alley Width", "Agent Listing Count", "Property Type", Position, Direction, "Road Type", Province, "Agent Role", district` |
+| Validation rules | Pydantic schema - `Area > 0` required; missing optional numerics are median-imputed by the pipeline; unknown categoricals map to an all-zero one-hot row |
+| Preprocessing used | saved `ColumnTransformer` - `SimpleImputer(median) -> log1p -> StandardScaler` (numeric) and `OneHotEncoder(handle_unknown="ignore", min_frequency=50)` (categorical); never re-fitted |
+| Loaded model | `RandomForestRegressor` trained on `log1p(Price)`; the response inverts with `expm1` |
+| Example request | `POST /predict` body `{ "Area": 78.7, "Width": 4.0, "Bedrooms": 3, "Bathrooms": 2, "Floors": 2, "Property Type": "Nha rieng", "Province": "an-giang", "district": "Rach Gia" }` |
+| Example response | `{ "predicted_price": 2540.82, "price_per_m2": 32.28, "currency": "million VND", "model": "RandomForest", "contributions": [ ... ] }` |
 
-![N6-D - notebook Sec. 10: correlation heatmap](report/screenshots/NB_D_03_sec10.png){width=48%}
+### A.3 Customer behaviour - `customer_behaviour/web`
 
-![N7-D - notebook Sec. 18: five-model comparison + winner](report/screenshots/NB_D_N7_sec18_comparison.png){width=48%}
+| Item | Value |
+|---|---|
+| Framework | React 18 + Vite, 3-step wizard; dev server proxies `/api` to FastAPI |
+| Endpoint | `POST http://localhost:8000/predict` (also `POST /predict/batch`, `GET /questions`, `GET /samples`, `GET /model-info`, `GET /healthz`) |
+| Input variables | `skin_type, skin_tone, eye_color, hair_color, secondary_category, brand_name, price_usd, loves_count, reviews, review_title, review_text` - the star `rating` is never sent |
+| Validation rules | Pydantic schema; blank skin-profile fields map to the `__na__` one-hot level; numeric gaps median-imputed by the pipeline |
+| Preprocessing used | saved `ColumnTransformer` (`SimpleImputer(median) -> log1p -> StandardScaler`, binary passthrough, `OneHotEncoder(min_frequency=25)`) plus `TfidfVectorizer(ngram_range=(1,2), min_df=10, max_features=40000, sublinear_tf, stop_words="english")`; all fitted on the training split only |
+| Loaded model | `LogisticRegression(C=1.0, class_weight="balanced")` on the concatenated tabular + TF-IDF matrix |
+| Example request | `POST /predict` body `{ "skin_type": "oily", "secondary_category": "Moisturizers", "brand_name": "Murad", "price_usd": 49, "review_title": "New formula is awful", "review_text": "Broke me out within a week and left me greasy all day ..." }` |
+| Example response | `{ "prediction": "not recommend", "p_recommend": 0.0026, "threshold": 0.5, "review_terms": {"against": [...], "toward": [...]}, "signals": {...}, "contributions": [...], "model": "LogisticRegression", "representation": "tabular + tfidf" }` |
 
-### G.2 Notebook - Application 2 (House price)
+---
 
-![N1-H - notebook Sec. 4: shape / head / info / describe](report/screenshots/NB_H_N1_sec4_inspect.png){width=48%}
+## Appendix B - Mobile application report (assignment Appendix E)
 
-![N2-H - notebook Sec. 5: missing / invalid / skew table](report/screenshots/NB_H_N2_sec5_quality.png){width=48%}
+All three mobile clients are Flutter apps that act as REST clients of the deployed service
+(`Training != Inference`). Screenshots are Figures 29-34 in Section 8.2; each run logged a
+`POST /predict 200` on the server.
 
-![Sec. 9: price / area outlier view (impossible rows dropped)](report/screenshots/NB_H_01_sec9.png){width=48%}
-
-![N4-H - notebook Sec. 12: one raw listing -> 92-dim feature row -> X / y shape](report/screenshots/NB_H_N4_sec12_representation.png){width=48%}
-
-![N5-H - Sec. 10.1: Price distribution (raw vs log1p)](report/screenshots/NB_H_02_sec10.1.png){width=48%}
-
-![N5-H - Sec. 10.1: Area distribution](report/screenshots/NB_H_03_sec10.1.png){width=48%}
-
-![N5-H - Sec. 10.1: price-per-m^2 distribution](report/screenshots/NB_H_04_sec10.1.png){width=48%}
-
-![N5-H - Sec. 10.1: log-target QQ / normality](report/screenshots/NB_H_05_sec10.1.png){width=48%}
-
-![N5-H - Sec. 10.1: numeric-feature distributions](report/screenshots/NB_H_06_sec10.1.png){width=48%}
-
-![N6-H - Sec. 10.2: |r| with log Price](report/screenshots/NB_H_08_sec10.2.png){width=48%}
-
-![N6-H - Sec. 10.2: categorical eta^2 with log Price](report/screenshots/NB_H_09_sec10.2.png){width=48%}
-
-![N6-H - Sec. 10.2: Price by Province](report/screenshots/NB_H_10_sec10.2.png){width=48%}
-
-![N6-H - Sec. 10.2: Price by Property Type](report/screenshots/NB_H_11_sec10.2.png){width=48%}
-
-![N6-H - Sec. 10.2: Area vs Price scatter](report/screenshots/NB_H_12_sec10.2.png){width=48%}
-
-![N6-H - Sec. 10.2: Bathrooms / Bedrooms vs Price](report/screenshots/NB_H_13_sec10.2.png){width=48%}
-
-![Sec. 10.3: missingness by property type (justifies *_missing flags)](report/screenshots/NB_H_14_sec10.3.png){width=48%}
-
-![Sec. 10.3: skew before / after log1p](report/screenshots/NB_H_15_sec10.3.png){width=48%}
-
-![Sec. 10.3: QQ-plot of log1p(Price)](report/screenshots/NB_H_16_sec10.3.png){width=48%}
-
-![Sec. 10.3: supporting view](report/screenshots/NB_H_17_sec10.3.png){width=48%}
-
-![N7-H - notebook Sec. 18: five-model regression comparison + winner](report/screenshots/NB_H_N7_sec18_comparison.png){width=48%}
-
-### G.3 Notebook - Application 3 (Customer behaviour)
-
-![N1-C - notebook Sec. 4: shape / head / info / describe](report/screenshots/NB_C_N1_sec4_inspect.png){width=48%}
-
-![N2-C - notebook Sec. 5: blank-target / duplicate / imbalance table](report/screenshots/NB_C_N2_sec5_quality.png){width=48%}
-
-![Sec. 9: numeric outlier view (kept; log1p handles the skew)](report/screenshots/NB_C_01_sec9.png){width=48%}
-
-![N4-C - notebook Sec. 12: raw review -> tabular row -> shapes + the B=1,T=40,d=16 embedding demo](report/screenshots/NB_C_N4_sec12_representation.png){width=48%}
-
-![N6-C - notebook Sec. 10: topic-bucket recommend rates + mutual information](report/screenshots/NB_C_N6_sec10_topics_mi.png){width=48%}
-
-![N-B-C - Appendix B: K-Means elbow / silhouette](report/screenshots/NB_C_NB_appendixB_kmeans_a.png){width=48%}
-
-![N-B-C - Appendix B: 5-segment profile + PCA scatter](report/screenshots/NB_C_NB_appendixB_kmeans_b.png){width=48%}
-
-![N7-C - notebook Sec. 18: representation ladder + 8-model table](report/screenshots/NB_C_N7_sec18_comparison.png){width=48%}
-
-![N9-C - notebook Sec. 20: false-negative / false-positive feature comparison](report/screenshots/NB_C_N9_sec20_error_analysis.png){width=48%}
-
-### G.4 Web application - all three apps (input / result / FastAPI /docs)
-
-![W1-D - Diabetes web: health questionnaire with a valid example entered](report/screenshots/W1-D_input.png){width=42%}
-
-![W2-D - Diabetes web result: 82% High risk + SHAP force plot + similar respondents + what-if](report/screenshots/W2-D_result.png){width=42%}
-
-![W-docs-D - Diabetes FastAPI /docs: POST /predict expanded](report/screenshots/W3-D_docs.png){width=42%}
-
-![W1-H - House-price web: valuation wizard step 1, District-7 preset filled](report/screenshots/W1-H_input.png){width=42%}
-
-![W2-H - House-price web result: predicted 9.90 tỷ VND + range + SHAP waterfall + summary](report/screenshots/W2-H_result.png){width=42%}
-
-![W-docs-H - House-price FastAPI /docs: POST /predict expanded](report/screenshots/W3-H_docs.png){width=42%}
-
-![W1-C - Customer-behaviour web: step 1 (skin profile), API connected](report/screenshots/W1-C_input.png){width=42%}
-
-![W2-C - Customer-behaviour web result: WON'T RECOMMEND, P=0% + meter + signals + linear-SHAP](report/screenshots/W2-C_result.png){width=42%}
-
-![W-docs-C - Customer-behaviour FastAPI /docs: POST /predict expanded](report/screenshots/W3-C_docs.png){width=42%}
-
-### G.5 Mobile application - all three apps (input / result; each run logged `POST /predict 200`)
-
-![M1-D - Diabetes mobile (Flutter): input screen](report/screenshots/M1-D_input.png){width=42%}
-
-![M2-D - Diabetes mobile result: 27% Low, range 15-46%, why-this-score contributions (POST /predict 200)](report/screenshots/M2-D_result.png){width=42%}
-
-![M1-H - House-price mobile: input screen, Rạch Giá preset, API Ready](report/screenshots/M1-H_input.png){width=42%}
-
-![M2-H - House-price mobile result: ~ 3.01 tỷ VND, unit-price card, analysis text (POST /predict 200)](report/screenshots/M2-H_result.png){width=42%}
-
-![M1-C - Customer-behaviour mobile: step 1 (skin profile), API connected](report/screenshots/M1-C_input.png){width=42%}
-
-![M2-C - Customer-behaviour mobile result: WON'T RECOMMEND, 0%, meter, signals, review terms (POST /predict 200)](report/screenshots/M2-C_result.png){width=42%}
-
-## Screenshot checklist
-
-Captured screenshots live in **`report/screenshots/`** (see its `README.md` for the full
-index and the ports each stack ran on). All three stacks were run locally on 2026-09-07:
-FastAPI + Uvicorn backend, React/Vite web, and the Flutter client built for web at a
-390 x 844 device viewport.
-
-| ID | App | File(s) in `report/screenshots/` | Shows |
+| Item | Diabetes | House price | Customer behaviour |
 |---|---|---|---|
-| W1 (-D/-H/-C) | each | `W1-D_input.png` / `W1-H_input.png` / `W1-C_input.png` | web input screen with a valid example entered |
-| W2 (-D/-H/-C) | each | `W2-D_result.png` / `W2-H_result.png` / `W2-C_result.png` | web result screen - probability / predicted value + plain-language interpretation + SHAP |
-| W-docs (-D/-H/-C) | each | `W3-D_docs.png` / `W3-H_docs.png` / `W3-C_docs.png` | FastAPI `/docs`, `POST /predict` expanded (request + response schema) |
-| M1 (-D/-H/-C) | each | `M1-D_input.png` / `M1-H_input.png` / `M1-C_input.png` | Flutter mobile input screen |
-| M2 (-D/-H/-C) | each | `M2-D_result.png` / `M2-H_result.png` / `M2-C_result.png` | Flutter mobile result screen (verdict + confidence/probability); each run logged `POST /predict 200` - the evidence the client calls the service |
-| N (-D/-H/-C) | each | `NB_D_*` / `NB_H_*` / `NB_C_*` | notebook figures pulled from the executed `*.ipynb`: Sec. 9 outliers, Sec. 10 EDA + correlation, Sec. 19 confusion/ROC (classifiers) or predicted-vs-actual + residuals (regressor) |
+| Mobile framework | Flutter 3.x / Dart, Material 3 | Flutter 3.x / Dart, Provider state | Flutter 3.x / Dart |
+| Platform | Android (emulator / device); screenshots via the web build at 390 x 844 | same | same |
+| Input screen | About-you / Body / Conditions form, "Not sure" for unknowns | single scrolling form: area, rooms, province/district, type | 3-step wizard: skin profile / product / review |
+| API endpoint | `POST http://10.0.2.2:8000/predict` (emulator) / `http://localhost:8000` | `.../:8002/predict` | `.../:8000/predict` |
+| Request format | JSON body of the fields above (same keys as the web form) | JSON body (`Area` required) | JSON body (no `rating`) |
+| Response format | `{ prediction, confidence, band, contributions }` | `{ predicted_price, price_per_m2, currency, model }` | `{ prediction, p_recommend, threshold, review_terms, signals, contributions }` |
+| Prediction display | probability + risk band + "Why this score" bars + similar respondents | predicted price (ty VND) + unit price + one-line summary | verdict + probability meter + signals + review terms |
 
-Still to add before the final PDF: the cover-page details (name / ID / class / team) and,
-optionally, a notebook `df.info()`/`describe()` grab and the App 3 Appendix-B
-elbow/silhouette figure.
+---
+
+## Appendix C - Customer segmentation (K-Means, notebook Appendix B)
+
+Descriptive only - not fed to the classifier. Each reviewer is summarised as
+`x_i = [R_i, F_i, M_i, avg_price_i, recommend_rate_i, avg_rating_i, C_i1..C_ik]`
+(recency, frequency, monetary value, average price, recommend rate, average rating,
+per-category activity). Of 73 819 reviewers, 22 % have `F >= 2`.
+
+![Figure C1 - K-Means elbow and silhouette](report/screenshots/NB_C_NB_appendixB_kmeans_a.png){width=70%}
+
+![Figure C2 - 5-segment profile and PCA scatter](report/screenshots/NB_C_NB_appendixB_kmeans_b.png){width=70%}
+
+`k = 5` from the elbow/silhouette; the five segments differ mainly in frequency and average
+order value, and are used for the merchandising discussion in Section 6.8, not for prediction.
+
+---
+
+## Appendix F - Additional notebook figures
+
+Supplementary evidence for Parts II-V; the figures the body sections refer to but do not
+inline.
+
+### F.1 Model-comparison cells (notebook Section 18)
+
+![Figure F1 - Diabetes: five-model comparison table + stability check](report/screenshots/NB_D_N7_sec18_comparison.png){width=82%}
+
+![Figure F2 - House price: five-model regression comparison table](report/screenshots/NB_H_N7_sec18_comparison.png){width=82%}
+
+![Figure F3 - Customer behaviour: representation ladder + 8-model table](report/screenshots/NB_C_N7_sec18_comparison.png){width=82%}
+
+### F.2 Outlier analysis (notebook Section 9)
+
+![Figure F4 - Diabetes: BMI outlier view (rows kept; sensitivity check moves ROC-AUC <= 0.003)](report/screenshots/NB_D_01_sec9.png){width=60%}
+
+![Figure F5 - House price: price / area outlier view (impossible rows dropped)](report/screenshots/NB_H_01_sec9.png){width=60%}
+
+![Figure F6 - Customer behaviour: numeric outlier view (kept; log1p handles the skew)](report/screenshots/NB_C_01_sec9.png){width=60%}
+
+### F.3 House-price distributions (notebook Section 10.1)
+
+![Figure F7 - Area distribution](report/screenshots/NB_H_03_sec10.1.png){width=48%}
+
+![Figure F8 - price-per-m2 distribution](report/screenshots/NB_H_04_sec10.1.png){width=48%}
+
+![Figure F9 - log-target QQ / normality](report/screenshots/NB_H_05_sec10.1.png){width=48%}
+
+![Figure F10 - numeric-feature distributions](report/screenshots/NB_H_06_sec10.1.png){width=48%}
+
+### F.4 House-price relationships and correlation (notebook Section 10.2)
+
+![Figure F11 - |r| of each numeric feature with log Price](report/screenshots/NB_H_08_sec10.2.png){width=48%}
+
+![Figure F12 - categorical correlation ratio (eta^2) with log Price](report/screenshots/NB_H_09_sec10.2.png){width=48%}
+
+![Figure F13 - Price by Province](report/screenshots/NB_H_10_sec10.2.png){width=48%}
+
+![Figure F14 - Price by Property Type](report/screenshots/NB_H_11_sec10.2.png){width=48%}
+
+![Figure F15 - Area vs Price scatter](report/screenshots/NB_H_12_sec10.2.png){width=48%}
+
+![Figure F16 - Bathrooms / Bedrooms vs Price](report/screenshots/NB_H_13_sec10.2.png){width=48%}
+
+### F.5 House-price supporting analyses (notebook Section 10.3)
+
+![Figure F17 - missingness by property type (justifies the *_missing indicator features)](report/screenshots/NB_H_14_sec10.3.png){width=48%}
+
+![Figure F18 - skew before / after log1p](report/screenshots/NB_H_15_sec10.3.png){width=48%}
+
+![Figure F19 - QQ-plot of log1p(Price)](report/screenshots/NB_H_16_sec10.3.png){width=48%}
+
+![Figure F20 - supporting distribution view](report/screenshots/NB_H_17_sec10.3.png){width=48%}
+
+---
+
+## Appendix G - Reproduction and file index
+
+All screenshots and the ports each stack ran on are indexed in
+`report/screenshots/README.md`. Stacks were run locally on 2026-09-07: FastAPI + Uvicorn
+backend, React/Vite web dev server, and the Flutter client built for web
+(`flutter build web`) driven at a 390 x 844 device viewport. Backend ports: diabetes 8000,
+house price 8002, customer behaviour 8000. The three notebooks (`*/notebook/*.ipynb`) run
+top-to-bottom with `RANDOM_SEED = 42` and write `model/` before the API is started.
