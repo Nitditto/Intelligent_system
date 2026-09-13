@@ -6,8 +6,12 @@ import '../models.dart';
 import 'history_screen.dart';
 import 'result_screen.dart';
 
-/// Screen 1 — the questionnaire. Rendered from `GET /questions`; every item has a
-/// "Not sure" option, and a blank answer is sent to the API as null.
+const _accent = Color(0xFF4F46E5);
+
+/// Screen 1 — the questionnaire, laid out as a stepper wizard: one section
+/// (Biometrics → Lifestyle → Medical History) at a time, matching the web app.
+/// Rendered from `GET /questions`; every item has a "Not sure" option, and a
+/// blank answer is sent to the API as null.
 class QuestionnaireScreen extends StatefulWidget {
   const QuestionnaireScreen({super.key});
 
@@ -19,6 +23,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   late Future<List<Question>> _questionsF;
   final Map<String, dynamic> _answers = {}; // field -> value or null
   bool _submitting = false;
+  int _step = 0;
 
   @override
   void initState() {
@@ -91,31 +96,56 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
           for (final q in questions) {
             sections.putIfAbsent(q.section, () => []).add(q);
           }
-          return ListView(
-            padding: const EdgeInsets.all(16),
+          final sectionNames = sections.keys.toList();
+          final step = _step.clamp(0, sectionNames.length - 1);
+          final currentName = sectionNames[step];
+          final stepQuestions = sections[currentName]!;
+          final isLast = step == sectionNames.length - 1;
+
+          return Column(
             children: [
-              const Text(
-                'Answer what you can. Choose "Not sure" for anything you do not '
-                'know — the estimate still works, with a note that it is less certain.',
+              _StepperBar(labels: sectionNames, current: step),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                  children: [
+                    Text('Step ${step + 1} of ${sectionNames.length}',
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: _accent)),
+                    const SizedBox(height: 2),
+                    Text(currentName,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Answer what you can. Choose "Not sure" for anything you '
+                      'do not know — the estimate still works, with a note that '
+                      'it is less certain.',
+                      style: TextStyle(fontSize: 13, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 12),
+                    for (final q in stepQuestions) _questionField(q),
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
-              for (final entry in sections.entries) ...[
-                _SectionHeader(entry.key),
-                for (final q in entry.value) _questionField(q),
-                const SizedBox(height: 8),
-              ],
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: _submitting ? null : () => _submit(questions),
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.calculate),
-                label: const Text('Estimate diabetes risk'),
+              _FooterBar(
+                onBack: step == 0 ? null : () => setState(() => _step = step - 1),
+                busy: _submitting,
+                isLast: isLast,
+                onNext: _submitting
+                    ? null
+                    : () {
+                        if (isLast) {
+                          _submit(questions);
+                        } else {
+                          setState(() => _step = step + 1);
+                        }
+                      },
               ),
-              const SizedBox(height: 32),
             ],
           );
         },
@@ -215,16 +245,117 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String text;
-  const _SectionHeader(this.text);
+/// Horizontal stepper: numbered dots joined by connector lines, indigo for the
+/// active and completed steps. Mirrors the web sidebar `.stepper.vert`.
+class _StepperBar extends StatelessWidget {
+  final List<String> labels;
+  final int current;
+  const _StepperBar({required this.labels, required this.current});
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 16, bottom: 4),
-        child: Text(text,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold)),
-      );
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < labels.length; i++) ...[
+            if (i > 0)
+              Expanded(
+                child: Container(
+                  height: 2,
+                  color: i <= current ? _accent : Colors.grey.shade300,
+                ),
+              ),
+            Column(
+              children: [
+                CircleAvatar(
+                  radius: 15,
+                  backgroundColor:
+                      i <= current ? _accent : Colors.grey.shade300,
+                  child: i < current
+                      ? const Icon(Icons.check, size: 16, color: Colors.white)
+                      : Text('${i + 1}',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: i <= current
+                                  ? Colors.white
+                                  : Colors.black54)),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(
+                  width: 76,
+                  child: Text(
+                    labels[i],
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight:
+                          i == current ? FontWeight.w700 : FontWeight.w400,
+                      color: i <= current ? _accent : Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Sticky bottom bar with Back and Next / Predict buttons.
+class _FooterBar extends StatelessWidget {
+  final VoidCallback? onBack;
+  final VoidCallback? onNext;
+  final bool busy;
+  final bool isLast;
+  const _FooterBar({
+    required this.onBack,
+    required this.onNext,
+    required this.busy,
+    required this.isLast,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            OutlinedButton(
+              onPressed: onBack,
+              child: const Text('← Back'),
+            ),
+            const Spacer(),
+            FilledButton(
+              onPressed: onNext,
+              child: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                  : Text(isLast ? 'Predict' : 'Next →'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ErrorView extends StatelessWidget {

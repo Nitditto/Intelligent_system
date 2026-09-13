@@ -18,7 +18,7 @@ class DiabetesApp extends StatelessWidget {
     return MaterialApp(
       title: 'Diabetes Screening',
       theme: ThemeData(
-        colorSchemeSeed: Colors.teal,
+        colorSchemeSeed: const Color(0xFF4F46E5),
         useMaterial3: true,
       ),
       home: const QuestionnaireScreen(),

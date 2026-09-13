@@ -60,36 +60,13 @@ export default function Wizard({ meta, values, setValues, samples, apiUp, onSubm
   const isLast = step === sections.length - 1
 
   return (
-    <div className="wiz-shell">
-      <header className="wiz-hdr">
-        <div className="wiz-hdr__left">
-          <h1 className="wiz-hdr__title">Will this customer recommend the product?</h1>
-          <span className="wiz-hdr__sub">
-            Sephora skincare reviews · predicts <code>is_recommended</code>
-          </span>
+    <div className="wiz-split">
+      <aside className="wiz-sidebar">
+        <div className="wiz-branding">
+          <h1>Product Recommendation</h1>
+          <span>Customer Insights</span>
         </div>
-        <div className="wiz-hdr__right">
-          {samples?.examples?.length > 0 && (
-            <ExamplePicker examples={samples.examples} onPick={loadExample} />
-          )}
-          <ThemeToggle />
-          <span className={`pill ${apiUp === false ? 'pill--bad' : apiUp ? 'pill--good' : ''}`}>
-            {apiUp === false ? 'API offline' : apiUp ? 'API connected' : 'connecting…'}
-          </span>
-        </div>
-      </header>
-
-      {apiUp === false && (
-        <div className="banner banner--top">
-          <span>
-            API isn&apos;t reachable. Run <code>python -m uvicorn api.main:app --port 8000</code> in{' '}
-            <code>customer_behaviour/</code>.
-          </span>
-        </div>
-      )}
-
-      <main className="wiz-body">
-        <ol className="stepper" aria-label="Progress">
+        <ol className="stepper vert" aria-label="Progress">
           {sections.map((title, i) => (
             <li
               key={title}
@@ -107,7 +84,26 @@ export default function Wizard({ meta, values, setValues, samples, apiUp, onSubm
             </li>
           ))}
         </ol>
+      </aside>
 
+      <div className="wiz-content">
+        <header className="wiz-hdr">
+          <div className="wiz-hdr__right">
+            <span className={`pill ${apiUp === false ? 'pill--bad' : apiUp ? 'pill--good' : ''}`}>
+              {apiUp === false ? 'API offline' : apiUp ? 'API connected' : 'connecting…'}
+            </span>
+          </div>
+        </header>
+
+        {apiUp === false && (
+          <div className="banner banner--top">
+            <span>
+              API isn't reachable. Start the API with <code>uvicorn api.main:app --port 8000</code> and reload.
+            </span>
+          </div>
+        )}
+
+        <main className="wiz-body">
         <div className="wiz-step-hdr">
           <p className="wiz-step-badge">Step {step + 1} of {sections.length}</p>
           <h2 className="wiz-step-title">{sections[step]}</h2>
@@ -164,6 +160,7 @@ export default function Wizard({ meta, values, setValues, samples, apiUp, onSubm
           </button>
         </div>
       </footer>
+      </div>
     </div>
   )
 }

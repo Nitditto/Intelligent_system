@@ -18,7 +18,7 @@ class ServerStatusBadge extends StatelessWidget {
         ? const Color(0xFFD97706)
         : isHealthy
             ? AppTheme.primaryColor
-            : AppTheme.dangerColor;
+            : Color(0xFFEF4444);
 
     final String statusText = isLoading
         ? 'Connecting...'

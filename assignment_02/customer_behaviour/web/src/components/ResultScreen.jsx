@@ -1,16 +1,42 @@
-import React from 'react'
 import ShapChart from './ShapChart.jsx'
-import { titleCase } from '../lib/sephora.js'
 
 export default function ResultScreen({ result, model, onRestart }) {
   if (!result) return null
 
-  const rec = result.prediction === 'recommend'
-  const pRec = Math.round(result.p_recommend * 100)
-  const { signals = {}, contributions, review_terms } = result
+  const pRec = Math.round((result.p_recommend ?? 0) * 100)
+  const thr = Math.round((result.threshold ?? 0.5) * 100)
+  const isLikely = (result.prediction || '').toLowerCase() === 'recommend'
 
-  const toward = (review_terms?.toward || []).map((t) => t.term)
-  const against = (review_terms?.against || []).map((t) => t.term)
+  const bandStr = isLikely ? 'LIKELY TO RECOMMEND' : 'UNLIKELY TO RECOMMEND'
+  const bandClass = isLikely ? 'hero-card--good' : 'hero-card--bad'
+  const badgeClass = isLikely
+    ? 'hero-card__status-badge--good'
+    : 'hero-card__status-badge--bad'
+  const titleStr = isLikely
+    ? 'This customer would probably recommend it'
+    : 'This customer probably would not recommend it'
+
+  const terms = result.review_terms || {}
+  const toward = terms.toward || []
+  const against = terms.against || []
+
+  const s = result.signals || {}
+  const profile = [
+    ['Skin type', s.skin_type || '—'],
+    ['Category', s.category || '—'],
+    ['Brand', s.brand || '—'],
+    [
+      'Price',
+      s.price_usd == null
+        ? '—'
+        : `$${s.price_usd}${s.price_tier ? ` · ${s.price_tier}` : ''}`,
+    ],
+    ['Product “loves”', s.product_loves == null ? '—' : s.product_loves.toLocaleString()],
+    ['Review length', `${s.review_tokens ?? '—'} words`],
+  ]
+
+  const modelName =
+    (model && (model.chosen_model || model.model)) || result.model || 'Logistic Regression'
 
   return (
     <div className="res-dashboard">
@@ -21,132 +47,86 @@ export default function ResultScreen({ result, model, onRestart }) {
           </button>
         </div>
         <div className="res-nav__right">
-          <span className="pill">Model: <b>{result.model}</b></span>
-          <span className="pill">Cut-off: <b>{Math.round(result.threshold * 100)}%</b></span>
+          <span className="pill">Model: <b>{modelName}</b></span>
         </div>
       </header>
 
       <main className="res-grid">
         <div className="res-col res-col--left">
-          {/* verdict */}
-          <div className={`hero-card ${rec ? 'hero-card--good' : 'hero-card--bad'}`}>
-            <span className={`hero-card__status-badge ${rec ? 'hero-card__status-badge--good' : 'hero-card__status-badge--bad'}`}>
-              {rec ? '👍 RECOMMENDS' : '👎 WON’T RECOMMEND'}
-            </span>
-            <h2 className="hero-card__title">
-              {rec
-                ? 'This customer would probably recommend it'
-                : 'This customer probably would not recommend it'}
-            </h2>
+          <div className={`hero-card ${bandClass}`}>
+            <span className={`hero-card__status-badge ${badgeClass}`}>{bandStr}</span>
+            <h2 className="hero-card__title">{titleStr}</h2>
             <p className="hero-card__subtitle">
-              Chance of a recommendation: <b>{pRec}%</b> — we call it “recommends” above{' '}
-              {Math.round(result.threshold * 100)}%.
+              Chance of a recommendation: <b>{pRec}%</b> — we call it “recommends” above {thr}%.
             </p>
           </div>
 
-          {/* probability meter */}
           <div className="card">
             <h4 className="card-section-title">Chance of a recommendation</h4>
             <div className="meter">
               <div className="meter__track">
                 <span
-                  className={`meter__fill ${rec ? 'meter__fill--good' : 'meter__fill--bad'}`}
+                  className={`meter__fill ${isLikely ? 'meter__fill--good' : 'meter__fill--bad'}`}
                   style={{ width: `${pRec}%` }}
                 />
-                <span className="meter__threshold" style={{ left: `${Math.round(result.threshold * 100)}%` }} />
               </div>
               <div className="meter__scale">
-                <span>0% · won’t recommend</span>
-                <span>{Math.round(result.threshold * 100)}% cut-off</span>
-                <span>recommends · 100%</span>
+                <span>0%</span>
+                <span>50%</span>
+                <span>100%</span>
               </div>
             </div>
-            <p className="card-hint">
-              {pRec} of 100 reviewers who wrote this ticked <i>recommend</i>.
-            </p>
           </div>
 
-          {/* signals */}
-          <div className="card signals-card">
+          <div className="card">
             <h4 className="card-section-title">What the model saw</h4>
-            <div className="kv-grid">
-              <span className="kv__k">Skin type</span>
-              <span className="kv__v">{signals.skin_type ? titleCase(signals.skin_type) : '—'}</span>
-              <span className="kv__k">Category</span>
-              <span className="kv__v">{signals.category || '—'}</span>
-              <span className="kv__k">Brand</span>
-              <span className="kv__v">{signals.brand || '—'}</span>
-              <span className="kv__k">Price</span>
-              <span className="kv__v">
-                {signals.price_usd != null ? `$${signals.price_usd}` : '—'}
-                {signals.price_tier ? ` · ${signals.price_tier}` : ''}
-              </span>
-              <span className="kv__k">Product “loves”</span>
-              <span className="kv__v">
-                {signals.product_loves != null ? Number(signals.product_loves).toLocaleString() : '—'}
-              </span>
-              <span className="kv__k">Review length</span>
-              <span className="kv__v">{signals.review_tokens} words</span>
+            <div className="grid-2">
+              {profile.map(([k, v]) => (
+                <div className="field" key={k}>
+                  <span className="section-label">{k}</span>
+                  <div style={{ fontWeight: 600 }}>{v}</div>
+                </div>
+              ))}
             </div>
-            <p className="card-hint">
-              Structured signals alone reach ROC-AUC ~0.8; the review text takes it to ~0.96.
-            </p>
           </div>
+        </div>
 
-          {/* review terms */}
+        <div className="res-col res-col--right">
           {(toward.length > 0 || against.length > 0) && (
-            <div className="card words-card">
+            <div className="card">
               <h4 className="card-section-title">Review words that moved the call</h4>
               {against.length > 0 && (
-                <div className="words-group">
-                  <span className="words-group__lbl text-bad">▼ toward “won’t recommend”</span>
-                  <div className="words-chips">
-                    {against.map((w, i) => (
-                      <span key={i} className="word-chip word-chip--bad">{w}</span>
+                <>
+                  <p className="card-hint text-bad">▼ toward “won’t recommend”</p>
+                  <div className="words-chips" style={{ marginBottom: '16px' }}>
+                    {against.map((t, i) => (
+                      <span key={i} className="word-chip word-chip--bad">
+                        {t.term} {t.effect >= 0 ? '+' : ''}{t.effect.toFixed(2)}
+                      </span>
                     ))}
                   </div>
-                </div>
+                </>
               )}
               {toward.length > 0 && (
-                <div className="words-group">
-                  <span className="words-group__lbl text-good">▲ toward “recommends”</span>
+                <>
+                  <p className="card-hint text-good">▲ toward “recommends”</p>
                   <div className="words-chips">
-                    {toward.map((w, i) => (
-                      <span key={i} className="word-chip word-chip--good">{w}</span>
+                    {toward.map((t, i) => (
+                      <span key={i} className="word-chip word-chip--good">
+                        {t.term} {t.effect >= 0 ? '+' : ''}{t.effect.toFixed(2)}
+                      </span>
                     ))}
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
 
-          {/* interpretation */}
-          <div className={`retention-playbook ${rec ? 'retention-playbook--good' : 'retention-playbook--bad'}`}>
-            <div className="retention-playbook__head">
-              <span className="retention-playbook__icon">{rec ? '✅' : '⚠️'}</span>
-              <span className="retention-playbook__title">How to use this</span>
+          {result.contributions?.items?.length ? (
+            <div className="card">
+              <ShapChart contributions={result.contributions} />
             </div>
-            <p className="retention-playbook__text">
-              {rec
-                ? 'Text and profile agree — safe to surface for similar skin types.'
-                : 'Review reads negative — flag for review-consistency QA.'}
-            </p>
-          </div>
-
-          <details className="how-it-works">
-            <summary>How this works</summary>
-            <p>
-              ~104k Sephora skincare reviews. <b>Logistic Regression</b> over the skin profile +
-              product + a TF-IDF of the review text. Inference is server-side; the review text is
-              written with the recommend tick, so it partly leaks the outcome (§14a).
-            </p>
-          </details>
-        </div>
-
-        <div className="res-col res-col--right">
-          <div className="card">
-            <ShapChart contributions={contributions} />
-          </div>
+          ) : null}
         </div>
       </main>
     </div>

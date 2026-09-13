@@ -390,13 +390,7 @@ class ContribChart extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: Sp.s2),
-        Text(
-          'Bars are log-odds pulls. Start ($basePct%) is the model’s neutral point — '
-          'classes weighted equally, not the 85% dataset rate. Review terms dominate: '
-          'the text is written with the recommend tick (§14a).',
-          style: TextStyle(fontSize: 10, color: c.textFaint, height: 1.5),
-        ),
+        
       ],
     );
   }
@@ -420,39 +414,7 @@ class ContribChart extends StatelessWidget {
   }
 }
 
-/// Collapsible "how it works" (skill §6a).
-class HowItWorks extends StatelessWidget {
-  final String body;
-  const HowItWorks(this.body, {super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.c;
-    return Container(
-      decoration: BoxDecoration(
-          color: c.surface,
-          borderRadius: Rad.rMd,
-          border: Border.all(color: c.border)),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: Sp.s4),
-          childrenPadding:
-              const EdgeInsets.fromLTRB(Sp.s4, 0, Sp.s4, Sp.s4),
-          title: Text('How this works',
-              style: TextStyle(
-                  fontSize: Ty.sm, fontWeight: FontWeight.w600, color: c.text)),
-          iconColor: c.textSoft,
-          collapsedIconColor: c.textSoft,
-          children: [
-            Text(body,
-                style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.6)),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 /// Top connection banner (skill §5 "Offline API").
 class OfflineBanner extends StatelessWidget {

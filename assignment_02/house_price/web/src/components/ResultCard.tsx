@@ -1,289 +1,106 @@
-import React, { useState } from "react";
-import type { ListingInput, PredictionResponse } from "../types";
+import React from "react";
+import type { PredictionResponse, ListingInput } from "../types";
 
 interface ResultCardProps {
   result: PredictionResponse | null;
-  input: ListingInput | null;
-  onJumpToStep: (step: number) => void;
+  input: ListingInput;
   onReset: () => void;
 }
 
-export const ResultCard: React.FC<ResultCardProps> = ({
-  result,
-  input,
-  onJumpToStep,
-  onReset,
-}) => {
-  const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<"shap" | "model" | "metrics">("shap");
+export const ResultCard: React.FC<ResultCardProps> = ({ result, input, onReset }) => {
+  if (!result) return null;
 
-  const handleCopy = () => {
-    if (!result) return;
-    const text = [
-      `RealVal Vietnam Real Estate Valuation:`,
-      `Predicted Value: ${result.formatted_price_billion} (${result.predicted_price.toLocaleString("en-US")} million VNĐ)`,
-      `Unit Price: ${result.price_per_m2 ? `${result.price_per_m2} million VNĐ/m²` : "N/A"}`,
-      `Usable Area: ${input?.Area} m²`,
-      `Location: ${input?.district ? `${input.district}, ` : ""}${input?.Province || ""}`,
-      `Property Type: ${input?.["Property Type"] || "N/A"}`,
-      `Model: ${result.model_name}`,
-      `Interpretation: ${result.interpretation}`,
-    ].join("\n");
-
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  };
-
-  const priceBillion = result ? result.predicted_price / 1000 : 2.63;
-  const lowBillion = (priceBillion * 0.92).toFixed(2);
-  const highBillion = (priceBillion * 1.08).toFixed(2);
-  const formattedPrice = result ? result.formatted_price_billion : "2.63 tỷ VNĐ";
-
-  const contributions = result?.feature_contributions || [
-    { name: "area", label: "Usable Area & Size", impact_million: 350.9, direction: "positive" as const, importance_pct: 38.0 },
-    { name: "location", label: "Geographic Location & Province", impact_million: 140.4, direction: "positive" as const, importance_pct: 28.0 },
-    { name: "property_type", label: "Property Classification", impact_million: 62.4, direction: "positive" as const, importance_pct: 15.0 },
-    { name: "dimensions", label: "Frontage Width & Depth", impact_million: 31.2, direction: "positive" as const, importance_pct: 8.0 },
-    { name: "rooms", label: "Bedrooms & Living Structure", impact_million: 46.8, direction: "positive" as const, importance_pct: 6.0 },
-    { name: "road", label: "Road Access & Position", impact_million: 148.2, direction: "positive" as const, importance_pct: 5.0 },
-  ];
-
-  const meta = result?.model_metadata || {
-    algorithm: "RandomForestRegressor",
-    n_estimators: 100,
-    max_depth: 16,
-    features_count: 18,
-    transformed_features: 117,
-    target_transform: "log1p(Price) -> expm1(y)",
-    zero_leakage: true,
-  };
+  const formatMoney = (val: number) => val.toLocaleString("en-US");
+  
+  const factors = result.feature_contributions || [];
+  const topFactors = [...factors].sort((a, b) => Math.abs(b.impact_million) - Math.abs(a.impact_million)).slice(0, 5);
 
   return (
-    <div className="panel results-dashboard-final animate-step">
-      {/* Step Header */}
-      <div className="dashboard-header">
-        <div>
-          <span className="step-count-pill">FINAL STEP · VALUATION COMPLETE</span>
-          <h2 className="dashboard-headline">Valuation & Explainability Report</h2>
-          <p className="dashboard-subline">Machine learning market estimate and SHAP attribution analysis</p>
+    <div className="res-dashboard">
+      <header className="res-nav">
+        <div className="res-nav__left">
+          <button type="button" className="btn btn--ghost" onClick={onReset}>
+            ← Start New Valuation
+          </button>
         </div>
-        <span className="model-status-tag">{result?.model_name || meta.algorithm}</span>
-      </div>
-
-      {/* Hero Price Section */}
-      <div className="predicted-price-hero">
-        <span className="price-kicker">Predicted Valuation</span>
-        <div className="hero-price-text">{formattedPrice}</div>
-        <div className="hero-price-subtext">
-          ≈ {result ? result.predicted_price.toLocaleString("en-US") : "2,629.8"} million VNĐ
-          {result?.price_per_m2 ? ` · ${result.price_per_m2} million VNĐ/m²` : ""}
+        <div className="res-nav__right">
+          <span className="pill">Model: <b>Random Forest Regressor</b></span>
         </div>
-      </div>
-
-      {/* Gradient Price Range Bar */}
-      <div className="gradient-range-block">
-        <div className="gradient-bar-container">
-          <div className="gradient-bar-track">
-            <span className="gradient-bar-label">Gradient Price Range Bar</span>
-            <div className="gradient-pin" style={{ left: "54%" }}>
-              <div className="pin-marker" />
-            </div>
-          </div>
-        </div>
-        <div className="range-labels-row">
-          <span className="range-val">Low Estimate: {lowBillion} tỷ</span>
-          <span className="range-curr">Current Estimate ({priceBillion.toFixed(2)} tỷ)</span>
-          <span className="range-val">High Estimate: {highBillion} tỷ</span>
-        </div>
-      </div>
-
-      {/* Analytical Tab Switcher */}
-      <div className="results-tab-bar">
-        <button
-          type="button"
-          className={`res-tab-btn ${activeTab === "shap" ? "active" : ""}`}
-          onClick={() => setActiveTab("shap")}
-        >
-          SHAP Feature Contributions
-        </button>
-        <button
-          type="button"
-          className={`res-tab-btn ${activeTab === "model" ? "active" : ""}`}
-          onClick={() => setActiveTab("model")}
-        >
-          Model Architecture
-        </button>
-        <button
-          type="button"
-          className={`res-tab-btn ${activeTab === "metrics" ? "active" : ""}`}
-          onClick={() => setActiveTab("metrics")}
-        >
-          Property Specifications
-        </button>
-      </div>
-
-      {/* TAB 1: SHAP Feature Contributions */}
-      {activeTab === "shap" && (
-        <div className="shap-breakdown-panel animate-step">
-          <div className="shap-header-row">
-            <h4 className="shap-title">SHAP Feature Contribution Waterfall</h4>
-            <p className="shap-desc">
-              Baseline dataset median: ~1,850 Million VND. Bars show how each property factor shifted the valuation.
+      </header>
+      
+      <main className="res-grid">
+        <div className="res-col res-col--left">
+          <div className="hero-card hero-card--good">
+            <span className="hero-card__status-badge hero-card__status-badge--good">
+              Estimated Value
+            </span>
+            <h2 className="hero-card__title" style={{fontSize: '48px', margin: '8px 0'}}>
+              {formatMoney(result.predicted_price)} <span style={{fontSize: '20px', color: 'var(--muted)', fontWeight: 600}}>million VND</span>
+            </h2>
+            <p className="hero-card__subtitle">
+              Based on historical listing data across Vietnam.
             </p>
           </div>
 
-          <div className="shap-bars-list">
-            {contributions.map((c) => {
-              const isPos = c.direction === "positive";
-              const sign = isPos ? "+" : "-";
-              return (
-                <div key={c.name} className="shap-bar-item">
-                  <div className="shap-item-meta">
-                    <span className="shap-feat-name">{c.label}</span>
-                    <span className={`shap-feat-impact ${isPos ? "pos" : "neg"}`}>
-                      {sign}{Math.abs(c.impact_million)}M VND ({c.importance_pct}% importance)
-                    </span>
-                  </div>
-                  <div className="shap-progress-track">
-                    <div
-                      className={`shap-progress-fill ${isPos ? "pos-fill" : "neg-fill"}`}
-                      style={{ width: `${Math.min(100, Math.max(8, c.importance_pct * 2.5))}%` }}
-                    />
-                  </div>
+          <div className="card">
+            <h4 className="card-section-title">Property Details</h4>
+            <div className="grid-2">
+              <div className="field">
+                <span className="section-label">Area</span>
+                <div style={{fontWeight: 600}}>{input.Area} m²</div>
+              </div>
+              <div className="field">
+                <span className="section-label">Location</span>
+                <div style={{fontWeight: 600}}>{input.Province || "N/A"}</div>
+              </div>
+              <div className="field">
+                <span className="section-label">Architecture</span>
+                <div style={{fontWeight: 600}}>{input.Bedrooms}B · {input.Bathrooms}ba · {input.Floors}F</div>
+              </div>
+              <div className="field">
+                <span className="section-label">Type</span>
+                <div style={{fontWeight: 600}}>{input["Property Type"] || "N/A"}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="notice info">
+             This valuation identifies general market trends but cannot account for interior finishing quality or seller urgency. Use this as a baseline negotiation anchor.
+          </div>
+        </div>
+        
+        <div className="res-col res-col--right">
+            <div className="card">
+              <h4 className="card-section-title">Key Price Drivers (SHAP)</h4>
+              <p className="card-hint">Features that most strongly influenced the final price.</p>
+              
+              <div className="shap-box">
+                <div className="shap-rows">
+                  {topFactors.map((f, i) => (
+                    <div key={i} className="shap-row">
+                      <div className="shap-row__label">
+                        <span className="shap-tag shap-tag--tab">{f.name}</span>
+                      </div>
+                      <div className="shap-row__track">
+                        <div 
+                          className={`shap-bar ${f.impact_million >= 0 ? 'shap-bar--pos' : 'shap-bar--neg'}`}
+                          style={{
+                            width: `${Math.min(100, Math.abs(f.impact_million) / 100 * 100)}%`,
+                            right: f.impact_million < 0 ? 0 : 'auto',
+                            left: f.impact_million >= 0 ? 0 : 'auto'
+                          }}
+                        />
+                      </div>
+                      <div className={`shap-row__val ${f.impact_million >= 0 ? 'text-good' : 'text-bad'}`}>
+                        {f.impact_million >= 0 ? '+' : ''}{f.impact_million.toFixed(1)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            </div>
         </div>
-      )}
-
-      {/* TAB 2: Model Architecture & Metadata */}
-      {activeTab === "model" && (
-        <div className="model-specs-panel animate-step">
-          <div className="specs-grid">
-            <div className="spec-card">
-              <span className="spec-label">Ensemble Algorithm</span>
-              <span className="spec-val">{meta.algorithm}</span>
-            </div>
-            <div className="spec-card">
-              <span className="spec-label">Ensemble Trees</span>
-              <span className="spec-val">{meta.n_estimators} Estimators</span>
-            </div>
-            <div className="spec-card">
-              <span className="spec-label">Max Tree Depth</span>
-              <span className="spec-val">{meta.max_depth} Levels</span>
-            </div>
-            <div className="spec-card">
-              <span className="spec-label">Transformed Features</span>
-              <span className="spec-val">{meta.transformed_features} Dimensions</span>
-            </div>
-            <div className="spec-card">
-              <span className="spec-label">Target Transformation</span>
-              <span className="spec-val">{meta.target_transform}</span>
-            </div>
-            <div className="spec-card">
-              <span className="spec-label">Data Leakage Guard</span>
-              <span className="spec-val">Strict (Training ≠ Inference)</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: Property Metrics */}
-      {activeTab === "metrics" && (
-        <div className="metrics-tab-panel animate-step">
-          <div className="metrics-pill-grid">
-            <div className="metric-pill">
-              <span className="pill-lbl">Unit Price</span>
-              <span className="pill-val">
-                {result?.price_per_m2 ? `${result.price_per_m2} M-VND/m²` : "33.4 M-VND/m²"}
-              </span>
-            </div>
-            <div className="metric-pill">
-              <span className="pill-lbl">Usable Area</span>
-              <span className="pill-val">{input?.Area ? `${input.Area} m²` : "78.7 m²"}</span>
-            </div>
-            <div className="metric-pill">
-              <span className="pill-lbl">Layout</span>
-              <span className="pill-val">
-                {input?.Bedrooms ?? 3} Beds · {input?.Bathrooms ?? 2} Baths
-              </span>
-            </div>
-            <div className="metric-pill">
-              <span className="pill-lbl">Location</span>
-              <span className="pill-val">{input?.district || "Rach Gia"}</span>
-            </div>
-          </div>
-
-          <div className="details-table-wrapper" style={{ marginTop: "0.85rem" }}>
-            <table className="details-table">
-              <tbody>
-                <tr>
-                  <td>Property Type</td>
-                  <td><strong>{input?.["Property Type"] || "Townhouse"}</strong></td>
-                </tr>
-                <tr>
-                  <td>Dimensions</td>
-                  <td>
-                    <strong>
-                      {input?.Width ? `${input.Width}m frontage` : "4.0m"} ×{" "}
-                      {input?.Length ? `${input.Length}m depth` : "19.6m"}
-                    </strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Road Access & Position</td>
-                  <td>
-                    <strong>
-                      {input?.Position || "Main Street"} · {input?.["Road Type"] || "Asphalt Road"}
-                    </strong>
-                  </td>
-                </tr>
-                <tr>
-                  <td>Compass Orientation</td>
-                  <td><strong>{input?.Direction || "South"}</strong></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Model Insight Note */}
-      {result && (
-        <div className="insight-callout">
-          <p className="insight-body-text">{result.interpretation}</p>
-        </div>
-      )}
-
-      {/* Footer Actions */}
-      <div className="card-footer-action-row">
-        <button
-          type="button"
-          onClick={() => onJumpToStep(1)}
-          className="btn-modify-step"
-        >
-          ← Edit Parameters
-        </button>
-
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="btn-cyan-predict"
-        >
-          {copied ? "COPIED TO CLIPBOARD!" : "COPY VALUATION SUMMARY"}
-        </button>
-
-        <button
-          type="button"
-          onClick={onReset}
-          className="btn-wizard-back"
-        >
-          New Valuation
-        </button>
-      </div>
+      </main>
     </div>
   );
 };

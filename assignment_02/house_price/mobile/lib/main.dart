@@ -21,7 +21,7 @@ class HousePriceApp extends StatelessWidget {
       child: MaterialApp(
         title: 'VN Real Estate Valuation',
         debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
+        theme: buildAppTheme(Brightness.light),
         home: const HomeScreen(),
       ),
     );

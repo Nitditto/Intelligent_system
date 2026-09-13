@@ -70,11 +70,7 @@ class ResultScreen extends StatelessWidget {
                   leftLabel: 'won’t',
                   rightLabel: 'recommends',
                 ),
-                const SizedBox(height: Sp.s3),
-                Text(
-                  '$pRec of 100 reviewers who wrote this ticked “recommend”.',
-                  style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
-                ),
+                
               ],
             ),
           ),
@@ -88,12 +84,7 @@ class ResultScreen extends StatelessWidget {
                 const SectionLabel('What the model saw'),
                 const SizedBox(height: Sp.s3),
                 KvGrid(kv),
-                const SizedBox(height: Sp.s3),
-                Text(
-                  'Structured signals alone reach ROC-AUC ~0.8; the review text takes '
-                  'it to ~0.96.',
-                  style: TextStyle(fontSize: Ty.xs, color: c.textSoft, height: 1.5),
-                ),
+                
               ],
             ),
           ),
@@ -130,41 +121,6 @@ class ResultScreen extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: Sp.s4),
-          // interpretation
-          Container(
-            padding: const EdgeInsets.all(Sp.s4),
-            decoration: BoxDecoration(
-              color: good ? c.goodWeak : c.badWeak,
-              borderRadius: Rad.rMd,
-              border: Border(
-                  left: BorderSide(color: good ? c.good : c.bad, width: 4)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  Icon(good ? Icons.check_circle : Icons.warning_amber_rounded,
-                      size: 16, color: good ? c.good : c.bad),
-                  const SizedBox(width: 6),
-                  Text('HOW TO USE THIS',
-                      style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                          color: c.textFaint)),
-                ]),
-                const SizedBox(height: Sp.s2),
-                Text(
-                  good
-                      ? 'Text and profile agree — safe to surface for similar skin types.'
-                      : 'Review reads negative — flag for review-consistency QA.',
-                  style: TextStyle(fontSize: Ty.sm, color: c.text, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-
           if (result.contributions != null) ...[
             const SizedBox(height: Sp.s4),
             AppCard(
@@ -179,13 +135,7 @@ class ResultScreen extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: Sp.s4),
-          const HowItWorks(
-            '~104k Sephora skincare reviews. Logistic Regression over the skin profile '
-            '+ product + a TF-IDF of the review text. Inference is server-side; the '
-            'review text is written with the recommend tick, so it partly leaks the '
-            'outcome (§14a).',
-          ),
+          
 
           const SizedBox(height: Sp.s5),
           Center(
