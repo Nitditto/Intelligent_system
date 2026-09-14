@@ -13,8 +13,10 @@ report.
   test — no leakage. Same rule assignment_02 enforced.
 - DL weight init: `np.random.randn(fan_in, fan_out) * sqrt(2/fan_in)` (He-style),
   biases `np.zeros((1, fan_out))` — per the slides.
-- DL training loop records loss every epoch into a plain list, for the required
-  loss-curve plot.
+- DL training loop records loss **and** MAE every epoch into plain lists, for a
+  paired loss/MAE training-curve plot (not loss alone) — visualizations are not
+  confined to the EDA section in this assignment; each of the classical-model,
+  DL-model, and comparison sections below carries its own plots, not just tables.
 - **"Write each part into different cells" (verbal requirement)**: one function, one
   plot, one model fit, one explanation, per cell. The cell plan below is literal, not
   a guideline.
@@ -104,59 +106,80 @@ activation — regression, not classification), MSE loss.
 9. EDA plot 2 (e.g. `house_size` vs. `price`) + markdown Observation/Interpretation.
 10. EDA plot 3 (e.g. `state` vs. median `price`) + markdown Observation/Interpretation.
 11. EDA plot 4 (e.g. `bed`/`bath` vs. `price`) + markdown Observation/Interpretation.
+12. EDA plot 5: correlation heatmap of numeric features (`bed`, `bath`, `acre_lot`,
+    `house_size`, `price`) + markdown Observation/Interpretation.
 
 **Cleaning & representation**
-12. Markdown: "Data cleaning."
-13. Drop `brokered_by`, `street` (one cell, this operation only).
-14. Median-impute missing numeric values (one cell, this operation only).
-15. Engineer or drop `prev_sold_date` per the EDA finding (one cell, this operation
+13. Markdown: "Data cleaning."
+14. Drop `brokered_by`, `street` (one cell, this operation only).
+15. Median-impute missing numeric values (one cell, this operation only).
+16. Engineer or drop `prev_sold_date` per the EDA finding (one cell, this operation
     only, with a one-line comment stating which way it went and why).
-16. Markdown: "Representation" + why (restates reasoning above).
-17. Train/test split (80/20, `RANDOM_SEED`).
-18. One-hot encode `status`, `state` (fit categories on train only).
-19. City/zip_code frequency-encoding or drop, per the representation decision.
-20. `StandardScaler` fit-on-train / transform-both for numeric columns.
-21. `log1p` the target for both splits.
-22. Shape sanity-check cell.
+17. Markdown: "Representation" + why (restates reasoning above).
+18. Train/test split (80/20, `RANDOM_SEED`).
+19. One-hot encode `status`, `state` (fit categories on train only).
+20. City/zip_code frequency-encoding or drop, per the representation decision.
+21. `StandardScaler` fit-on-train / transform-both for numeric columns.
+22. `log1p` the target for both splits.
+23. Shape sanity-check cell.
 
 **3 classical models**
-23. Markdown: "Classical machine-learning models."
-24. Linear Regression: instantiate + `.fit()` (on log-target).
-25. Random Forest: instantiate + `.fit()`.
-26. Gradient Boosting Regressor: instantiate + `.fit()`.
-27. Predictions cell: all 3 models on the test set, `expm1`-inverted back to dollars.
-28. Metrics cell: RMSE/MAE/R² per model (in dollar terms), one results table.
+24. Markdown: "Classical machine-learning models."
+25. Linear Regression: instantiate + `.fit()` (on log-target).
+26. Random Forest: instantiate + `.fit()`.
+27. Gradient Boosting Regressor: instantiate + `.fit()`.
+28. Predictions cell: all 3 models on the test set, `expm1`-inverted back to dollars.
+29. Metrics cell: RMSE/MAE/R² per model (in dollar terms), one results table.
+30. **Plot**: predicted-vs-actual scatter grid, 1x3 subplots (3 classical models),
+    dollar axes, y=x reference line.
+31. **Plot**: residual plot grid, 1x3 subplots (residual = actual - predicted, vs.
+    predicted; 3 classical models) — checks for heteroscedasticity/bias by model.
+32. **Plot**: feature-importance bar chart — Random Forest / Gradient Boosting
+    `feature_importances_` (top 15) alongside Linear Regression's top-15
+    coefficients, as two panels in one figure.
 
 **From-scratch DL model**
-29. Markdown: "Deep learning from scratch (NumPy only)" + architecture statement + why
+33. Markdown: "Deep learning from scratch (NumPy only)" + architecture statement + why
     (from this plan) + the no-sigmoid-output note.
-30. `relu`, `relu_derivative`.
-31. `mse_loss` function.
-32. Weight init: `W1,b1,W2,b2,W3,b3`, He-init, seeded, sized `d→64→32→1`.
-33. `forward(X)` function (linear output layer, no activation).
-34. `backward(y, cache)` function (MSE gradient, not BCE's `ŷ-y` shortcut — derive and
+34. `relu`, `relu_derivative`.
+35. `mse_loss` function.
+36. Weight init: `W1,b1,W2,b2,W3,b3`, He-init, seeded, sized `d→64→32→1`.
+37. `forward(X)` function (linear output layer, no activation).
+38. `backward(y, cache)` function (MSE gradient, not BCE's `ŷ-y` shortcut — derive and
     state the difference explicitly in a markdown cell, since it's not the same
     formula as the classification case).
-35. Training loop: forward → loss → backward → update, `loss_history` per epoch.
-36. Predict on test set, `expm1`-invert to dollars.
-37. DL metrics cell (same structure as cell 28).
+39. Training loop: forward → loss → backward → update, `loss_history` **and**
+    `mae_history` per epoch.
+40. Predict on test set, `expm1`-invert to dollars.
+41. DL metrics cell (same structure as cell 29).
+42. **Plot**: loss & MAE training curves, two subplots sharing the epoch axis — the
+    required loss-curve visualization, paired with MAE rather than left alone.
+43. **Plot**: predicted-vs-actual scatter (DL model), same dollar-axis/y=x convention
+    as cell 30, for direct visual comparison.
+44. **Plot**: histogram of learned first-layer weights (`W1.flatten()`) — sanity check
+    on the weight distribution after training (dead/exploded units).
+45. **Plot**: feature-signal bar chart from the DL model (mean `|W1|` per input
+    feature, top 15) — the DL model's analogue to cell 32, so the report can compare
+    *which features each model leaned on*.
 
 **Comparison & persistence**
-38. Markdown: "4-model comparison."
-39. Combined results table (3 classical + DL) as one `DataFrame`.
-40. Bar chart: R² across all 4 models.
-41. Bar chart: RMSE/MAE across all 4 models.
-42. Loss curve: epoch vs. training loss (DL model).
-43. Markdown: written comparison — which model wins and why (capacity vs. overfitting
+46. Markdown: "4-model comparison."
+47. Combined results table (3 classical + DL) as one `DataFrame`.
+48. Bar chart: R² across all 4 models.
+49. Bar chart: RMSE/MAE across all 4 models.
+50. **Plot**: predicted-vs-actual small multiples, 2x2 grid, all 4 models on a shared
+    dollar-axis scale — the single figure that ties the whole comparison together
+    (extends cells 30/43).
+51. Markdown: written comparison — which model wins and why (capacity vs. overfitting
     vs. dataset size), in the lecture's framing. No confusion matrix here (regression).
-44. Save classical model + feature names + `input_schema.json`.
-45. Save DL weights (`np.savez`).
-46. Reload-and-verify cell: reload both artifacts, confirm predictions match the
+52. Save classical model + feature names + `input_schema.json`.
+53. Save DL weights (`np.savez`).
+54. Reload-and-verify cell: reload both artifacts, confirm predictions match the
     in-memory versions.
 
 ## Open questions
-- `prev_sold_date` → recency feature, or drop — deferred to cell 15, decided from EDA.
-- `city`/`zip_code` → frequency-encode or drop — deferred to cell 19, decided from EDA.
+- `prev_sold_date` → recency feature, or drop — deferred to cell 16, decided from EDA.
+- `city`/`zip_code` → frequency-encode or drop — deferred to cell 20, decided from EDA.
 - Exact hyperparameters (tree depth/count, DL epoch count/learning rate) are left to
   the notebook stage — this plan fixes *which* models/architecture and *why*, not
   tuning, since tuning is data-dependent.

@@ -1,0 +1,9 @@
+{
+  "inputs": {
+    "Summary": "string",
+    "Price": "string (raw, e.g. '?10,499')"
+  },
+  "target": "is_recommended (0/1), derived from Rate >= 4",
+  "classical_model": "Linear SVM",
+  "notes": "TF-IDF over the Summary field (full vocabulary, 1-2 grams), concatenated with standardized Price, except Multinomial NB, which uses TF-IDF text only. Summary is used instead of Review because Review is overwhelmingly repeated boilerplate text (see the notebook's EDA section)."
+}

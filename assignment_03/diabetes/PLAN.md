@@ -14,8 +14,10 @@ model choices, DL architecture, and the literal cell-by-cell layout. See the roo
   (`mean = X_train.mean(axis=0)`, reused for `X_test`).
 - DL weight init: `np.random.randn(fan_in, fan_out) * sqrt(2/fan_in)` (He-style),
   biases `np.zeros((1, fan_out))` — per the slides.
-- DL training loop records loss every epoch into a plain list, for the required
-  loss-curve plot.
+- DL training loop records loss **and** accuracy every epoch into plain lists, for a
+  paired loss/accuracy training-curve plot (not loss alone) — visualizations are not
+  confined to the EDA section in this assignment; each of the classical-model,
+  DL-model, and comparison sections below carries its own plots, not just tables.
 - **"Write each part into different cells" (verbal requirement)**: one function, one
   plot, one model fit, one explanation, per cell. No cell mixes "define a function"
   with "call it and print a result." The cell plan below is literal, not a guideline.
@@ -106,52 +108,70 @@ One logical step per cell, per the "different cells" rule.
     Observation/Interpretation.
 11. EDA plot 4 (e.g. `year` vs. target rate, to inform the year-as-feature decision)
     + markdown Observation/Interpretation.
+12. EDA plot 5: correlation heatmap of the numeric/ordinal feature block + markdown
+    Observation/Interpretation.
 
 **Cleaning & representation**
-12. Markdown: "Data cleaning."
-13. Collapse 3-class target to binary (one cell, this operation only).
-14. Drop raw-categorical duplicate columns, keep `_00`/`_01` ordinal versions (one
+13. Markdown: "Data cleaning."
+14. Collapse 3-class target to binary (one cell, this operation only).
+15. Drop raw-categorical duplicate columns, keep `_00`/`_01` ordinal versions (one
     cell, this operation only).
-15. Markdown: "Representation" + why (restates the reasoning above for the reader).
-16. Train/test split (80/20, `RANDOM_SEED`).
-17. `StandardScaler` fit-on-train / transform-both for continuous columns.
-18. Shape sanity-check cell (`X_train.shape`, `X_test.shape`).
+16. Markdown: "Representation" + why (restates the reasoning above for the reader).
+17. Train/test split (80/20, `RANDOM_SEED`).
+18. `StandardScaler` fit-on-train / transform-both for continuous columns.
+19. Shape sanity-check cell (`X_train.shape`, `X_test.shape`).
 
 **3 classical models**
-19. Markdown: "Classical machine-learning models."
-20. Logistic Regression: instantiate + `.fit()`.
-21. Random Forest: instantiate + `.fit()`.
-22. Gradient Boosting: instantiate + `.fit()`.
-23. Predictions cell: all 3 models on the test set.
-24. Metrics cell: Accuracy/Precision/Recall/F1 + confusion matrix per model, one
+20. Markdown: "Classical machine-learning models."
+21. Logistic Regression: instantiate + `.fit()`.
+22. Random Forest: instantiate + `.fit()`.
+23. Gradient Boosting: instantiate + `.fit()`.
+24. Predictions cell: all 3 models on the test set.
+25. Metrics cell: Accuracy/Precision/Recall/F1 + confusion matrix per model, one
     results table.
+26. **Plot**: confusion-matrix heatmaps for the 3 classical models, 1x3 subplot grid.
+27. **Plot**: ROC curve overlay, all 3 classical models on one axes (AUC in the
+    legend).
+28. **Plot**: feature-importance bar chart from Random Forest (`feature_importances_`,
+    top 15) — which BRFSS fields the tree ensemble actually leaned on.
 
 **From-scratch DL model**
-25. Markdown: "Deep learning from scratch (NumPy only)" + architecture statement + why
+29. Markdown: "Deep learning from scratch (NumPy only)" + architecture statement + why
     (from this plan).
-26. `relu`, `relu_derivative`.
-27. `sigmoid`, `sigmoid_derivative`.
-28. `binary_cross_entropy` loss function.
-29. Weight init: `W1,b1,W2,b2,W3,b3`, He-init, seeded, sized `33→32→16→1`.
-30. `forward(X)` function.
-31. `backward(y, cache)` function.
-32. Training loop: forward → loss → backward → update, `loss_history` per epoch.
-33. Predict on test set, threshold at 0.5.
-34. DL metrics cell (same structure as cell 24).
+30. `relu`, `relu_derivative`.
+31. `sigmoid`, `sigmoid_derivative`.
+32. `binary_cross_entropy` loss function.
+33. Weight init: `W1,b1,W2,b2,W3,b3`, He-init, seeded, sized `33→32→16→1`.
+34. `forward(X)` function.
+35. `backward(y, cache)` function.
+36. Training loop: forward → loss → backward → update, `loss_history` **and**
+    `accuracy_history` per epoch.
+37. Predict on test set, threshold at 0.5.
+38. DL metrics cell (same structure as cell 25).
+39. **Plot**: loss & accuracy training curves, two subplots sharing the epoch axis —
+    the required loss-curve visualization, paired with accuracy rather than left
+    alone.
+40. **Plot**: confusion-matrix heatmap (DL model) — the required DL confusion-matrix
+    visualization.
+41. **Plot**: histogram of learned first-layer weights (`W1.flatten()`) — sanity check
+    on the weight distribution after training (dead/exploded units).
+42. **Plot**: feature-signal bar chart from the DL model (mean `|W1|` per input
+    feature, top 15) — the DL model's analogue to cell 28's Random Forest importance
+    chart, so the report can compare *which features each model leaned on*.
 
 **Comparison & persistence**
-35. Markdown: "4-model comparison."
-36. Combined results table (3 classical + DL) as one `DataFrame`.
-37. Bar chart: Accuracy across all 4 models.
-38. Bar chart: Precision/Recall/F1 across all 4 models.
-39. Loss curve: epoch vs. training loss (DL model).
-40. Confusion-matrix heatmap (DL model).
-41. Markdown: written comparison — which model wins and why (capacity vs. overfitting
+43. Markdown: "4-model comparison."
+44. Combined results table (3 classical + DL) as one `DataFrame`.
+45. Bar chart: Accuracy across all 4 models.
+46. Bar chart: Precision/Recall/F1 across all 4 models.
+47. **Plot**: ROC curve overlay, all 4 models on one axes (extends cell 27 with the DL
+    model's curve).
+48. Markdown: written comparison — which model wins and why (capacity vs. overfitting
     vs. dataset size), in the lecture's "Function Composition + Representation
     Learning + Optimization" framing.
-42. Save classical model + feature names + `input_schema.json`.
-43. Save DL weights (`np.savez`).
-44. Reload-and-verify cell: reload both artifacts, confirm predictions match the
+49. Save classical model + feature names + `input_schema.json`.
+50. Save DL weights (`np.savez`).
+51. Reload-and-verify cell: reload both artifacts, confirm predictions match the
     in-memory versions (same discipline as assignment_02 §23, cheap insurance).
 
 ## Open questions

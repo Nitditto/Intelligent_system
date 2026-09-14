@@ -159,6 +159,27 @@ winning is a legitimate, useful finding here (small-network-vs-tree-ensemble on
 tabular data, or vocabulary-capped DL vs. full-vocabulary linear models on text, are
 both known limitations worth naming rather than glossing over).
 
+**Specific point to include, discovered while building the diabetes and house_price
+notebooks — write this as an Optimization-pillar finding, not a representation/data-
+cleaning aside:** plain gradient descent (`W -= lr * dW`, no per-parameter adaptive
+scaling, no Adam, nothing a framework quietly handles) has no defense against a
+feature sitting on a wildly different numeric scale than the rest of the input. This
+showed up independently in two apps — diabetes's `year` column (left as the literal
+2019/2020 integer, dwarfing every standardized/small-integer feature next to it) and
+house_price's `acre_lot`/`house_size`/`city_freq` (all heavy-tailed counts/measurements
+whose raw scale produced double-digit z-scores after standardization) — and in both
+cases it caused the from-scratch network to diverge or collapse to a trivial
+majority/mean prediction, while every classical model trained on the exact same
+feature matrix was unaffected (`sklearn`'s solvers and the tree ensembles are either
+scale-invariant or robust to this kind of ill-conditioning). The reason this belongs
+in the report at all is specifically *because* it is invisible when you call
+`model.fit()` on a packaged implementation — it was only discoverable by building the
+optimizer by hand, which is the actual point of the from-scratch requirement. Lead
+with that framing (what building the optimizer yourself exposes that a framework
+would silently absorb) and use the two concrete fixes as supporting evidence, not the
+headline. See `PROGRESS.md`'s "Bugs found and fixed" section for the exact numbers
+(loss trajectories, before/after z-scores) to cite here once writing this section.
+
 ### 7. Conclusion
 Short — 1 paragraph. What was built, what was learned about representation learning
 and from-scratch implementation specifically (not a restatement of section 6).
