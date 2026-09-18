@@ -3,6 +3,8 @@ import '../core/theme/app_theme.dart';
 import '../core/utils/currency_formatter.dart';
 import '../models/prediction_result.dart';
 import '../models/property_input.dart';
+import '../widgets/primitives.dart';
+import '../widgets/result_parts.dart';
 
 class ResultCard extends StatelessWidget {
   final PredictionResult result;
@@ -18,166 +20,135 @@ class ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: Colors.white,
-      elevation: 2,
-      shadowColor: const Color(0x1A000000),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppTheme.borderColor, width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDFA),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF99F6E4)),
-                  ),
-                  child: const Text(
-                    'ESTIMATED MARKET VALUE',
-                    style: TextStyle(
-                      color: AppTheme.primaryColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppTheme.borderColor),
-                  ),
-                  child: Text(
-                    result.modelName,
-                    style: const TextStyle(
-                      color: AppTheme.textMain,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              result.formattedPriceBillion,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.textMain,
-                letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Equivalent to ${CurrencyFormatter.formatVND(result.predictedPrice)}',
-              style: const TextStyle(fontSize: 13, color: AppTheme.textMuted),
-            ),
-            const Divider(height: 24, color: AppTheme.borderColor),
-            Row(
-              children: [
-                Expanded(
-                  child: _MetricBox(
-                    label: 'Unit Price / m²',
-                    value: CurrencyFormatter.formatPerM2(result.pricePerM2),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _MetricBox(
-                    label: 'Usable Area',
-                    value: '${input?.area ?? "N/A"} m²',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDFA),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFF99F6E4)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'VALUATION ANALYSIS & INSIGHTS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.primaryColor,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    result.interpretation,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textMain,
-                      height: 1.4,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton(
-                onPressed: onClear,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.textMuted,
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: const Text('Estimate Another Property'),
-              ),
-            ),
-          ],
+    return ListView(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 32),
+      children: [
+        VerdictBlock(
+          good: true,
+          badge: 'VALUATION COMPLETE',
+          title: result.formattedPriceBillion,
+          subtitle: 'Estimated Total Value: ${result.predictedPrice} million VNĐ',
         ),
-      ),
+        SizedBox(height: 16),
+        
+        AppCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Property Specs', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              SizedBox(height: 12),
+              KvGrid([
+                ('Unit Price', CurrencyFormatter.formatPerM2(result.pricePerM2)),
+                ('Usable Area', '${input?.area ?? "N/A"} m²'),
+                ('Layout', '${input?.bedrooms ?? 3} Beds · ${input?.bathrooms ?? 2} Baths'),
+                ('Location', input?.district ?? 'N/A'),
+                ('Property Type', input?.propertyType ?? 'N/A'),
+                ('Dimensions', '${input?.width ?? "N/A"}m × ${input?.length ?? "N/A"}m'),
+              ]),
+            ],
+          ),
+        ),
+        SizedBox(height: 16),
+
+        if (result.featureContributions.isNotEmpty) ...[
+          AppCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Key Price Drivers (SHAP)',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text('Features that most strongly influenced the final price.',
+                    style: TextStyle(fontSize: 12, color: context.c.textSoft)),
+                const SizedBox(height: 12),
+                _ShapBars(result.featureContributions),
+              ],
+            ),
+          ),
+          SizedBox(height: 20),
+        ],
+
+        Center(
+          child: AppButton(
+            label: 'Estimate Another Property',
+            icon: Icons.refresh,
+            onPressed: onClear,
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _MetricBox extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _MetricBox({required this.label, required this.value});
+/// SHAP-style contribution bars matching the web `.shap-bar--pos` (green→teal)
+/// and `.shap-bar--neg` (red→rose) gradients.
+class _ShapBars extends StatelessWidget {
+  final List<FeatureContribution> factors;
+  const _ShapBars(this.factors);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textMuted)),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textMain),
+    final c = context.c;
+    final top = [...factors]
+      ..sort((a, b) => b.impactMillion.abs().compareTo(a.impactMillion.abs()));
+    final shown = top.take(5).toList();
+    final maxAbs = shown
+        .map((f) => f.impactMillion.abs())
+        .fold<double>(0.01, (a, b) => a > b ? a : b);
+
+    return Column(
+      children: shown.map((f) {
+        final positive = f.impactMillion >= 0;
+        final frac = (f.impactMillion.abs() / maxAbs).clamp(0.03, 1.0);
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(f.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 12, color: c.text)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${positive ? '+' : ''}${f.impactMillion.toStringAsFixed(1)}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: positive ? c.good : c.bad,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: FractionallySizedBox(
+                    widthFactor: frac,
+                    child: Container(
+                      height: 10,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: positive
+                              ? const [Color(0xFF10B981), Color(0xFF14B8A6)]
+                              : const [Color(0xFFEF4444), Color(0xFFF43F5E)],
+                        ),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 }

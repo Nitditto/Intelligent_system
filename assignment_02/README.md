@@ -10,8 +10,8 @@ Raw data → Understand → Clean → Represent → Learn → Evaluate → Persi
 | # | Application | Task | Raw form | Representation | Status |
 |---|---|---|---|---|---|
 | 1 | **Diabetes** prediction | binary classification | CSV (BRFSS survey) | feature matrix `X ∈ ℝ^{N×23}` | ✅ notebook · API · web · mobile |
-| 2 | **House price** prediction | regression | CSV | encoded + scaled feature matrix | ⏳ not started |
-| 3 | **Customer behaviour** (Olist e-commerce) | binary classification | 9 CSV tables + review comments | tabular `ℝ^{43}` **‖** TF-IDF text `ℝ^{~13000}` | ✅ notebook · API · web · mobile |
+| 2 | **House price** prediction | regression | CSV | encoded + scaled feature matrix | ✅ notebook · API · web · mobile |
+| 3 | **Customer behaviour** (Sephora skincare reviews) | binary classification | CSV tables + review comments | tabular profile **‖** TF-IDF text `ℝ^{~13000}` | ✅ notebook · API · web · mobile |
 
 Each application is self-contained under its own folder with an identical layout
 (Appendix A):
@@ -51,6 +51,12 @@ cd assignment_02/<app>
 pip install -r requirements.txt
 ```
 
+Every `mobile/` client targets **Android only** — each `mobile/android/` folder is
+committed as-is (no other platform folders, no `flutter create` step needed); just
+`flutter pub get` and `flutter run`. Requires the Flutter SDK plus an Android SDK
+(`flutter doctor` should show the Android toolchain check passing) and either a
+connected device or a running emulator.
+
 ---
 
 ## Data-representation summary (mandatory table)
@@ -59,7 +65,7 @@ pip install -r requirements.txt
 |---|---|---|---|
 | Diabetes | CSV / table | 21 raw + 2 engineered → feature vector, `StandardScaler` on 8 numeric cols, no one-hot | `X ∈ ℝ^{N×23}` dense |
 | House price | CSV / table | encoded + scaled feature matrix | `X ∈ ℝ^{N×d}` *(pending)* |
-| Customer behaviour | 9 CSV tables + PT review comments | 20 tabular cols → `ℝ^{43}` (impute → log1p money → scale; one-hot payment/region/category) **‖** `TfidfVectorizer(1–2-gram)` on the comment → `ℝ^{~13000}` sparse | `X ∈ ℝ^{N×~13000}` sparse, `N = 95,824` |
+| Customer behaviour | 2 CSV tables + review text | Tabular profile (skin type, brand, price) **‖** `TfidfVectorizer(1–2-gram)` on the review text | `X ∈ ℝ^{N×d}` sparse, `N ≈ 104,000` |
 
 Every dimension is explained in the corresponding notebook §12 and in the report.
 
@@ -85,8 +91,8 @@ uvicorn api.main:app --port 8000
 # 3. run the web client  ->  http://localhost:5173
 npm --prefix web install && npm --prefix web run dev
 
-# 4. run the mobile client (Android emulator: 10.0.2.2 is the host)
-cd mobile && flutter create . && flutter pub get
+# 4. run the mobile client — Android only (10.0.2.2 is the emulator's alias for the host)
+cd mobile && flutter pub get
 flutter run --dart-define=API_URL=http://10.0.2.2:8000
 ```
 
@@ -106,21 +112,38 @@ More detail: `diabetes/api/README.md`, `diabetes/web/README.md`, `diabetes/mobil
 
 ## Application 2 — House price
 
-⏳ **Not started.** Folder skeleton only. Planned: pick a Kaggle house-price dataset,
-23-section notebook, 5 regression models (Linear, Ridge/Lasso, Decision Tree, Random
-Forest, Gradient Boosting), `POST /predict` → `{ "predicted_price": ... }`, web + mobile.
+**Task:** regression on a Kaggle house-price dataset. **Deployed model:** Random Forest
+(trained on `log1p(price)`, predictions inverted with `expm1`).
+
+```bash
+cd assignment_02/house_price
+pip install -r requirements.txt
+
+# 1. reproduce the experiment (writes model/model_pipeline.joblib)
+jupyter nbconvert --to notebook --execute notebook/house_price.ipynb --output house_price.ipynb
+
+# 2. run the API  ->  http://localhost:8002/docs
+uvicorn house_price.api.main:app --reload --host 0.0.0.0 --port 8002
+
+# 3. run the web client
+npm --prefix web install && npm --prefix web run dev
+
+# 4. run the mobile client — Android only (defaults to http://10.0.2.2:8002,
+#    the Android emulator's alias for the host; switchable at runtime in-app)
+cd mobile && flutter pub get
+flutter run
+```
+
+More detail: `house_price/mobile/README.md`.
 
 ---
 
-## Application 3 — Customer behaviour (Olist e-commerce)
+## Application 3 — Customer behaviour (Sephora Skincare Reviews)
 
-**Dataset:** Kaggle `olistbr/brazilian-ecommerce` (9 CSVs), in `customer_behaviour/data/`.
-98,673 reviewed orders → 95,824 after keeping delivered orders. One row = one order,
-aggregated from the item / payment / product / customer tables. Target
-`satisfied = review_score ≥ 4` (~79% positive).
-**Deployed model:** Logistic Regression on the **tabular + comment-text** representation,
-test ROC-AUC 0.859, dissatisfied-class recall 0.672. Adding the comment text lifts
-mean ROC-AUC by ~0.08 over tabular features alone.
+**Dataset:** Kaggle `nadyinky/sephora-products-and-skincare-reviews` (2 CSVs), in `customer_behaviour/data/`.
+104k Sephora skincare reviews. Target `is_recommended`.
+**Deployed model:** Logistic Regression on the **tabular + comment-text** representation.
+Adding the review text lifts mean ROC-AUC significantly over tabular features alone.
 
 ```bash
 cd assignment_02/customer_behaviour
@@ -135,8 +158,8 @@ uvicorn api.main:app --port 8000
 # 3. run the web client  ->  http://localhost:5174
 npm --prefix web install && npm --prefix web run dev
 
-# 4. run the mobile client
-cd mobile && flutter create . && flutter pub get
+# 4. run the mobile client — Android only
+cd mobile && flutter pub get
 flutter run --dart-define=API_URL=http://10.0.2.2:8000
 ```
 
@@ -152,14 +175,10 @@ docker compose up --build
 
 ```bash
 curl -s http://localhost:8000/predict -H 'content-type: application/json' -d '{
-  "price_total": 129.90, "freight_total": 18.30, "main_payment_type": "credit_card",
-  "max_installments": 3, "customer_state": "SP", "category": "bed_bath_table",
-  "order_purchase_timestamp": "2018-05-01 10:00:00",
-  "order_estimated_delivery_date": "2018-05-20 00:00:00",
-  "order_delivered_customer_date": "2018-05-31 14:00:00",
-  "review_comment_message": "Produto chegou muito atrasado e a embalagem estava danificada."
+  "skin_type": "normal", "skin_tone": "medium", "category": "treatments",
+  "price_usd": 20.0, "review_text": "This product works amazing!"
 }'
-# -> { "prediction": "dissatisfied", "confidence": 0.9252, "p_satisfied": 0.0748, ... }
+# -> { "prediction": "recommend", "p_recommend": 0.92, ... }
 ```
 
 More detail: `customer_behaviour/api/README.md`, `customer_behaviour/web/README.md`,

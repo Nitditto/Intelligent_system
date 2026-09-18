@@ -1,0 +1,5 @@
+{
+  "inputs": "status, state, city, bed, bath, acre_lot, house_size, prev_sold_date; see feature_names.joblib for the exact post-encoding column order",
+  "target": "price (USD); model is trained on log1p(price), invert predictions with expm1",
+  "classical_model": "Random Forest"
+}
