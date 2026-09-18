@@ -47,13 +47,6 @@ htmlcov/
 *.matrix
 *.model
 *.sav
-!assignment_02/diabetes/model/model_pipeline.joblib
-!assignment_02/diabetes/model/feature_names.joblib
-!assignment_02/house_price/model/model_pipeline.joblib
-!assignment_02/house_price/model/feature_names.joblib
-!assignment_02/customer_behaviour/model/model_pipeline.joblib
-!assignment_02/customer_behaviour/model/feature_names.joblib
-!assignment_02/customer_behaviour/model/feature_means.joblib
 
 # Flutter / Dart / Mobile
 .dart_tool/
