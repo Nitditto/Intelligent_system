@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens ported from `.claude/skills/frontend-ui` so the mobile client
-/// reads as the same product as the web client. Colours resolve per brightness
-/// through an [AppColors] `ThemeExtension`; spacing / radius / type are constants.
-
 // ---------------------------------------------------------------- spacing scale
 class Sp {
   static const double s1 = 4, s2 = 8, s3 = 12, s4 = 16, s5 = 20, s6 = 24,
@@ -11,7 +7,7 @@ class Sp {
 }
 
 class Rad {
-  static const double sm = 6, md = 10, lg = 14, pill = 999;
+  static const double sm = 8, md = 12, lg = 16, pill = 999;
   static const rSm = BorderRadius.all(Radius.circular(sm));
   static const rMd = BorderRadius.all(Radius.circular(md));
   static const rLg = BorderRadius.all(Radius.circular(lg));
@@ -20,7 +16,7 @@ class Rad {
 
 // ---------------------------------------------------------------- type scale
 class Ty {
-  static const double xs = 12, sm = 13, md = 15, lg = 18, xl = 22, xxl = 28;
+  static const double xs = 12, sm = 14, md = 16, lg = 18, xl = 22, xxl = 28;
   static const double lh = 1.5;
 }
 
@@ -52,41 +48,41 @@ class AppColors extends ThemeExtension<AppColors> {
   });
 
   static const light = AppColors(
-    bg: Color(0xFFF7F8FA),
+    bg: Color(0xFFF8FAFC),
     surface: Color(0xFFFFFFFF),
-    surface2: Color(0xFFF1F3F7),
-    border: Color(0xFFE3E7EE),
-    text: Color(0xFF1A2233),
-    textSoft: Color(0xFF5B6577),
-    textFaint: Color(0xFF8A93A6),
-    accent: Color(0xFF3B6EF2),
+    surface2: Color(0xFFF1F5F9),
+    border: Color(0xFFE2E8F0),
+    text: Color(0xFF0F172A),
+    textSoft: Color(0xFF64748B),
+    textFaint: Color(0xFF94A3B8),
+    accent: Color(0xFF4F46E5),
     accentInk: Color(0xFFFFFFFF),
-    accentWeak: Color(0xFFEAF0FE),
-    good: Color(0xFF128A5B),
-    goodWeak: Color(0xFFE2F4EC),
-    warn: Color(0xFFB7791F),
-    warnWeak: Color(0xFFFBF0DC),
-    bad: Color(0xFFD1453B),
-    badWeak: Color(0xFFFCECEB),
+    accentWeak: Color(0xFFE0E7FF),
+    good: Color(0xFF10B981),
+    goodWeak: Color(0xFFD1FAE5),
+    warn: Color(0xFFF59E0B),
+    warnWeak: Color(0xFFFEF3C7),
+    bad: Color(0xFFEF4444),
+    badWeak: Color(0xFFFEE2E2),
   );
 
   static const dark = AppColors(
-    bg: Color(0xFF0F1420),
-    surface: Color(0xFF161C2B),
-    surface2: Color(0xFF1E2536),
-    border: Color(0xFF2A3346),
-    text: Color(0xFFE8ECF4),
-    textSoft: Color(0xFFA9B2C5),
-    textFaint: Color(0xFF7B8499),
-    accent: Color(0xFF5B8BFF),
-    accentInk: Color(0xFF0F1420),
-    accentWeak: Color(0xFF1B2740),
-    good: Color(0xFF3ECF8E),
-    goodWeak: Color(0xFF14301F),
-    warn: Color(0xFFE0A458),
-    warnWeak: Color(0xFF33260F),
-    bad: Color(0xFFF2635A),
-    badWeak: Color(0xFF331B1A),
+    bg: Color(0xFF0F172A),
+    surface: Color(0xFF1E293B),
+    surface2: Color(0xFF334155),
+    border: Color(0xFF334155),
+    text: Color(0xFFF8FAFC),
+    textSoft: Color(0xFF94A3B8),
+    textFaint: Color(0xFF64748B),
+    accent: Color(0xFF6366F1),
+    accentInk: Color(0xFFFFFFFF),
+    accentWeak: Color(0xFF312E81),
+    good: Color(0xFF34D399),
+    goodWeak: Color(0xFF064E3B),
+    warn: Color(0xFFFBBF24),
+    warnWeak: Color(0xFF78350F),
+    bad: Color(0xFFF87171),
+    badWeak: Color(0xFF7F1D1D),
   );
 
   @override
@@ -160,7 +156,7 @@ extension AppColorsX on BuildContext {
 ThemeData buildAppTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
   final ac = isDark ? AppColors.dark : AppColors.light;
-  final base = ThemeData(brightness: brightness, useMaterial3: true);
+  final base = ThemeData(brightness: brightness, useMaterial3: true, fontFamily: 'Inter');
 
   return base.copyWith(
     scaffoldBackgroundColor: ac.bg,
@@ -176,7 +172,7 @@ ThemeData buildAppTheme(Brightness brightness) {
       backgroundColor: ac.surface,
       foregroundColor: ac.text,
       elevation: 0,
-      scrolledUnderElevation: 0.5,
+      scrolledUnderElevation: 1,
       centerTitle: false,
       titleTextStyle: TextStyle(
         color: ac.text,
@@ -184,9 +180,17 @@ ThemeData buildAppTheme(Brightness brightness) {
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
       ),
-      shape: Border(bottom: BorderSide(color: ac.border)),
+      shape: Border(bottom: BorderSide(color: ac.border.withValues(alpha: 0.5))),
+      iconTheme: IconThemeData(color: ac.text),
     ),
-    textTheme: base.textTheme.apply(bodyColor: ac.text, displayColor: ac.text),
+    cardTheme: CardThemeData(
+      color: ac.surface,
+      elevation: 2,
+      shadowColor: ac.text.withValues(alpha: 0.05),
+      shape: const RoundedRectangleBorder(borderRadius: Rad.rLg),
+      margin: const EdgeInsets.only(bottom: Sp.s4),
+    ),
+    textTheme: base.textTheme.apply(bodyColor: ac.text, displayColor: ac.text, fontFamily: 'Inter'),
     dividerColor: ac.border,
     splashFactory: NoSplash.splashFactory,
   );

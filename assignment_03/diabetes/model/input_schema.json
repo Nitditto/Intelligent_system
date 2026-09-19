@@ -1,0 +1,5 @@
+{
+  "inputs": "33+ BRFSS survey fields; see feature_names.joblib for the exact post-encoding column order",
+  "target": "is_diabetic (0/1), collapsed from the 3-class diabetes column",
+  "classical_model": "Gradient Boosting"
+}

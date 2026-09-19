@@ -56,19 +56,13 @@ def split(df: pd.DataFrame):
 
 
 def make_prep() -> ColumnTransformer:
-    # 1. Các cột số liên tục & ordinal cần Scale (Chuẩn hóa)
     scale = C.CONTINUOUS_FEATURES + C.ORDINAL_FEATURES + ["TotalUnhealthyDays"]
-    # 2. Các cột nhị phân (Binary) giữ nguyên giá trị 0/1
     pass_through = C.BINARY_FEATURES + ["CardioRisk"]
-    
     return ColumnTransformer([
-        ("num", Pipeline([
-            ("i", SimpleImputer(strategy="median")), # Xử lý missing bằng trung vị
-            ("s", StandardScaler())                   # Chuẩn hóa về mean=0, std=1
-        ]), scale),
+        ("num", Pipeline([("i", SimpleImputer(strategy="median")),
+                          ("s", StandardScaler())]), scale),
         ("bin", "passthrough", pass_through),
     ])
-
 
 
 def build_holdout_scores(X_tr, y_tr, X_val, y_val, X_te, y_te) -> np.ndarray:

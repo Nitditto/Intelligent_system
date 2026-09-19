@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { PRESETS, type Preset } from "../constants/options";
 import type { ListingInput } from "../types";
 
 interface PredictionFormProps {
@@ -81,20 +80,13 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
   currentStep,
   onStepChange,
 }) => {
-  const [activePresetId, setActivePresetId] = useState<string>("rach-gia-full");
   const [validationError, setValidationError] = useState<string | null>(null);
-
-  const handleApplyPreset = (preset: Preset) => {
-    setActivePresetId(preset.id);
-    onFormDataChange(preset.data);
-    setValidationError(null);
-  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    setActivePresetId("");
+    
 
     if (type === "number") {
       const parsed = value === "" ? undefined : parseFloat(value);
@@ -105,7 +97,7 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
   };
 
   const updateCounter = (field: "Bedrooms" | "Bathrooms" | "Floors", delta: number) => {
-    setActivePresetId("");
+    
     onFormDataChange((prev) => {
       const current = prev[field] ?? 1;
       const next = Math.max(1, Math.min(20, current + delta));
@@ -145,86 +137,86 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
     4: { title: "Property Attributes & Road", desc: "Choose property classification, road surface, and orientation" },
   };
 
+  const sections = ["Dimensions", "Architecture", "Location", "Attributes"];
+
   return (
-    <div className="panel wizard-step-panel">
-      {/* Step Header */}
-      <div className="panel-header-row">
-        <div>
-          <span className="step-count-pill">STEP 0{currentStep} OF 04</span>
-          <h2 className="panel-headline">{STEP_TITLES[currentStep]?.title}</h2>
-          <p className="panel-subline">{STEP_TITLES[currentStep]?.desc}</p>
+    <div className="wiz-split">
+      <aside className="wiz-sidebar">
+        <div className="wiz-branding">
+          <h1>Real Estate Valuation</h1>
+          <span>Vietnam Real Estate Market</span>
         </div>
-        <button
-          type="button"
-          onClick={onReset}
-          className="btn-clear-link"
-          disabled={loading}
-        >
-          Reset Inputs
-        </button>
-      </div>
+        <ol className="stepper vert" aria-label="Progress">
+          {sections.map((title, i) => {
+            const stepNum = i + 1;
+            return (
+              <li
+                key={title}
+                className={`stepper__item${stepNum === currentStep ? ' is-active' : stepNum < currentStep ? ' is-done' : ''}`}
+              >
+                <button
+                  type="button"
+                  className="stepper__dot"
+                  disabled={stepNum > currentStep}
+                  onClick={() => stepNum < currentStep && onStepChange(stepNum)}
+                >
+                  {stepNum < currentStep ? '✓' : stepNum}
+                </button>
+                <span className="stepper__label">{title}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </aside>
 
-      {/* Demo Presets Strip */}
-      <div className="preset-strip">
-        <span className="preset-strip-title">Quick Demo Presets:</span>
-        <div className="preset-chip-list">
-          {PRESETS.map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={`preset-chip ${activePresetId === preset.id ? "active" : ""}`}
-              onClick={() => handleApplyPreset(preset)}
-            >
-              {preset.name}
+      <div className="wiz-content">
+        <header className="wiz-hdr">
+          <div className="wiz-hdr__right">
+            <button type="button" onClick={onReset} className="btn btn--ghost" disabled={loading}>
+              Reset All
             </button>
-          ))}
+          </div>
+        </header>
+
+        <main className="wiz-body">
+        <div className="wiz-step-hdr">
+          <p className="wiz-step-badge">Step {currentStep} of 4</p>
+          <h2 className="wiz-step-title">{STEP_TITLES[currentStep]?.title}</h2>
+          <p className="wiz-step-sub">{STEP_TITLES[currentStep]?.desc}</p>
         </div>
-      </div>
 
-      {validationError && (
-        <div className="validation-alert" role="alert">
-          {validationError}
-        </div>
-      )}
+        {validationError && (
+          <div className="notice err" role="alert">
+            {validationError}
+          </div>
+        )}
 
-      {/* STEP 1: Dimensions & Land */}
-      {currentStep === 1 && (
-        <div className="step-content-box animate-step">
-          <div className="form-block">
-            <div className="block-label-row">
-              <label htmlFor="Area" className="block-label">
-                Usable Area
-              </label>
-              <span className="area-value-badge">
-                <strong>{currentArea.toLocaleString("en-US")}</strong> m²
-              </span>
-            </div>
+        {currentStep === 1 && (
+          <div className="card">
+            <div className="card" style={{ background: 'var(--surface-solid)', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                <label style={{ fontWeight: 600 }}>Usable Area</label>
+                <span><strong>{currentArea.toLocaleString("en-US")}</strong> m²</span>
+              </div>
 
-            <div className="slider-wrapper">
-              <input
-                id="Area"
-                type="range"
-                min="15"
-                max="500"
-                step="1"
-                value={sliderArea}
-                onChange={(e) => {
-                  setActivePresetId("");
-                  onFormDataChange((prev) => ({ ...prev, Area: parseFloat(e.target.value) }));
-                }}
-                className="custom-range-slider"
-              />
-              <div className="slider-ticks">
-                <span>15 m²</span>
-                <span>250 m²</span>
-                <span>500+ m²</span>
+              <div className="slider-row">
+                <input
+                  id="Area"
+                  type="range"
+                  min="15"
+                  max="500"
+                  step="1"
+                  value={sliderArea}
+                  onChange={(e) => {
+                    
+                    onFormDataChange((prev) => ({ ...prev, Area: parseFloat(e.target.value) }));
+                  }}
+                />
+                <div className="slider-readout" style={{ fontWeight: '600' }}>{sliderArea} m²</div>
               </div>
             </div>
-          </div>
 
-          {/* Quick Area Size Cards */}
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Choose Common Area Benchmark:</span>
+            <div className="section-label">Choose Common Area Benchmark</div>
             <div className="option-cards-grid-4">
               {AREA_QUICK_CARDS.map((ac) => (
                 <button
@@ -232,7 +224,7 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                   type="button"
                   className={`choice-card ${formData.Area === ac.area ? "selected" : ""}`}
                   onClick={() => {
-                    setActivePresetId("");
+                    
                     onFormDataChange((prev) => ({ ...prev, Area: ac.area }));
                   }}
                 >
@@ -241,64 +233,59 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Lot Dimensions */}
-          <div className="inputs-pair-grid">
-            <div className="input-group">
-              <label htmlFor="Width">Frontage Width (m)</label>
-              <input
-                id="Width"
-                name="Width"
-                type="number"
-                step="0.1"
-                min="0.5"
-                max="500"
-                value={formData.Width ?? ""}
-                onChange={handleChange}
-                placeholder="e.g. 4.0"
-              />
+            <div className="grid-2">
+              <div className="field">
+                <label htmlFor="Width">Frontage Width (m)</label>
+                <input
+                  id="Width"
+                  name="Width"
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="500"
+                  value={formData.Width ?? ""}
+                  onChange={handleChange}
+                  placeholder="e.g. 4.0"
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="Length">Lot Depth (m)</label>
+                <input
+                  id="Length"
+                  name="Length"
+                  type="number"
+                  step="0.1"
+                  min="1"
+                  max="1000"
+                  value={formData.Length ?? ""}
+                  onChange={handleChange}
+                  placeholder="e.g. 19.6"
+                />
+              </div>
             </div>
 
-            <div className="input-group">
-              <label htmlFor="Length">Lot Depth (m)</label>
+            <div className="field">
+              <label htmlFor="Alley Width">Alley Access Width (m)</label>
               <input
-                id="Length"
-                name="Length"
+                id="Alley Width"
+                name="Alley Width"
                 type="number"
                 step="0.1"
-                min="1"
-                max="1000"
-                value={formData.Length ?? ""}
+                min="0"
+                max="50"
+                value={formData["Alley Width"] ?? ""}
                 onChange={handleChange}
-                placeholder="e.g. 19.6"
+                placeholder="e.g. 3.5 (leave blank if frontage is on main road)"
               />
             </div>
           </div>
+        )}
 
-          <div className="input-group" style={{ marginTop: "0.85rem" }}>
-            <label htmlFor="Alley Width">Alley Access Width (m)</label>
-            <input
-              id="Alley Width"
-              name="Alley Width"
-              type="number"
-              step="0.1"
-              min="0"
-              max="50"
-              value={formData["Alley Width"] ?? ""}
-              onChange={handleChange}
-              placeholder="e.g. 3.5 (leave blank if frontage is on main road)"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* STEP 2: Living Space & Architecture */}
-      {currentStep === 2 && (
-        <div className="step-content-box animate-step">
-          {/* Quick Layout Cards */}
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Choose Living Layout Architecture:</span>
+        {currentStep === 2 && (
+          <div className="card">
+            <div className="section-label">Choose Living Layout Architecture</div>
             <div className="option-cards-grid-4">
               {LAYOUT_PRESET_CARDS.map((lp) => {
                 const isSelected =
@@ -311,7 +298,7 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                     type="button"
                     className={`choice-card ${isSelected ? "selected" : ""}`}
                     onClick={() => {
-                      setActivePresetId("");
+                      
                       onFormDataChange((prev) => ({
                         ...prev,
                         Bedrooms: lp.beds,
@@ -328,87 +315,41 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 );
               })}
             </div>
-          </div>
 
-          {/* Steppers */}
-          <div className="steppers-grid">
-            <div className="stepper-card">
-              <label className="stepper-label">Bedrooms</label>
-              <div className="stepper-control">
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Bedrooms", -1)}
-                  aria-label="Decrease bedrooms"
-                >
-                  -
-                </button>
-                <span className="stepper-val">{formData.Bedrooms ?? 1}</span>
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Bedrooms", 1)}
-                  aria-label="Increase bedrooms"
-                >
-                  +
-                </button>
+            <div className="steppers-grid">
+              <div className="stepper-card">
+                <span className="stepper-label">Bedrooms</span>
+                <div className="stepper-control">
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Bedrooms", -1)}>-</button>
+                  <span className="stepper-val">{formData.Bedrooms ?? 1}</span>
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Bedrooms", 1)}>+</button>
+                </div>
               </div>
-            </div>
 
-            <div className="stepper-card">
-              <label className="stepper-label">Bathrooms</label>
-              <div className="stepper-control">
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Bathrooms", -1)}
-                  aria-label="Decrease bathrooms"
-                >
-                  -
-                </button>
-                <span className="stepper-val">{formData.Bathrooms ?? 1}</span>
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Bathrooms", 1)}
-                  aria-label="Increase bathrooms"
-                >
-                  +
-                </button>
+              <div className="stepper-card">
+                <span className="stepper-label">Bathrooms</span>
+                <div className="stepper-control">
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Bathrooms", -1)}>-</button>
+                  <span className="stepper-val">{formData.Bathrooms ?? 1}</span>
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Bathrooms", 1)}>+</button>
+                </div>
               </div>
-            </div>
 
-            <div className="stepper-card">
-              <label className="stepper-label">Total Floors</label>
-              <div className="stepper-control">
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Floors", -1)}
-                  aria-label="Decrease floors"
-                >
-                  -
-                </button>
-                <span className="stepper-val">{formData.Floors ?? 1}</span>
-                <button
-                  type="button"
-                  className="stepper-btn"
-                  onClick={() => updateCounter("Floors", 1)}
-                  aria-label="Increase floors"
-                >
-                  +
-                </button>
+              <div className="stepper-card">
+                <span className="stepper-label">Total Floors</span>
+                <div className="stepper-control">
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Floors", -1)}>-</button>
+                  <span className="stepper-val">{formData.Floors ?? 1}</span>
+                  <button type="button" className="stepper-btn" onClick={() => updateCounter("Floors", 1)}>+</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* STEP 3: Location & Position */}
-      {currentStep === 3 && (
-        <div className="step-content-box animate-step">
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Choose Street Access Position:</span>
+        {currentStep === 3 && (
+          <div className="card">
+            <div className="section-label">Choose Street Access Position</div>
             <div className="option-cards-grid-3">
               {POSITION_CARDS.map((pos) => (
                 <button
@@ -416,7 +357,7 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                   type="button"
                   className={`choice-card ${formData.Position === pos.value ? "selected" : ""}`}
                   onClick={() => {
-                    setActivePresetId("");
+                    
                     onFormDataChange((prev) => ({ ...prev, Position: pos.value }));
                   }}
                 >
@@ -425,68 +366,60 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="inputs-pair-grid">
-            <div className="input-group">
-              <label htmlFor="Province">Province / City</label>
-              <select
-                id="Province"
-                name="Province"
-                value={formData.Province ?? ""}
-                onChange={handleChange}
-              >
-                {TOP_PROVINCES.map((p) => (
-                  <option key={p.slug} value={p.slug}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+            <div className="grid-2">
+              <div className="field">
+                <label htmlFor="Province">Province / City</label>
+                <select
+                  id="Province"
+                  name="Province"
+                  value={formData.Province ?? ""}
+                  onChange={handleChange}
+                >
+                  {TOP_PROVINCES.map((p) => (
+                    <option key={p.slug} value={p.slug}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="field">
+                <label htmlFor="district">District / County</label>
+                <input
+                  id="district"
+                  name="district"
+                  type="text"
+                  value={formData.district ?? ""}
+                  onChange={handleChange}
+                  placeholder="e.g. Rach Gia, District 7"
+                />
+              </div>
             </div>
 
-            <div className="input-group">
-              <label htmlFor="district">District / County</label>
+            <div className="field">
+              <label htmlFor="ward">Ward / Commune</label>
               <input
-                id="district"
-                name="district"
+                id="ward"
+                name="ward"
                 type="text"
-                value={formData.district ?? ""}
+                value={formData.ward ?? ""}
                 onChange={handleChange}
-                placeholder="e.g. Rach Gia, District 7, Cau Giay"
+                placeholder="e.g. An Hoa Ward"
               />
             </div>
           </div>
+        )}
 
-          <div className="input-group" style={{ marginTop: "0.85rem" }}>
-            <label htmlFor="ward">Ward / Commune</label>
-            <input
-              id="ward"
-              name="ward"
-              type="text"
-              value={formData.ward ?? ""}
-              onChange={handleChange}
-              placeholder="e.g. An Hoa Ward"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* STEP 4: Classification & Road Access */}
-      {currentStep === 4 && (
-        <div className="step-content-box animate-step">
-          {/* Property Type Cards */}
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Choose Property Classification:</span>
+        {currentStep === 4 && (
+          <div className="card">
+            <div className="section-label">Choose Property Classification</div>
             <div className="option-cards-grid-3">
               {PROPERTY_TYPE_CARDS.map((pt) => (
                 <button
                   key={pt.value}
                   type="button"
-                  className={`choice-card ${
-                    formData["Property Type"] === pt.value ? "selected" : ""
-                  }`}
+                  className={`choice-card ${formData["Property Type"] === pt.value ? "selected" : ""}`}
                   onClick={() => {
-                    setActivePresetId("");
+                    
                     onFormDataChange((prev) => ({ ...prev, "Property Type": pt.value }));
                   }}
                 >
@@ -495,21 +428,16 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Road Type Cards */}
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Choose Road Surface Access:</span>
+            <div className="section-label">Choose Road Surface Access</div>
             <div className="option-cards-grid-3">
               {ROAD_TYPE_CARDS.map((rt) => (
                 <button
                   key={rt.value}
                   type="button"
-                  className={`choice-card ${
-                    formData["Road Type"] === rt.value ? "selected" : ""
-                  }`}
+                  className={`choice-card ${formData["Road Type"] === rt.value ? "selected" : ""}`}
                   onClick={() => {
-                    setActivePresetId("");
+                    
                     onFormDataChange((prev) => ({ ...prev, "Road Type": rt.value }));
                   }}
                 >
@@ -518,11 +446,8 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Direction Cards */}
-          <div className="cards-sub-section">
-            <span className="cards-sub-label">Compass Direction:</span>
+            <div className="section-label">Compass Direction</div>
             <div className="option-cards-grid-4">
               {DIRECTION_CARDS.map((d) => (
                 <button
@@ -530,7 +455,7 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                   type="button"
                   className={`choice-card-sm ${formData.Direction === d.value ? "selected" : ""}`}
                   onClick={() => {
-                    setActivePresetId("");
+                    
                     onFormDataChange((prev) => ({ ...prev, Direction: d.value }));
                   }}
                 >
@@ -538,49 +463,38 @@ export const PredictionForm: React.FC<PredictionFormProps> = ({
                 </button>
               ))}
             </div>
-          </div>
 
-          {/* Seller Role */}
-          <div className="input-group" style={{ marginTop: "0.85rem" }}>
-            <label htmlFor="Agent Role">Listed By</label>
-            <select
-              id="Agent Role"
-              name="Agent Role"
-              value={formData["Agent Role"] ?? "Chính chủ"}
-              onChange={handleChange}
-            >
-              <option value="Chính chủ">Direct Owner (Chính chủ)</option>
-              <option value="Môi giới">Real Estate Agent (Môi giới)</option>
-            </select>
+            <div className="field">
+              <label htmlFor="Agent Role">Listed By</label>
+              <select
+                id="Agent Role"
+                name="Agent Role"
+                value={formData["Agent Role"] ?? "Chính chủ"}
+                onChange={handleChange}
+              >
+                <option value="Chính chủ">Direct Owner (Chính chủ)</option>
+                <option value="Môi giới">Real Estate Agent (Môi giới)</option>
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </main>
 
-      {/* Step Navigation Actions */}
-      <div className="wizard-actions-row">
-        {currentStep > 1 && (
+      <footer className="wiz-foot">
+        <div className="wiz-foot__container">
+          <button type="button" className="btn btn--ghost" disabled={currentStep === 1 || loading} onClick={handleBack}>
+            ← Back
+          </button>
           <button
             type="button"
-            className="btn-wizard-back"
-            onClick={handleBack}
+            className="btn btn--primary"
             disabled={loading}
+            onClick={handleNext}
           >
-            ← Previous Step
+            {loading ? "Valuating…" : (currentStep < 4 ? 'Next →' : 'Predict Valuation')}
           </button>
-        )}
-
-        <button
-          type="button"
-          className="btn-cyan-predict"
-          onClick={handleNext}
-          disabled={loading}
-        >
-          {loading
-            ? "CALCULATING PREDICTION..."
-            : currentStep < 4
-            ? `PROCEED TO STEP 0${currentStep + 1} →`
-            : "CALCULATE AI VALUATION"}
-        </button>
+        </div>
+      </footer>
       </div>
     </div>
   );

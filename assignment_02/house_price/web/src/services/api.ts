@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { HealthResponse, ListingInput, PredictionResponse } from "../types";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8002";
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8001";
 
 export const client = axios.create({
   baseURL: API_BASE,

@@ -1,8 +1,11 @@
 // REST client for the customer-behaviour API. The mobile app performs no
 // inference itself — it enters a review, POSTs it, and shows the response.
 //
-// Base URL: pass --dart-define=API_URL=http://<host>:8000 at run time.
-// Default 10.0.2.2 is the Android emulator's alias for the host's localhost.
+// Base URL: pass --dart-define=API_URL=http://<host>:8002 at run time.
+// The customer-behaviour API listens on port 8002 (see docker-compose.yml /
+// README). 10.0.2.2 is the Android emulator's alias for the host's localhost;
+// on the iOS simulator use http://localhost:8002, and on a physical device the
+// host machine's LAN IP.
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -18,7 +21,7 @@ class ApiException implements Exception {
 
 class ApiClient {
   static const String baseUrl =
-      String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8000');
+      String.fromEnvironment('API_URL', defaultValue: 'http://10.0.2.2:8002');
 
   final http.Client _http = http.Client();
 
@@ -38,7 +41,15 @@ class ApiClient {
     final r = await _http.get(_u('/questions'));
     _check(r);
     final body = jsonDecode(r.body) as Map<String, dynamic>;
-    return (body['fields'] as List)
+    final fields = body['fields'];
+    if (fields is! List) {
+      throw ApiException(
+        'Unexpected /questions response from $baseUrl — no "fields" list. '
+        'Make sure API_URL points at the customer-behaviour API (port 8002), '
+        'not another service.',
+      );
+    }
+    return fields
         .map((q) => FormFieldSpec.fromJson((q as Map).cast<String, dynamic>()))
         .toList();
   }

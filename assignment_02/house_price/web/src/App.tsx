@@ -25,14 +25,6 @@ const DEFAULT_FORM_DATA: ListingInput = {
   district: "Rạch Giá",
 };
 
-const STEPS_NAV = [
-  { num: 1, title: "Dimensions", desc: "Area & Lot Size" },
-  { num: 2, title: "Living Space", desc: "Rooms & Floors" },
-  { num: 3, title: "Location", desc: "City & Position" },
-  { num: 4, title: "Attributes", desc: "Type & Access" },
-  { num: 5, title: "Valuation & SHAP", desc: "Model Prediction" },
-];
-
 export const App: React.FC = () => {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -82,7 +74,7 @@ export const App: React.FC = () => {
           setErrorMessage(`Server error (${err.response.status}): ${err.response.data?.detail || "Unknown error"}`);
         }
       } else if (err.request) {
-        setErrorMessage("Cannot connect to API server at http://localhost:8002. Please ensure the backend is running.");
+        setErrorMessage("Cannot connect to API server at http://localhost:8001. Please ensure the backend is running.");
       } else {
         setErrorMessage(`Error: ${err.message}`);
       }
@@ -98,87 +90,39 @@ export const App: React.FC = () => {
     setCurrentStep(1);
   };
 
-  const handleStepClick = (stepNum: number) => {
-    if (stepNum === 5 && !prediction) {
-      handlePredict(formData);
-      return;
-    }
-    setCurrentStep(stepNum);
-  };
-
   return (
-    <div className="app-layout">
+    <>
       <Navbar
         health={health}
         loading={healthLoading}
         onRefreshHealth={checkServerHealth}
       />
 
-      <main className="main-content">
-        <div className="content-container-wizard">
-          <ErrorBanner
-            message={errorMessage}
-            onDismiss={() => setErrorMessage("")}
+      <div className="app-viewport">
+        <ErrorBanner
+          message={errorMessage}
+          onDismiss={() => setErrorMessage("")}
+        />
+
+        {currentStep <= 4 ? (
+          <PredictionForm
+            formData={formData}
+            onFormDataChange={setFormData}
+            onSubmit={handlePredict}
+            loading={submitting}
+            onReset={handleReset}
+            currentStep={currentStep}
+            onStepChange={setCurrentStep}
           />
-
-          {/* Stepper Progress Navigation Bar */}
-          <div className="wizard-stepper-bar">
-            {STEPS_NAV.map((s) => {
-              const isCurrent = currentStep === s.num;
-              const isCompleted = (prediction !== null && s.num === 5) || currentStep > s.num;
-              return (
-                <button
-                  key={s.num}
-                  type="button"
-                  className={`wizard-step-tab ${isCurrent ? "active" : ""} ${
-                    isCompleted ? "completed" : ""
-                  }`}
-                  onClick={() => handleStepClick(s.num)}
-                >
-                  <span className="step-badge">
-                    {s.num === 5 && prediction ? "✓" : currentStep > s.num ? "✓" : `0${s.num}`}
-                  </span>
-                  <div className="step-tab-text">
-                    <span className="tab-title">{s.title}</span>
-                    <span className="tab-desc">{s.desc}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Step Views: Steps 1-4 = Input Wizard, Step 5 = Result Dashboard at the Last Place */}
-          {currentStep <= 4 ? (
-            <div className="wizard-stage-container animate-step">
-              <PredictionForm
-                formData={formData}
-                onFormDataChange={setFormData}
-                onSubmit={handlePredict}
-                loading={submitting}
-                onReset={handleReset}
-                currentStep={currentStep}
-                onStepChange={setCurrentStep}
-              />
-            </div>
-          ) : (
-            <div className="wizard-stage-container animate-step">
-              <ResultCard
-                result={prediction}
-                input={formData}
-                onJumpToStep={setCurrentStep}
-                onReset={handleReset}
-              />
-            </div>
-          )}
-        </div>
-      </main>
-
-      <footer className="footer">
-        <div className="footer-container">
-          <p>© 2026 REALVAL · Vietnam Real Estate Valuation Engine. Powered by Random Forest Regressor.</p>
-        </div>
-      </footer>
-    </div>
+        ) : (
+          <ResultCard
+            result={prediction}
+            input={formData}
+            onReset={handleReset}
+          />
+        )}
+      </div>
+    </>
   );
 };
 
