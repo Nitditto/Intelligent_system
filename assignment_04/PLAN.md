@@ -1,5 +1,12 @@
 # Assignment 04 — Report Plan
 
+**Authors:**
+- Bùi Nguyên Hoàng Việt (B23DCDT285)
+- Lưu Anh Dũng (B23DCDK036)
+- Nguyễn Văn Trường (B23DCCE095)
+
+**Class:** E23CNPM02 | **Course:** Intelligent System Development | **Lecturer:** Assoc. Prof. Dinh Que Tran, Ph.D.
+
 This file plans the **final report**: what sections it has, what goes in each section,
 and — for every per-app section — exactly what to pull out of that app's notebook to
 write it. It does not plan the notebooks themselves; that would live in each app's own
