@@ -185,6 +185,12 @@
       align-items: center;
       height: 100%;
     }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
 
     /* Callout & Cards */
     .card {
@@ -232,6 +238,25 @@
     .code-comment { color: #6A9955; font-style: italic; }
     .code-number { color: #B5CEA8; }
 
+    /* Inline code — always Fira Code, never the browser's default monospace fallback */
+    code {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9em;
+      background: rgba(26, 54, 93, 0.07);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    /* Normalize sub/sup so they don't shift line-height or drift off-baseline */
+    sub, sup {
+      font-size: 0.7em;
+      line-height: 0;
+      position: relative;
+      vertical-align: baseline;
+    }
+    sup { top: -0.55em; }
+    sub { bottom: -0.2em; }
+
     /* Tables */
     table.styled-table {
       width: 100%;
@@ -255,6 +280,64 @@
     }
     table.styled-table tr:nth-child(even) {
       background-color: #F8FAFC;
+    }
+
+    /* Worked-example mini matrices */
+    table.mini-matrix {
+      border-collapse: collapse;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.85rem;
+      margin: 0 auto;
+    }
+    table.mini-matrix caption {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      caption-side: top;
+    }
+    table.mini-matrix td {
+      border: 1px solid var(--border-color);
+      width: 30px;
+      height: 28px;
+      text-align: center;
+      background: white;
+    }
+    table.mini-matrix td.hl {
+      background: var(--callout-bg);
+      color: var(--accent-blue);
+      font-weight: 700;
+    }
+
+    /* Training-cycle step cards */
+    .step-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 10px 10px;
+      text-align: center;
+    }
+    .step-card .step-num {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--accent-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+    .step-card .step-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .step-card .step-formula {
+      font-family: 'Fira Code', monospace;
+      font-size: 0.66rem;
+      line-height: 1.5;
+      background: #F1F5F9;
+      border-radius: 4px;
+      padding: 6px 4px;
     }
 
     /* Framework Badges */
@@ -451,10 +534,10 @@
               A neural network is a parameterized composition of simple differentiable functions:
             </p>
             <div style="background: white; border: 2px solid var(--accent-blue); padding: 16px; border-radius: 8px; text-align: center; font-family: 'Fira Code', monospace; font-size: 1.2rem; font-weight: 600; color: var(--header-bg);">
-              F(x) = f₃ ∘ f₂ ∘ f₁(x) = f₃(f₂(f₁(x)))
+              F(x) = f<sub>3</sub> ∘ f<sub>2</sub> ∘ f<sub>1</sub>(x) = f<sub>3</sub>(f<sub>2</sub>(f<sub>1</sub>(x)))
             </div>
             <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 16px;">
-              Each layer $f_i$ transforms the feature representation from the previous layer.
+              Each layer f<sub>i</sub> transforms the feature representation from the previous layer.
             </p>
           </div>
           <div style="text-align: center;">
@@ -482,7 +565,7 @@
           <div class="card">
             <h4 style="color: var(--header-bg); margin-bottom: 8px;">1. Artificial Neuron</h4>
             <div style="font-family: 'Fira Code', monospace; background: #F1F5F9; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600;">
-              z = wᵀx + b
+              z = w<sup>T</sup>x + b
             </div>
             <p style="font-size: 0.85rem; color: var(--text-muted);">Computes a weighted linear combination of input features plus a scalar bias offset.</p>
           </div>
@@ -498,7 +581,7 @@
             <div style="font-family: 'Fira Code', monospace; background: #F1F5F9; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600;">
               f(x) = ReLU(W x + b)
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted);">Matrix multiplication mapping vector $\mathbf{x} \in \mathbb{R}^{d_{in}}$ to output vector $\mathbf{y} \in \mathbb{R}^{d_{out}}$.</p>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Matrix multiplication mapping vector x ∈ ℝ<sup>d_in</sup> to output vector y ∈ ℝ<sup>d_out</sup>.</p>
           </div>
         </div>
         <div class="takeaway-bar">
@@ -521,11 +604,11 @@
         <div class="grid-2">
           <div>
             <div class="card" style="margin-bottom: 16px;">
-              <h4 style="color: var(--header-bg);">Tabular Data ($x \in \mathbb{R}^d$)</h4>
+              <h4 style="color: var(--header-bg);">Tabular Data (x ∈ ℝ<sup>d</sup>)</h4>
               <p style="font-size: 0.85rem; margin-top: 6px;">Features are unstructured vectors. Order of features is arbitrary; no spatial correlation (e.g. Diabetes dataset).</p>
             </div>
             <div class="card">
-              <h4 style="color: var(--header-bg);">Image Data ($X \in \mathbb{R}^{C \times H \times W}$)</h4>
+              <h4 style="color: var(--header-bg);">Image Data (X ∈ ℝ<sup>C×H×W</sup>)</h4>
               <p style="font-size: 0.85rem; margin-top: 6px;">Features possess 2D spatial grid topology. Nearby pixels are highly correlated; translation invariance is critical.</p>
             </div>
           </div>
@@ -550,20 +633,42 @@
         <div class="slide-section-badge">Section B — Definitions</div>
       </div>
       <div class="slide-body">
-        <div class="grid-2">
+        <div class="grid-2" style="height: auto;">
           <div>
             <h4 style="color: var(--header-bg); margin-bottom: 8px;">2D Spatial Convolution Formula</h4>
-            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;">
-              Y[f,i,j] = ∑ₖ ∑ᵤ ∑ᵥ K[f,k,u,v] · X[k, i+u, j+v] + b[f]
+            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; font-size: 0.8rem; margin-bottom: 10px;">
+              Y[f,i,j] = ∑<sub>k</sub> ∑<sub>u</sub> ∑<sub>v</sub> K[f,k,u,v] · X[k, i+u, j+v] + b[f]
             </div>
-            <ul style="font-size: 0.85rem; line-height: 1.6; margin-left: 20px;">
-              <li><strong>Local Connectivity:</strong> Kernels operate on small receptive fields ($3 \times 3$).</li>
+            <ul style="font-size: 0.8rem; line-height: 1.5; margin-left: 18px;">
+              <li><strong>Local Connectivity:</strong> Kernels operate on small receptive fields (3×3).</li>
               <li><strong>Weight Sharing:</strong> The same kernel slides across the entire image.</li>
-              <li><strong>Max Pooling:</strong> Reduces spatial dimensions ($2 \times 2$, stride 2).</li>
+              <li><strong>Max Pooling</strong> (formal definition): <code>Y(i,j) = max(X(si+u, sj+v))</code> over a k×k window — takes the maximum value inside each non-overlapping 2×2 window, stride 2, halving H and W.</li>
             </ul>
           </div>
           <div style="text-align: center;">
-            <img src="assets/2D_convolution_frame_mid.png" alt="2D Convolution" class="slide-img" style="max-height: 240px;">
+            <img src="assets/2D_convolution_frame_mid.png" alt="2D Convolution" class="slide-img" style="max-height: 170px;">
+          </div>
+        </div>
+        <div style="margin-top: 10px; background: white; border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 16px;">
+          <h4 style="color: var(--header-bg); font-size: 0.85rem; margin-bottom: 8px; text-align: center;">Worked Numeric Example (stride 1, no padding, no bias)</h4>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap;">
+            <table class="mini-matrix">
+              <caption>Input X (3×3)</caption>
+              <tr><td class="hl">2</td><td class="hl">0</td><td>1</td></tr>
+              <tr><td class="hl">3</td><td class="hl">1</td><td>2</td></tr>
+              <tr><td>1</td><td>3</td><td>0</td></tr>
+            </table>
+            <div style="font-size: 1.1rem; color: var(--text-muted);">✳</div>
+            <table class="mini-matrix">
+              <caption>Kernel K (2×2)</caption>
+              <tr><td>-1</td><td>1</td></tr>
+              <tr><td>0</td><td>-2</td></tr>
+            </table>
+            <div style="font-size: 1.1rem; color: var(--text-muted);">=</div>
+            <div style="font-family: 'Fira Code', monospace; font-size: 0.75rem; text-align: left; line-height: 1.5;">
+              Y(1,1) = 2(-1) + 0(1) + 3(0) + 1(-2)<br>
+              <strong style="color: var(--accent-blue); font-size: 0.95rem;">Y(1,1) = -4</strong>
+            </div>
           </div>
         </div>
         <div class="takeaway-bar">
@@ -712,7 +817,7 @@
               → Sigmoid → Output (ŷ ∈ [0,1])
             </div>
             <div class="callout-box" style="margin-top: 16px;">
-              <strong>Total Parameters:</strong> 2,177 (Identical across Scratch, Keras, and PyTorch).
+              <strong>Total Parameters:</strong> 2,177 (Identical across Scratch, Keras, and PyTorch). Init: He-style (scratch) vs. each framework's own He/Kaiming-family default.
             </div>
           </div>
           <div style="text-align: center;">
@@ -747,7 +852,7 @@
               → Linear(3136→128) → Linear(128→10)
             </div>
             <div class="callout-box" style="margin-top: 14px;">
-              <strong>Total Parameters:</strong> 421,642 (Confirmed matching across all 3 frameworks).
+              <strong>Total Parameters:</strong> 421,642 (Confirmed matching across all 3 frameworks). Init: He-style (scratch) vs. each framework's own default.
             </div>
           </div>
           <div style="text-align: center;">
@@ -782,7 +887,7 @@
               → Linear(4096→128) → Linear(128→10)
             </div>
             <div class="callout-box" style="margin-top: 14px;">
-              <strong>Total Parameters:</strong> 545,098 (Confirmed matching across all 3 frameworks).
+              <strong>Total Parameters:</strong> 545,098 (Confirmed matching across all 3 frameworks). Init: He-style (scratch) vs. each framework's own default.
             </div>
           </div>
           <div style="text-align: center;">
@@ -806,33 +911,47 @@
         <div class="slide-section-badge">Section C — Process</div>
       </div>
       <div class="slide-body">
-        <div style="text-align: center; margin-bottom: 16px;">
-          <div style="display: inline-flex; gap: 16px; font-weight: 600; font-size: 1rem;">
-            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">1. Forward Pass</div>
-            <div style="padding: 10px 0;">→</div>
-            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">2. Compute Loss</div>
-            <div style="padding: 10px 0;">→</div>
-            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">3. Backprop Gradient</div>
-            <div style="padding: 10px 0;">→</div>
-            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">4. Optimizer Step</div>
+        <div class="grid-4">
+          <div class="step-card">
+            <div class="step-num">1. Forward</div>
+            <div class="step-label">Compose functions</div>
+            <div class="step-formula">ŷ = f<sub>3</sub>(f<sub>2</sub>(f<sub>1</sub>(x)))</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">2. Loss</div>
+            <div class="step-label">Measure error</div>
+            <div class="step-formula">
+              BCE: L = -[y·log ŷ + (1-y)·log(1-ŷ)]<br>
+              CE: L = -∑<sub>c</sub> y<sub>c</sub>·log ŷ<sub>c</sub>
+            </div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">3. Backprop</div>
+            <div class="step-label">Chain rule</div>
+            <div class="step-formula">∂L/∂W = ∂L/∂ŷ · ∂ŷ/∂W</div>
+          </div>
+          <div class="step-card">
+            <div class="step-num">4. Update</div>
+            <div class="step-label">Gradient step</div>
+            <div class="step-formula">W ← W - η·∇<sub>W</sub>L</div>
           </div>
         </div>
         <div class="grid-3" style="margin-top: 10px;">
           <div class="card">
             <h4 class="badge-scratch">Scratch (NumPy)</h4>
-            <p style="font-size: 0.8rem; margin-top: 8px;">Explicit loops over epochs & batches. Manual forward, manual loss, manual backprop, manual parameter update.</p>
+            <p style="font-size: 0.78rem; margin-top: 6px;">Explicit loops over epochs & batches. Manual forward, manual loss, manual backprop (all 4 formulas above hand-coded), manual parameter update.</p>
           </div>
           <div class="card">
             <h4 class="badge-keras">Keras</h4>
-            <p style="font-size: 0.8rem; margin-top: 8px;">High-level API. Model compilation + single <code>model.fit()</code> encapsulates the entire training loop.</p>
+            <p style="font-size: 0.78rem; margin-top: 6px;">High-level API. Model compilation + single <code>model.fit()</code> encapsulates all 4 steps, including the chain rule via autodiff.</p>
           </div>
           <div class="card">
             <h4 class="badge-torch">PyTorch</h4>
-            <p style="font-size: 0.8rem; margin-top: 8px;">Modular API. Explicit epoch/batch loops with automatic gradient tracking (<code>loss.backward()</code>).</p>
+            <p style="font-size: 0.78rem; margin-top: 6px;">Modular API. Explicit epoch/batch loops; step 3 runs via autograd (<code>loss.backward()</code>), step 4 via <code>optimizer.step()</code>.</p>
           </div>
         </div>
         <div class="takeaway-bar">
-          Takeaway: All frameworks execute the exact same 4-step optimization loop.
+          Takeaway: All frameworks execute the exact same 4-step optimization loop; only who writes steps 1-4 by hand changes.
         </div>
       </div>
       <div class="slide-footer">
