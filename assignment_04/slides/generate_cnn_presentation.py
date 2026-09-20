@@ -57,12 +57,15 @@ FONT_CODE = "Consolas"
 
 class CNNPresentationBuilder:
     def __init__(self, output_pptx="slides/CNN_Presentation.pptx"):
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        assignment_dir = os.path.dirname(script_dir)
+        os.chdir(assignment_dir)
         self.output_pptx = output_pptx
         self.prs = Presentation()
         self.prs.slide_width = Inches(13.333)
         self.prs.slide_height = Inches(7.5)
         self.blank_layout = self.prs.slide_layouts[6]
-        self.total_slides = 39
+        self.total_slides = 45
         self.current_slide_num = 0
 
     def add_notes(self, slide, text):
@@ -283,45 +286,56 @@ class CNNPresentationBuilder:
         self.add_large_bullets(tf, bullets, font_size=Pt(13.5))
 
     def layout_triptych(self, slide, cols_data):
-        """Layout: 3-Column Bento Grid."""
+        """Layout: 3-Column Bento Grid with high legibility."""
         card_w = Inches(3.70)
         gap = Inches(0.31)
         for i, col in enumerate(cols_data):
-            c_badge, c_title, c_bullets, c_col, c_img = col
+            c_badge, c_title, c_bullets, c_col = col[0], col[1], col[2], col[3]
+            c_img = col[4] if len(col) > 4 else None
             left_p = Inches(0.8) + i * (card_w + gap)
             c, tf = self.add_bento_box(slide, left_p, Inches(1.85), card_w, Inches(4.85))
             
             p0 = tf.paragraphs[0]
             p0.text = c_badge.upper()
             p0.font.name = FONT_HEAD
-            p0.font.size = Pt(11)
+            p0.font.size = Pt(12)
             p0.font.bold = True
             p0.font.color.rgb = c_col
-            p0.space_after = Pt(2)
+            p0.space_after = Pt(4)
 
             p1 = tf.add_paragraph()
             p1.text = c_title
             p1.font.name = FONT_HEAD
-            p1.font.size = Pt(16)
+            p1.font.size = Pt(17)
             p1.font.bold = True
             p1.font.color.rgb = TEXT_MAIN
-            p1.space_after = Pt(8)
+            p1.space_after = Pt(10)
+
+            bullet_font_size = Pt(11) if c_img else Pt(13)
+            bullet_space_after = Pt(5) if c_img else Pt(10)
 
             for b_title, b_desc in c_bullets:
                 p_b = tf.add_paragraph()
-                p_b.space_after = Pt(6)
+                p_b.space_after = bullet_space_after
                 r1 = p_b.add_run()
                 r1.text = f"• {b_title}: "
                 r1.font.name = FONT_HEAD
-                r1.font.size = Pt(12)
+                r1.font.size = bullet_font_size
                 r1.font.bold = True
                 r1.font.color.rgb = c_col
 
                 r2 = p_b.add_run()
                 r2.text = b_desc
                 r2.font.name = FONT_BODY
-                r2.font.size = Pt(12)
+                r2.font.size = bullet_font_size
                 r2.font.color.rgb = TEXT_BODY
+
+            if c_img and os.path.exists(c_img):
+                img_top = Inches(4.15)
+                img_h = Inches(2.35)
+                img_w = card_w - Inches(0.36)
+                img_left = left_p + Inches(0.18)
+                self.add_image_panel(slide, img_left, img_top, img_w, img_h, c_img, border=True)
 
     def layout_native_rosetta_table(self, slide, headers, rows_data, col_widths):
         """Generates a native vector PowerPoint table for the Rosetta Stone with large, high-legibility fonts."""
@@ -421,14 +435,14 @@ class CNNPresentationBuilder:
         tb_sub = slide.shapes.add_textbox(Inches(1.2), Inches(2.65), Inches(10.8), Inches(0.5))
         tf_sub = tb_sub.text_frame
         p_sub = tf_sub.paragraphs[0]
-        p_sub.text = "Mathematical Foundations, Architectural Evolution, and Vectorized Implementation"
+        p_sub.text = "Foundations, Architectural Evolution, and Implementation"
         p_sub.font.name = FONT_BODY
         p_sub.font.size = Pt(16)
         p_sub.font.color.rgb = TEXT_MUTED
 
         self.add_image_panel(slide, Inches(1.2), Inches(3.30), Inches(10.933), Inches(1.95),
                              "slides/assets/typical_cnn.png",
-                             caption="Canonical End-to-End Convolutional Visual Perception Topology")
+                             caption="A Typical End-to-End CNN Pipeline")
 
         tb_auth = slide.shapes.add_textbox(Inches(1.2), Inches(5.45), Inches(10.933), Inches(1.0))
         tf_auth = tb_auth.text_frame
@@ -450,26 +464,26 @@ class CNNPresentationBuilder:
         self.add_footer(slide, show_number=False)
 
     def build_slide_02(self):
-        """Slide 2: 4-Pillar Structural Agenda (2x2 Visual Grid, No List)"""
+        """Slide 2: Structural Overview (2x2 Visual Grid, No List)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Structural System Agenda", "Navigating the 4 Core Pillars of Convolutional Representation Learning")
+        self.add_header(slide, "Overview", "An Overview of the Four Core Sections")
 
         pillars = [
-            ("PILLAR 01", "Overview & Vision Scope", "Spatial Geometry & Foundations",
-             "Analysis of 2D pixel topology, the failure mode of vector unrolling, and inductive locality priors.",
+            ("SECTION 01", "Overview & Vision Scope", "Spatial Geometry & Foundations",
+             "Why 2D image structure gets lost when flattened into vectors.",
              COLOR_PRIMARY, "slides/assets/flattening_unrolling.png"),
 
-            ("PILLAR 02", "Khái niệm (Concept & Mechanics)", "Mathematical Foundations",
-             "Layer function composition, linear collapse proof, 2D/3D convolutions, stride/padding, and ReLU sparsity.",
+            ("SECTION 02", "Concept & Mechanics", "Mathematical Foundations",
+             "Layer composition, convolution math, stride/padding, ReLU.",
              COLOR_BLUE, "slides/assets/2D_convolution_frame_mid.png"),
 
-            ("PILLAR 03", "Phát triển CNN (Model Evolution)", "Historical Milestones & Modern Frontiers",
-             "Exhaustive model deep-dives: Neocognitron, LeNet-5, AlexNet, VGG, Inception, ResNet, DenseNet, U-Net, MobileNet, EfficientNet, SENet, CBAM & ViT.",
+            ("SECTION 03", "Model Evolution", "Historical Milestones & Modern Frontiers",
+             "From Neocognitron and LeNet to ResNet, MobileNet, and ViT.",
              COLOR_PURPLE, "slides/assets/vgg_architecture_diagram.png"),
 
-            ("PILLAR 04", "Code Demo & Verification", "Vectorized Implementation",
-             "Vectorized im2col forward pass, analytical col2im backprop, PyTorch module, and learned filter maps.",
+            ("SECTION 04", "Code Demo & Verification", "Vectorized Implementation",
+             "im2col forward pass, col2im backprop, and a PyTorch model.",
              COLOR_GREEN, "slides/assets/learned_filters_fmnist.png")
         ]
 
@@ -536,18 +550,18 @@ class CNNPresentationBuilder:
         """Slide 3: Computer Vision Challenge — 2D Topology vs. 1D Flattening"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Spatial Topology vs. Vector Unrolling",
-                        "Why Traditional Dense Multi-Layer Perceptrons Fail on 2D Image Manifolds")
+        self.add_header(slide, "2D Structure vs. Vector Unrolling",
+                        "Limitations of MLPs on Image Data")
 
         bullets = [
             ("Spatial Adjacency Destruction",
-             "Unrolling a 2D image matrix into a 1D vector severs vertical neighbor relationships, permanently discarding geometric 2D pixel topology."),
+             "Flattening a 2D image into a 1D vector breaks pixel adjacency."),
             ("Loss of Translation Equivariance",
-             "Dense MLPs cannot recognize an object if it shifts by a single pixel without relearning independent synaptic weights across every coordinate."),
+             "MLPs must relearn weights for every position if an object shifts."),
             ("Coordinate Independence",
-             "Convolutions preserve the 2D grid structure, applying the same local kernel regardless of where visual patterns appear.")
+             "Convolutions keep the 2D grid, applying the same kernel everywhere.")
         ]
-        self.layout_split_right_image(slide, "The Coordinate Destruction Problem", bullets,
+        self.layout_split_right_image(slide, "Why Flattening Breaks Images", bullets,
                                       "slides/assets/flattening_unrolling.png",
                                       "Flattening a 2D Matrix (H x W) into a 1D Array Destroys Vertical Adjacency")
         self.add_footer(slide)
@@ -560,38 +574,38 @@ class CNNPresentationBuilder:
         """Slide 4: Concept Function — Analytical Function Composition"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Analytical Function Composition",
-                        "Deep Networks as Layer-wise Non-Linear Coordinate Transformations")
+        self.add_header(slide, "Networks as Function Composition",
+                        "Layer-wise Non-Linear Transformations")
 
         bullets = [
             ("Composite Mapping",
-             "A deep network represents an end-to-end composite function: F(X; Theta) = (f_L o f_{L-1} o ... o f_1)(X), progressively untangling raw manifolds."),
+             "A network is a composite function F(X;Θ) = f_L ∘ ... ∘ f_1(X)."),
             ("Layer Transformation",
-             "Each layer f_l applies an affine transformation followed by point-wise non-linearity: f_l(h) = sigma(W_l * h + b_l)."),
+             "Each layer applies an affine map plus non-linearity: f_l(h) = σ(W_l h + b_l)."),
             ("Separable Latent Space",
-             "Intermediate representations transform non-linearly entangled input pixels into a linearly separable classification space at the final layer.")
+             "Layers gradually reshape pixels into a linearly separable space.")
         ]
         self.layout_split_left_image(slide, "slides/assets/cnn_hierarchy_concept.png",
                                      "Hierarchical Manifold Untangling: Low-Level Edges -> Mid Motifs -> Class Concepts",
-                                     "Functional Architecture", bullets, COLOR_BLUE)
+                                     "How Layers Compose", bullets, COLOR_BLUE)
         self.add_footer(slide)
 
     def build_slide_05(self):
         """Slide 5: Affine Transformations & The Linear Collapse Proof"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Mandatory Non-Linearity & Linear Collapse Proof",
-                        "Mathematical Proof of Why Stacking Linear Layers Adds Zero Expressive Power")
+        self.add_header(slide, "Why Non-Linearity Is Mandatory",
+                        "Stacked Linear Layers Yield No Additional Capacity")
 
         bullets = [
             ("The Linear Collapse Theorem",
-             "If all activation functions are linear (sigma(z) = z), then F(X) = W_L (W_{L-1} ... (W_1 X)) = (Product W_l) X = W_{eff} X + b_{eff}."),
+             "With linear activations, F(X) collapses to one effective linear map."),
             ("Zero Depth Advantage",
-             "A 100-layer pure linear network collapses mathematically to a single shallow linear regression, completely incapable of solving non-linear boundaries."),
+             "A 100-layer linear network is mathematically just linear regression."),
             ("Manifold Folding via ReLU",
-             "Point-wise non-linear activations (sigma) fold and partition the vector space into piecewise linear decision regions of exponential complexity.")
+             "Non-linear activations fold space into piecewise-linear decision regions.")
         ]
-        self.layout_split_right_image(slide, "Analytical Proof of Linear Collapse", bullets,
+        self.layout_split_right_image(slide, "The Linear Collapse Proof", bullets,
                                       "slides/assets/relu_function_wiki.png",
                                       "Non-Linear Activation Function f(x) = max(0, x) Partitions the Space into Piecewise Linear Regions")
         self.add_footer(slide)
@@ -600,58 +614,58 @@ class CNNPresentationBuilder:
         """Slide 6: The MLP Failure Mode on High-Dimensional Grids"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "The MLP Parameter Explosion Catastrophe",
-                        "Why Fully-Connected Layers Scale Catastrophically on Visual Inputs")
+        self.add_header(slide, "The MLP Parameter Explosion",
+                        "Scalability Limits of Dense Layers on Image Data")
 
         bullets = [
             ("Combinatorial Weight Explosion",
-             "A modest 224 x 224 x 3 image flattened into 150,528 inputs connected to 1,024 hidden neurons requires >154 Million weights in Layer 1 alone!"),
-            ("Catastrophic Overfitting",
-             "Massive parameter counts without spatial inductive priors cause severe overfitting and immediate GPU memory exhaustion."),
+             "A 224×224×3 image to 1,024 hidden units needs >154M weights."),
+            ("Overfitting Risk",
+             "Huge parameter counts cause overfitting and exhaust GPU memory."),
             ("Convolutional Efficiency",
-             "A 3 x 3 x 3 convolutional filter requires only 28 learnable parameters, maintaining efficiency regardless of image resolution.")
+             "A 3×3×3 conv filter needs only 28 parameters, at any resolution.")
         ]
         self.layout_split_left_image(slide, "slides/assets/mlp_vs_cnn_parameters.png",
                                      "Parameter Comparison: Fully-Connected (154M Params) vs. Convolutional (28 Params)",
-                                     "High-Dimensional Failure Mode", bullets, COLOR_ALERT)
+                                     "Where Dense Layers Break Down", bullets, COLOR_ALERT)
         self.add_footer(slide)
 
     def build_slide_07(self):
         """Slide 7: Biological Genesis — Hubel & Wiesel (1959)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Biological Blueprint: Hubel & Wiesel (1959)",
-                        "Discovering Localized Receptive Fields in the Mammalian Visual Cortex (V1)")
+        self.add_header(slide, "Hubel & Wiesel (1959)",
+                        "Receptive Fields in the Visual Cortex")
 
         bullets = [
             ("Localized Simple Cells",
-             "Hubel & Wiesel proved that neurons in the primary visual cortex (V1) fire only to localized oriented edges, not full-field illumination."),
+             "V1 neurons fire for localized oriented edges, not full-field light."),
             ("Orientation Tuning",
-             "Individual cortical cells exhibit sharp tuning curves, responding maximally to specific bar angles (0°, 45°, 90°) within a restricted receptive field."),
+             "Cortical cells respond maximally to specific edge angles (0°, 45°, 90°)."),
             ("Hierarchical Processing",
-             "Complex cells aggregate simple cell outputs, inspiring neocognitron and modern convolutional kernel hierarchies.")
+             "Complex cells pool simple-cell outputs, inspiring CNN kernel hierarchies.")
         ]
         self.layout_split_dual_images(slide, "slides/assets/hubel_wiesel_receptive_field.png",
                                       "Receptive Field Biological Mechanism (Hubel & Wiesel, 1959)",
                                       "slides/assets/orientation_tuning_curve.png",
                                       "Biological Orientation Tuning Curves in V1 Cortical Cells",
-                                      "Neurobiological Foundations", bullets, COLOR_PRIMARY)
+                                      "Biological Origins", bullets, COLOR_PRIMARY)
         self.add_footer(slide)
 
     def build_slide_08(self):
         """Slide 8: 2D Convolution Mechanics — Cross-Correlation Kernel Sliding"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "2D Discrete Convolution Mechanics",
-                        "Sliding Window Cross-Correlation Across Spatial Image Grids")
+        self.add_header(slide, "2D Convolution Mechanics",
+                        "Sliding a Kernel Across the Image")
 
         bullets = [
             ("Mathematical Formulation",
-             "Discrete convolution (cross-correlation): S(i, j) = (I * K)(i, j) = Sum_m Sum_n I(i+m, j+n) K(m, n) + b."),
+             "Cross-correlation: S(i,j) = ΣΣ I(i+m,j+n)K(m,n) + b."),
             ("Kernel Dot Product",
-             "A small K x K matrix slides across the input tensor, taking element-wise products and summing them to produce one output feature activation."),
+             "A K×K kernel slides across the input, computing a dot product per step."),
             ("Feature Extraction",
-             "Filters act as specialized feature detectors, yielding high positive activations when matching patterns appear.")
+             "Filters act as feature detectors, activating on matching patterns.")
         ]
         self.layout_split_left_image(slide, "slides/assets/2D_convolution_frame_mid.png",
                                      "Sliding Window Cross-Correlation: Kernel Receptive Field Dot Product",
@@ -662,16 +676,16 @@ class CNNPresentationBuilder:
         """Slide 9: The Two Core CNN Axioms — Local Connectivity & Weight Sharing"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "The Dual Foundations of Convolutional Efficiency",
-                        "How Inductive Biases Drastically Reduce Parameter Complexity")
+        self.add_header(slide, "Two Core CNN Axioms",
+                        "Inductive Biases That Cut Parameters")
 
         bullets = [
             ("Axiom 1: Local Connectivity",
-             "Each hidden neuron connects exclusively to a small spatial patch (K x K), reflecting the physical law that nearby pixels are strongly correlated."),
+             "Each neuron connects only to a local K×K patch, not the full image."),
             ("Axiom 2: Weight Sharing",
-             "The identical filter coefficients are reused across all spatial coordinates, guaranteeing translation equivariance: f(g(x)) = g(f(x))."),
+             "The same filter weights are reused everywhere, giving translation equivariance."),
             ("Statistical Efficiency",
-             "Instead of learning millions of uncoordinated weights, the network learns a compact set of universal feature detectors.")
+             "The network learns a small set of shared feature detectors, not millions of weights.")
         ]
         self.layout_split_right_image(slide, "Core Inductive Biases", bullets,
                                       "slides/assets/equivariance_vs_invariance.png",
@@ -682,16 +696,16 @@ class CNNPresentationBuilder:
         """Slide 10: Spatial Hyperparameters — Stride & Padding"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Spatial Hyperparameters: Stride & Padding",
-                        "Exact Boundary Control and Output Spatial Dimension Arithmetic")
+        self.add_header(slide, "Stride & Padding",
+                        "Controlling Output Size")
 
         bullets = [
             ("Output Dimension Equation",
-             "Universal spatial resolution formula: H_{out} = floor((H_{in} - K + 2P) / S) + 1."),
+             "Output size: H_out = ⌊(H_in − K + 2P) / S⌋ + 1."),
             ("Padding Modes",
-             "Valid padding (P = 0) contracts boundaries; Same padding (P = (K - 1) / 2) preserves spatial resolution (H_{out} = H_{in})."),
+             "Valid padding (P=0) shrinks output; same padding keeps size unchanged."),
             ("Stride Subsampling",
-             "Stride S > 1 steps across multiple pixels per operation, halving spatial dimensions while expanding the receptive field.")
+             "Stride > 1 skips pixels, shrinking output and growing the receptive field.")
         ]
         self.layout_split_dual_images(slide, "slides/assets/conv_same_padding_frame.png",
                                       "Same Padding: Zero-Boundary Padding Preserves Spatial Grid Dimensions",
@@ -704,16 +718,16 @@ class CNNPresentationBuilder:
         """Slide 11: Receptive Field Expansion Arithmetic"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Receptive Field Growth Across Deep Stacks",
-                        "How Stacking Small 3x3 Filters Yields Exponential Spatial Coverage")
+        self.add_header(slide, "Receptive Field Growth",
+                        "Expanding Coverage by Stacking Small Filters")
 
         bullets = [
             ("Recursive RF Formula",
-             "Receptive field expands recursively: RF_l = RF_{l-1} + (K_l - 1) * Product_{i=1}^{l-1} S_i."),
-            ("The VGG-16 Architectural Law",
-             "Two stacked 3 x 3 convolutions match the 5 x 5 receptive field of a single 5 x 5 layer with 18 parameters vs 25 (28% savings) plus extra non-linearity."),
+             "Receptive field grows recursively: RF_l = RF_{l-1} + (K_l−1)·Π S_i."),
+            ("The VGG Insight",
+             "Two stacked 3×3 convs match a 5×5 receptive field with 28% fewer params."),
             ("Hierarchical Context",
-             "Deep layers integrate global visual context without requiring large, computationally prohibitive kernel windows.")
+             "Deep layers capture global context without needing huge kernels.")
         ]
         self.layout_split_left_image(slide, "slides/assets/receptive_field_expansion.png",
                                      "Receptive Field Arithmetic: Stacking 3x3 Kernels Yields 5x5 and 7x7 Context",
@@ -724,16 +738,16 @@ class CNNPresentationBuilder:
         """Slide 12: Volumetric 3D Tensor Convolution"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Volumetric 3D Tensor Convolutions",
-                        "Multichannel Feature Mapping Across Spatial and Depth Dimensions")
+        self.add_header(slide, "3D Tensor Convolutions",
+                        "Convolving Across Channels and Space")
 
         bullets = [
             ("Tensor Volume Shape",
-             "Input tensor (C_{in} x H x W) is processed by C_{out} separate 3D filters, each having shape (C_{in} x K_h x K_w)."),
+             "Input (C_in×H×W) is processed by C_out filters, each shaped C_in×K_h×K_w."),
             ("Channel-Wise Summation",
-             "Each 3D filter computes 2D convolutions across all C_{in} channels simultaneously, summing the results into one 2D feature map slice."),
+             "Each filter convolves all input channels, summing into one output map."),
             ("Channel Expansion",
-             "Stacking C_{out} filter responses produces the output volume of shape (C_{out} x H_{out} x W_{out}).")
+             "Stacking C_out responses gives the output volume (C_out×H_out×W_out).")
         ]
         self.layout_split_left_image(slide, "slides/assets/cs231n_convnet.jpeg",
                                      "Stanford CS231n Volumetric Convolution: C_in x H x W Convolved into C_out Feature Maps",
@@ -744,36 +758,36 @@ class CNNPresentationBuilder:
         """Slide 13: Convolutional Parameter Counting Formulation"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Universal Parameter Counting Formulation",
-                        "Exact Parameter Derivation Independent of Spatial Input Resolution")
+        self.add_header(slide, "Counting Convolution Parameters",
+                        "A Formula Independent of Image Size")
 
         bullets = [
             ("Universal Parameter Equation",
-             "Total learnable weights: Params = (K_h * K_w * C_{in} + 1) * C_{out}, where +1 accounts for the per-filter bias."),
+             "Params = (K_h·K_w·C_in + 1) · C_out, including one bias per filter."),
             ("Resolution Independence",
-             "The parameter count depends strictly on kernel dimensions and channel counts, completely independent of input image height (H) and width (W)."),
+             "Parameter count depends only on kernel size and channels, not image size."),
             ("Concrete Example",
-             "A layer with K = 3, C_{in} = 64, C_{out} = 128 requires (3 * 3 * 64 + 1) * 128 = 73,856 parameters.")
+             "Example: K=3, C_in=64, C_out=128 gives 73,856 parameters.")
         ]
         self.layout_split_left_image(slide, "slides/assets/parameter_formula_breakdown.png",
                                      "Analytical Parameter Breakdown: (Kernel Area x Input Channels + Bias) x Output Channels",
-                                     "Exact Mathematical Derivation", bullets, COLOR_GREEN)
+                                     "The Parameter Formula", bullets, COLOR_GREEN)
         self.add_footer(slide)
 
     def build_slide_14(self):
         """Slide 14: Non-Linear Activation Functions — ReLU Manifold Sparsity"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Non-Linear Activations & Sparsity",
-                        "Rectified Linear Unit (ReLU) Mechanics and Gradient Flow Preservation")
+        self.add_header(slide, "ReLU and Sparsity",
+                        "How ReLU Preserves Gradient Flow")
 
         bullets = [
             ("The ReLU Definition",
-             "f(x) = max(0, x), with analytical derivative f'(x) = 1 for x > 0 and 0 for x < 0."),
+             "f(x) = max(0, x), with derivative 1 for x>0 and 0 for x<0."),
             ("Vanishing Gradient Cure",
-             "Unlike Sigmoid/Tanh which saturate at extreme values, ReLU maintains a constant gradient of 1, enabling stable training of 100+ layer networks."),
+             "Unlike Sigmoid/Tanh, ReLU keeps a constant gradient, enabling 100+ layer training."),
             ("Induced Sparsity",
-             "Deactivating negative activations creates biological-like sparse representations (~50% active neurons), improving generalization.")
+             "Zeroing negative values creates sparse activations (~50% active neurons).")
         ]
         self.layout_split_right_image(slide, "ReLU Activation Dynamics", bullets,
                                       "slides/assets/cs231n_act1.jpeg",
@@ -784,16 +798,16 @@ class CNNPresentationBuilder:
         """Slide 15: Spatial Downsampling — Max Pooling Mechanics"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Spatial Downsampling & Max Pooling",
-                        "Translation Invariance Induction and Dimensionality Reduction")
+        self.add_header(slide, "Max Pooling",
+                        "Downsampling and Translation Invariance")
 
         bullets = [
             ("Max Pooling Operation",
-             "Slides a 2 x 2 window with stride 2, retaining the maximum activation and discarding 75% of spatial coordinates."),
+             "A 2×2 window with stride 2 keeps the max value, dropping 75% of pixels."),
             ("Translation Invariance",
-             "Small translations or deformations in the input feature map do not change the pooled maximum value, improving spatial robustness."),
+             "Small shifts in the input rarely change the pooled max, aiding robustness."),
             ("Zero Learnable Parameters",
-             "Pooling is a deterministic spatial operation requiring zero parameters, reducing memory footprint and computational FLOPs.")
+             "Pooling has zero learnable parameters, cutting memory and compute.")
         ]
         self.layout_split_left_image(slide, "slides/assets/max_pooling.png",
                                      "Max Pooling 2x2 with Stride 2: Extracts Peak Activation per Local Quadrant",
@@ -805,15 +819,15 @@ class CNNPresentationBuilder:
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
         self.add_header(slide, "Hierarchical Feature Representation",
-                        "Visual Progression from Low-Level Edges to High-Level Semantic Concepts")
+                        "From Edges to Semantic Concepts")
 
         bullets = [
             ("Shallow Layers (V1)",
-             "Filters learn localized oriented Gabor-like edges, color contrasts, and boundary primitives."),
+             "Early filters learn oriented edges, color contrasts, and boundaries."),
             ("Intermediate Layers",
-             "Convolutions combine simple edges into geometric textures, corners, junctions, and contour curves."),
+             "Mid layers combine edges into textures, corners, and contours."),
             ("Deep Layers",
-             "Receptive fields span the entire object, assembling semantic class detectors (wheels, eyes, faces, class templates).")
+             "Deep layers detect whole-object parts, like wheels, eyes, and faces.")
         ]
         self.layout_split_dual_images(slide, "slides/assets/cnn_hierarchy_concept.png",
                                       "Visual Feature Abstraction Progression: Edges -> Textures -> Parts -> Objects",
@@ -830,76 +844,76 @@ class CNNPresentationBuilder:
         """Slide 17: Milestone 1 — Neocognitron (Fukushima, 1980)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: Neocognitron (1980)",
-                        "Kunihiko Fukushima's Bio-Inspired Ancestor of Convolutional Neural Networks")
+        self.add_header(slide, "Neocognitron (1980)",
+                        "A Biologically Inspired Precursor to CNNs")
 
         bullets = [
             ("S-Cells & C-Cells",
-             "Directly embodied Hubel & Wiesel's neurobiology: S-cells extract localized oriented features, while C-cells pool responses to provide shift tolerance."),
+             "S-cells extract oriented features; C-cells pool them for shift tolerance."),
             ("Self-Organizing Architecture",
-             "Introduced multi-layered hierarchical visual processing without backpropagation, establishing the foundational alternating conv-pool design."),
+             "Introduced layered visual processing and the conv-pool pattern, pre-backprop."),
             ("Translation Invariance",
-             "First computational neural model capable of recognizing deformed and translated patterns through localized receptive field hierarchies.")
+             "First neural model to recognize shifted or deformed patterns via receptive fields.")
         ]
         self.layout_split_left_image(slide, "slides/assets/neocognitron_ScholarFig1.png",
                                      "Neocognitron (Fukushima, 1980): Hierarchical Alternation of S-Layers and C-Layers",
-                                     "The Biological Computational Ancestor", bullets, COLOR_PRIMARY)
+                                     "The Computational Ancestor", bullets, COLOR_PRIMARY)
         self.add_footer(slide)
 
     def build_slide_18(self):
         """Slide 18: Milestone 2 — LeNet-5 (LeCun, 1998)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: LeNet-5 (1998)",
-                        "Yann LeCun's End-to-End Gradient-Based Convolutional Network for Digit Recognition")
+        self.add_header(slide, "LeNet-5 (1998)",
+                        "Gradient-Based Digit Recognition")
 
         bullets = [
             ("End-to-End Gradient Optimization",
-             "Pioneered joint feature extraction and classification optimized simultaneously via backpropagation: Input -> C1 -> S2 -> C3 -> S4 -> C5 -> F6 -> Output."),
+             "Trained feature extraction and classification jointly via backpropagation."),
             ("Shift and Distortion Robustness",
-             "Replaced fragile manual feature extractors with weight-shared convolutional filters and subsampling layers."),
+             "Replaced hand-crafted features with shared convolutional filters."),
             ("Commercial Validation",
-             "Successfully deployed by US banks to read over 10% of all checks in North America during the late 1990s.")
+             "Deployed by US banks, reading over 10% of checks in the late 1990s.")
         ]
         self.layout_split_left_image(slide, "slides/assets/lenet5_architecture_diagram.png",
                                      "LeNet-5 Architecture: 7 Layers of Alternating Convolutions and Subsampling",
-                                     "Genesis of Modern Deep Vision", bullets, COLOR_BLUE)
+                                     "The First Modern CNN", bullets, COLOR_BLUE)
         self.add_footer(slide)
 
     def build_slide_19(self):
         """Slide 19: Milestone 3 — AlexNet (Krizhevsky et al., 2012)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: AlexNet (2012)",
-                        "The ImageNet Breakthrough That Ignited the Modern Deep Learning Revolution")
+        self.add_header(slide, "AlexNet (2012)",
+                        "The ImageNet Milestone")
 
         bullets = [
             ("Historical Breakthrough",
-             "Crushed traditional computer vision by winning ImageNet 2012 with a top-5 error of 16.4% (vs. 26.2% for the runner-up)."),
+             "Won ImageNet 2012 with 16.4% top-5 error vs. 26.2% for runner-up."),
             ("Modern Technical Suite",
-             "First to combine ReLU non-linearities (6x faster training), Dropout regularization (0.5), and data augmentation to prevent overfitting."),
+             "Combined ReLU, Dropout (0.5), and data augmentation to curb overfitting."),
             ("GPU Parallel Acceleration",
-             "Engineered across two NVIDIA GTX 580 GPUs with cross-channel grouping, unlocking large-scale visual representation learning.")
+             "Trained across two GTX 580 GPUs, enabling large-scale representation learning.")
         ]
         self.layout_split_left_image(slide, "slides/assets/alexnet_architecture_diagram.png",
                                      "AlexNet Architecture: 8 Layers Split Across Dual-GPU Parallel Processing Pipelines",
-                                     "The Modern Deep Learning Revolution", bullets, COLOR_PURPLE)
+                                     "The Deep Learning Turning Point", bullets, COLOR_PURPLE)
         self.add_footer(slide)
 
     def build_slide_20(self):
         """Slide 20: Milestone 4 — VGG-16 & VGG-19 (Simonyan & Zisserman, 2014)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: VGGNet (2014)",
-                        "The Power of Simplicity: Standardizing Homogeneous 3x3 Convolution Stacks")
+        self.add_header(slide, "VGGNet (2014)",
+                        "Standardizing 3×3 Convolution Stacks")
 
         bullets = [
             ("Filter Factorization",
-             "Proved that two stacked 3x3 convolutions have an effective 5x5 receptive field, and three have 7x7, while saving 28% parameters and adding non-linearities."),
+             "Two stacked 3×3 convs match a 5×5 receptive field, saving 28% params."),
             ("Homogeneous Modular Design",
-             "Replaced diverse kernel sizes with clean, uniform convolutional blocks: Conv(3x3) -> BatchNorm -> ReLU -> MaxPool(2x2)."),
+             "Used uniform blocks: Conv(3×3) → BatchNorm → ReLU → MaxPool(2×2)."),
             ("Deep Backbone Standard",
-             "VGG-16 and VGG-19 established the standard deep feature extraction backbone across computer vision transfer learning.")
+             "VGG-16/19 became the standard backbone for transfer learning.")
         ]
         self.layout_split_left_image(slide, "slides/assets/vgg_architecture_diagram.png",
                                      "VGG-16 Architecture: 5 Homogeneous 3x3 Convolutional Blocks + Fully-Connected Head",
@@ -910,16 +924,16 @@ class CNNPresentationBuilder:
         """Slide 21: Milestone 5 — GoogLeNet / Inception v1 (Szegedy et al., 2014)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: GoogLeNet / Inception (2014)",
-                        "Multi-Scale Feature Processing and 1x1 Bottleneck Dimensionality Reduction")
+        self.add_header(slide, "GoogLeNet / Inception (2014)",
+                        "Multi-Scale Features, 1×1 Bottlenecks")
 
         bullets = [
             ("Multi-Scale Inception Modules",
-             "Processes input features simultaneously at multiple spatial scales (1x1, 3x3, 5x5) and pooling in parallel, concatenating depth responses."),
+             "Processes inputs at 1×1, 3×3, and 5×5 scales in parallel, then concatenates."),
             ("1x1 Bottleneck Convolutions",
-             "Introduced 1x1 convolutions for channel-dimension reduction before expensive 3x3 and 5x5 filters, curbing computational complexity."),
+             "1×1 convolutions reduce channels before costly 3×3/5×5 filters."),
             ("Global Average Pooling",
-             "Replaced massive fully-connected layers with Global Average Pooling (GAP), dropping total model parameters from 138M (VGG) to just 5M.")
+             "Global Average Pooling cut parameters from 138M (VGG) to 5M.")
         ]
         self.layout_split_left_image(slide, "slides/assets/inception_module_diagram.png",
                                      "GoogLeNet Inception Module: Parallel Multi-Scale Convolutions + 1x1 Channel Bottlenecks",
@@ -930,16 +944,16 @@ class CNNPresentationBuilder:
         """Slide 22: Milestone 6 — ResNet (He et al., 2015)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: ResNet (2015)",
-                        "Deep Residual Learning: Conquering the Degradation Ceiling with Identity Skip Highways")
+        self.add_header(slide, "ResNet (2015)",
+                        "Residual Learning With Skip Connections")
 
         bullets = [
-            ("The Degradation Dilemma",
-             "Beyond ~20 layers, plain networks suffer accuracy degradation (higher training error), not caused by overfitting but vanishing gradients."),
+            ("The Degradation Problem",
+             "Past ~20 layers, plain networks lose accuracy from vanishing gradients."),
             ("Identity Skip Highway",
-             "Formulated residual learning: H(x) = F(x) + x. The identity connection ensures gradient flow dH/dx = dF/dx + 1 directly back to early layers."),
+             "Residual form H(x) = F(x) + x lets gradients flow directly to early layers."),
             ("Superhuman Accuracy",
-             "Scaled to 152 layers, winning ImageNet 2015 with a record 3.57% top-5 error, surpassing human-level visual performance (5.1%).")
+             "Scaled to 152 layers, winning ImageNet 2015 with 3.57% top-5 error.")
         ]
         self.layout_split_left_image(slide, "slides/assets/resnet_skip_connection.png",
                                      "ResNet Residual Block: Identity Connection H(x) = F(x) + x Providing Direct Gradient Flow",
@@ -950,16 +964,16 @@ class CNNPresentationBuilder:
         """Slide 23: Milestone 7 — DenseNet (Huang et al., 2017)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: DenseNet (2017)",
-                        "Dense Connectivity & Feature Reuse: Concatenation Replaces Residual Addition")
+        self.add_header(slide, "DenseNet (2017)",
+                        "Dense Connectivity via Concatenation")
 
         bullets = [
             ("Full Feed-Forward Connectivity",
-             "Connects each layer to all subsequent layers: X_l = H_l([X_0, X_1, ..., X_{l-1}]), passing feature maps directly via concatenation."),
+             "Each layer connects to all later layers via feature-map concatenation."),
             ("Compact Growth Rate (k)",
-             "Each layer contributes only k new feature channels (k=12 to 32), preventing redundant filter learning and shrinking parameters."),
+             "Each layer adds only k new channels (k=12–32), keeping params low."),
             ("Direct Gradient Flow",
-             "Eliminates vanishing gradients by ensuring early layers receive loss gradients directly from the loss function.")
+             "Early layers get gradients directly from the loss, avoiding vanishing gradients.")
         ]
         self.layout_split_left_image(slide, "slides/assets/densenet_architecture_diagram.png",
                                      "DenseNet Architecture: Dense Block Connectivity with k Growth Rate & Transition Layers",
@@ -970,16 +984,16 @@ class CNNPresentationBuilder:
         """Slide 24: Milestone 8 — U-Net (Ronneberger et al., 2015)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: U-Net (2015)",
-                        "Symmetric Encoder-Decoder Network for Dense Pixel-Level Semantic Segmentation")
+        self.add_header(slide, "U-Net (2015)",
+                        "Encoder-Decoder for Segmentation")
 
         bullets = [
             ("Dense Prediction Paradigm",
-             "Transitions from global classification (Image -> Class) to dense pixel-level labeling (Image -> Segmentation Mask)."),
+             "Shifts from image classification to pixel-level segmentation masks."),
             ("Contracting & Expanding Paths",
-             "Encoder contracts spatial dimensions to capture context; symmetrical decoder upsamples feature maps to restore precise spatial resolution."),
+             "Encoder contracts for context; decoder upsamples to restore resolution."),
             ("Direct Skip Copy Channels",
-             "High-resolution skip connections directly copy spatial feature maps from encoder to decoder, preserving crisp object boundaries.")
+             "Skip connections copy encoder features to the decoder, preserving edges.")
         ]
         self.layout_split_left_image(slide, "slides/assets/unet_architecture_diagram.png",
                                      "U-Net Architecture: Contracting Encoder + Expanding Decoder + Horizontal Skip Connections",
@@ -990,16 +1004,16 @@ class CNNPresentationBuilder:
         """Slide 25: Milestone 9 — MobileNet (Howard et al., 2017)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: MobileNet (2017)",
-                        "Depthwise Separable Convolutions: 8x to 9x FLOP Reduction for Edge Devices")
+        self.add_header(slide, "MobileNet (2017)",
+                        "Depthwise Separable Convolutions")
 
         bullets = [
             ("Depthwise Factorization",
-             "Splits standard 3D convolutions into two steps: Depthwise Conv (spatial filtering per channel) + Pointwise Conv (1x1 channel combination)."),
+             "Splits convolution into depthwise (spatial) and pointwise (1×1) steps."),
             ("Massive Computational Savings",
-             "Reduces multiplication FLOPs by 1/N + 1/K^2 ≈ 8x to 9x compared to standard convolutions with only ~1% top-1 accuracy loss."),
+             "Cuts FLOPs roughly 8–9x versus standard convolutions, ~1% accuracy loss."),
             ("Real-Time Mobile Vision",
-             "Enabled real-time high-accuracy deep computer vision on battery-powered mobile phones, embedded robotics, and edge IoT devices.")
+             "Enabled real-time vision on phones, embedded robotics, and edge devices.")
         ]
         self.layout_split_left_image(slide, "slides/assets/mobilenet_depthwise_diagram.png",
                                      "MobileNet Factorization: Depthwise (Spatial) + Pointwise (Channel) = 88% FLOPs Reduction",
@@ -1010,16 +1024,16 @@ class CNNPresentationBuilder:
         """Slide 26: Milestone 10 — EfficientNet (Tan & Le, 2019)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: EfficientNet (2019)",
-                        "Principled Compound Model Scaling Across Depth, Width, and Input Resolution")
+        self.add_header(slide, "EfficientNet (2019)",
+                        "Compound Scaling of Depth, Width, Resolution")
 
         bullets = [
             ("Compound Scaling Principle",
-             "Systematically balances Depth (alpha), Width (beta), and Resolution (gamma) via: alpha * beta^2 * gamma^2 ≈ 2 under a unified compound coefficient phi."),
-            ("Eliminating Scaling Bottlenecks",
-             "Proved that scaling only width, depth, or resolution quickly saturates; balanced co-scaling yields superior accuracy at lower FLOPs."),
+             "Balances depth, width, and resolution via α·β²·γ² ≈ 2."),
+            ("Balanced Scaling Wins",
+             "Scaling only one dimension saturates; balanced scaling wins on accuracy."),
             ("State-of-the-Art Efficiency",
-             "EfficientNet-B7 reached 84.3% top-1 ImageNet accuracy while being 8.4x smaller and 6.1x faster than prior state-of-the-art networks.")
+             "EfficientNet-B7 hit 84.3% top-1 accuracy, 8.4x smaller and 6.1x faster.")
         ]
         self.layout_split_left_image(slide, "slides/assets/efficientnet_scaling_diagram.png",
                                      "EfficientNet Compound Scaling: Balanced Growth of Depth, Width, and Resolution",
@@ -1030,16 +1044,16 @@ class CNNPresentationBuilder:
         """Slide 27: Milestone 11 — SENet / Squeeze-and-Excitation (Hu et al., 2018)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: SENet (2018)",
-                        "Adaptive Channel Attention: Dynamic Channel Recalibration (Y = X ⊙ s)")
+        self.add_header(slide, "SENet (2018)",
+                        "Dynamic Channel Attention (Y = X ⊙ s)")
 
         bullets = [
             ("Squeeze Operation",
-             "Global Average Pooling (GAP) aggregates global spatial context into a 1x1xC channel descriptor vector z."),
+             "Global Average Pooling compresses each channel into one descriptor."),
             ("Excitation Gating",
-             "A two-layer bottleneck MLP (FC -> ReLU -> FC -> Sigmoid) models non-linear channel interdependencies with reduction ratio r=16."),
+             "A small MLP (FC→ReLU→FC→Sigmoid) learns channel importance, r=16."),
             ("Dynamic Recalibration",
-             "Reweights each channel by scalar activation s_c in [0, 1], dynamically amplifying task-salient features while suppressing background noise.")
+             "Reweights each channel by a learned score, boosting useful features.")
         ]
         self.layout_split_left_image(slide, "slides/assets/senet_se_block_diagram.png",
                                      "SENet Squeeze-and-Excitation Block: Global Squeeze + MLP Excitation + Channel Recalibration",
@@ -1050,16 +1064,16 @@ class CNNPresentationBuilder:
         """Slide 28: Milestone 12 — CBAM Attention Module (Woo et al., 2018)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: CBAM (2018)",
-                        "Convolutional Block Attention Module: Sequential Channel and Spatial Refinement")
+        self.add_header(slide, "CBAM (2018)",
+                        "Sequential Channel and Spatial Attention")
 
         bullets = [
             ("Sequential Dual Attention",
-             "Combines Channel Attention (learning 'What' features are important) followed by Spatial Attention (learning 'Where' to look)."),
+             "Channel attention (what matters) followed by spatial attention (where)."),
             ("Dual Pooling Aggregation",
-             "Utilizes both Average-Pooling (background features) and Max-Pooling (distinct object features) inside attention generation."),
+             "Combines average-pooling and max-pooling to generate attention maps."),
             ("Plug-and-Play Integration",
-             "Lightweight attention block with negligible parameter overhead, easily integrated into standard ResNet or MobileNet architectures.")
+             "A lightweight module that drops into ResNet or MobileNet with minimal overhead.")
         ]
         self.layout_split_left_image(slide, "slides/assets/cbam_attention_diagram.png",
                                      "CBAM Sequential Attention: Channel Module (What) -> Spatial Module (Where) -> Refined Tensor",
@@ -1070,76 +1084,76 @@ class CNNPresentationBuilder:
         """Slide 29: Milestone 13 — Vision Transformer / ViT (Dosovitskiy et al., 2020)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Milestone: Vision Transformer (2020)",
-                        "An Image is Worth 16x16 Words: Discarding Convolutions for Global Self-Attention")
+        self.add_header(slide, "Vision Transformer (2020)",
+                        "Representing Images as Patch Sequences Without Convolutions")
 
         bullets = [
             ("Patch Tokenization",
-             "Unfolds a 224x224x3 image into 196 non-overlapping 16x16 patches, linearly projecting each into a latent 1D embedding token."),
+             "Splits a 224×224×3 image into 196 patches, each embedded as a token."),
             ("Pure Self-Attention",
-             "Processes tokens via Multi-Head Self-Attention: Attention(Q,K,V) = softmax(QK^T / sqrt(d_k)) V, capturing global context across the entire image."),
+             "Tokens interact via self-attention: softmax(QK^T/√d_k)V, capturing global context."),
             ("Massive Scale Dominance",
-             "Eliminates spatial inductive priors in favor of high model capacity, outperforming CNNs when pretrained on massive datasets (JFT-300M).")
+             "Drops spatial priors, outperforming CNNs when pretrained on huge datasets.")
         ]
         self.layout_split_left_image(slide, "slides/assets/vit_architecture_diagram.png",
                                      "Vision Transformer (ViT): Patch Embedding -> Transformer Encoder -> Multi-Head Self-Attention",
-                                     "Tokenized Visual Transformers", bullets, COLOR_PURPLE)
+                                     "Patches as Tokens", bullets, COLOR_PURPLE)
         self.add_footer(slide)
 
     def build_slide_30(self):
         """Slide 30: Paradigm Comparison — CNN vs. Vision Transformer"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Architectural Paradigm: CNN vs. Vision Transformer",
-                        "Comparing Inductive Priors, Computational Complexity, and Modern Frontiers")
+        self.add_header(slide, "CNN vs. Vision Transformer",
+                        "A Comparison of Inductive Priors, Cost, and Trends")
 
         bullets = [
             ("Inductive Bias Dichotomy",
-             "CNNs encode hard spatial priors (locality & shift equivariance), while ViTs learn relationships entirely from raw data with zero geometric assumptions."),
+             "CNNs bake in spatial priors; ViTs learn relationships purely from data."),
             ("Computational Asymmetry",
-             "Convolutions scale linearly with pixel resolution O(K^2 H W), whereas standard self-attention scales quadratically with tokens O(N^2)."),
+             "Convolutions scale linearly O(K²HW); self-attention scales quadratically O(N²)."),
             ("Modern Convergence",
-             "State-of-the-art vision models unite both worlds: ConvNeXt modernizes pure CNNs with ViT design, while MaxViT blends local convs with global attention.")
+             "ConvNeXt modernizes CNNs with ViT ideas; MaxViT blends convs and attention.")
         ]
         self.layout_split_left_image(slide, "slides/assets/cnn_vs_transformer_comparison.png",
                                      "Inductive Bias & Tradeoff Matrix: Local Convolutions vs. Global Self-Attention",
-                                     "Architectural Tradeoff Synthesis", bullets, COLOR_PRIMARY)
+                                     "The Tradeoff Summary", bullets, COLOR_PRIMARY)
         self.add_footer(slide)
 
     def build_slide_31(self):
         """Slide 31: Canonical CNN Architecture Pipeline"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Canonical CNN Architecture Pipeline",
-                        "The Standard Topology from Raw Input Pixels to Class Logits")
+        self.add_header(slide, "The CNN Pipeline",
+                        "From Pixels to Class Logits")
 
         bullets = [
             ("Feature Extraction Backbone",
-             "Alternating blocks of Convolution, ReLU activation, and Spatial Pooling progressively extract invariant feature representations."),
+             "Alternating conv, ReLU, and pooling blocks extract robust features."),
             ("Transition to Classification",
-             "Global spatial pooling or flattening compresses high-dimensional feature volumes into a compact 1D latent representation."),
+             "Pooling or flattening compresses feature maps into a 1D vector."),
             ("Decision Head",
-             "Fully-connected layers followed by Softmax compute categorical probability distributions over target classes.")
+             "Fully-connected layers plus Softmax produce class probabilities.")
         ]
         self.layout_split_left_image(slide, "slides/assets/typical_cnn.png",
                                      "End-to-End CNN Pipeline: Input -> Feature Extractor Backbone -> Classifier Head",
-                                     "Canonical Visual Pipeline", bullets, COLOR_BLUE)
+                                     "The Standard Pipeline", bullets, COLOR_BLUE)
         self.add_footer(slide)
 
     def build_slide_32(self):
         """Slide 32: Tensor Shape Contraction & Channel Expansion Dynamics"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Tensor Contraction & Channel Expansion",
-                        "Geometric Downsampling Paired with Semantic Capacity Growth")
+        self.add_header(slide, "Tensor Shape Across Depth",
+                        "Spatial Shrinkage, Channel Growth")
 
         bullets = [
             ("Spatial Resolution Contraction",
-             "Spatial dimensions contract geometrically: 224x224 -> 112x112 -> 56x56 -> 28x28 -> 7x7 via pooling and strided convolutions."),
+             "Spatial size shrinks: 224 → 112 → 56 → 28 → 7 via pooling/stride."),
             ("Channel Capacity Growth",
-             "Channel counts expand inversely: 3 -> 64 -> 128 -> 256 -> 512, allocating greater capacity to rich semantic combinations."),
-            ("Conservation of Information",
-             "Local pixel redundancy is traded for abstract, translation-invariant semantic feature vectors.")
+             "Channels grow inversely: 3 → 64 → 128 → 256 → 512."),
+            ("The Tradeoff",
+             "Pixel-level redundancy is traded for abstract, invariant features.")
         ]
         self.layout_split_left_image(slide, "slides/assets/tensor_shape_dynamics.png",
                                      "Tensor Flow: Spatial Contraction [224 -> 7] & Channel Expansion [3 -> 512]",
@@ -1150,46 +1164,46 @@ class CNNPresentationBuilder:
         """Slide 33: Computational Budget Allocation — FLOPs vs. Parameter Bottlenecks"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Computational Asymmetry: FLOPs vs. Parameters",
-                        "Convolutions Dominate Compute; Fully-Connected Layers Dominate Memory")
+        self.add_header(slide, "FLOPs vs. Parameters",
+                        "Where Compute and Memory Go")
 
         bullets = [
             ("Compute Bottleneck (FLOPs)",
-             "Convolutions consume >90% of total floating-point operations due to sliding window dot products across high-resolution grids."),
+             "Convolutions account for over 90% of total FLOPs."),
             ("Memory Bottleneck (Parameters)",
-             "Fully-connected layers account for >90% of model weights due to dense pairwise matrix multiplication."),
-            ("Modern Solution: Global Pooling",
-             "Modern architectures replace dense layers with Global Average Pooling (GAP), eliminating millions of redundant parameters.")
+             "Fully-connected layers account for over 90% of model weights."),
+            ("The Fix: Global Pooling",
+             "Global Average Pooling replaces dense layers, cutting millions of params.")
         ]
         self.layout_split_left_image(slide, "slides/assets/flops_params_tradeoff.png",
                                      "Workload Asymmetry: Convolutions Consume Compute; Dense Layers Consume Memory",
-                                     "System Resource Tradeoffs", bullets, COLOR_ORANGE)
+                                     "Compute vs. Memory", bullets, COLOR_ORANGE)
         self.add_footer(slide)
 
     def build_slide_34(self):
         """Slide 34: Three Levels of Implementation Abstraction"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Three Architectural Abstraction Paradigms",
-                        "From Low-Level Vectorized Matrix Math to Declarative & Imperative Frameworks")
+        self.add_header(slide, "Three Levels of Implementation",
+                        "From Raw Math to High-Level Frameworks")
 
         cols = [
             ("LEVEL 1", "NumPy (From Scratch)",
-             [("Vectorized im2col", "Flattens sliding windows into matrices for BLAS GEMM"),
-              ("Manual Backprop", "Analytical col2im gradient redistribution"),
-              ("Educational Value", "100% transparency of internal tensor mechanics")],
+             [("Vectorized im2col", "Flattens sliding windows into a matrix for GEMM"),
+              ("Manual Backprop", "col2im redistributes gradients by hand"),
+              ("Educational Value", "Full visibility into tensor mechanics")],
              COLOR_AMBER, None),
 
             ("LEVEL 2", "Keras (Declarative)",
-             [("Declarative Graph", "High-level layers.Conv2D and layers.MaxPooling2D"),
-              ("Automated Graph", "Automated forward/backward graph compilation"),
-              ("Rapid Prototyping", "Streamlined workflow for rapid model experimentation")],
+             [("Declarative Graph", "High-level layers: Conv2D, MaxPooling2D"),
+              ("Automated Graph", "Forward/backward graph compiled automatically"),
+              ("Rapid Prototyping", "Fast workflow for model experimentation")],
              COLOR_BLUE, None),
 
             ("LEVEL 3", "PyTorch (Imperative)",
-             [("Dynamic Autograd", "Imperative forward execution with automatic C++ differentiation"),
-              ("Pythonic Debugging", "Direct tensor inspection and custom hook instrumentation"),
-              ("Production Standard", "The dominant framework in modern deep learning research")],
+             [("Dynamic Autograd", "Forward pass runs eagerly, with automatic differentiation"),
+              ("Pythonic Debugging", "Direct tensor inspection and custom hooks"),
+              ("Production Standard", "The dominant framework in deep learning research")],
              COLOR_GREEN, None)
         ]
         self.layout_triptych(slide, cols)
@@ -1199,8 +1213,8 @@ class CNNPresentationBuilder:
         """Slide 35: Cross-Framework Architectural Rosetta Stone (Native Table with Large Fonts)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Cross-Framework Component Rosetta Stone",
-                        "Direct Structural Translation Across NumPy (Scratch), Keras (Declarative), and PyTorch (Imperative)")
+        self.add_header(slide, "Cross-Framework Rosetta Stone",
+                        "NumPy, Keras, and PyTorch Side by Side")
 
         headers = ["Primitive Concept", "NumPy (From Scratch)", "Keras (Declarative Graph)", "PyTorch (Imperative Autograd)"]
         rows = [
@@ -1241,8 +1255,8 @@ class CNNPresentationBuilder:
         """Slide 36: Vectorized Forward Pass — im2col + GEMM Matrix Multiplication"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Vectorized Forward Pass: im2col + BLAS GEMM",
-                        "Transforming Spatial Sliding Windows into High-Performance Matrix Multiplication")
+        self.add_header(slide, "Forward Pass: im2col + GEMM",
+                        "Turning Convolution Into Matrix Multiplication")
 
         code = [
             "# High-Performance Vectorized Convolution via im2col",
@@ -1266,15 +1280,15 @@ class CNNPresentationBuilder:
         self.add_terminal(slide, Inches(0.8), Inches(1.85), Inches(6.8), Inches(4.85), "conv_forward_im2col.py", code)
         self.add_image_panel(slide, Inches(7.85), Inches(1.85), Inches(4.683), Inches(4.85),
                              "slides/assets/im2col_diagram.png",
-                             caption="im2col Mechanics: Receptive Patches Unfolded into Matrix Columns for BLAS GEMM")
+                             caption="im2col: Patches Unfolded Into Matrix Columns")
         self.add_footer(slide)
 
     def build_slide_37(self):
         """Slide 37: Analytical Backward Pass — col2im & Gradient Flow"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Analytical Convolution Backward Pass (col2im)",
-                        "Accumulating Backpropagated Gradients Across Overlapping Receptive Fields")
+        self.add_header(slide, "Backward Pass: col2im",
+                        "Accumulating Gradients Over Overlapping Patches")
 
         code = [
             "# Analytical Gradient Backpropagation via col2im",
@@ -1300,15 +1314,15 @@ class CNNPresentationBuilder:
         self.add_terminal(slide, Inches(0.8), Inches(1.85), Inches(6.8), Inches(4.85), "conv_backward_im2col.py", code)
         self.add_image_panel(slide, Inches(7.85), Inches(1.85), Inches(4.683), Inches(4.85),
                              "slides/assets/backprop_convolution_math.png",
-                             caption="Analytical col2im: Backpropagating and Summing Gradients Over Overlapping Patches")
+                             caption="col2im: Summing Gradients Over Overlapping Patches")
         self.add_footer(slide)
 
     def build_slide_38(self):
         """Slide 38: Production CNN Architecture in PyTorch (nn.Module)"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Production PyTorch Implementation (nn.Module)",
-                        "Elegant Object-Oriented Deep Convolutional Network Pipeline")
+        self.add_header(slide, "PyTorch Implementation (nn.Module)",
+                        "A Compact Object-Oriented CNN")
 
         code = [
             "import torch",
@@ -1348,11 +1362,11 @@ class CNNPresentationBuilder:
                                            title="PyTorch Advantages", title_color=COLOR_GREEN)
         pt_bullets = [
             ("Dynamic Computation Graph",
-             "Graphs are constructed on-the-fly during forward execution, enabling arbitrary control flow and simple debugging."),
+             "Graphs build on-the-fly during forward execution, easing debugging."),
             ("Production BatchNorm",
-             "Tracks running mini-batch statistics during training and applies deterministic population statistics during evaluation."),
+             "Tracks batch statistics in training, uses fixed stats at inference."),
             ("Automatic Differentiation",
-             "Engine automatically traces tensor dependencies, generating the exact backward DAG without manual derivative code.")
+             "Autograd traces tensor operations to build the backward pass automatically.")
         ]
         self.add_large_bullets(tf_box, pt_bullets, font_size=Pt(12.5))
         self.add_footer(slide)
@@ -1361,30 +1375,180 @@ class CNNPresentationBuilder:
         """Slide 39: Empirical Verification & Real-Time Inference Dashboard"""
         slide = self.prs.slides.add_slide(self.blank_layout)
         self.set_background(slide)
-        self.add_header(slide, "Empirical Verification & Inference Dashboard",
-                        "From Learned Convolutional Weight Filters to Real-Time Predictive Consensus")
+        self.add_header(slide, "Verification & Inference Dashboard",
+                        "Learned Filters to Live Predictions")
 
         bullets = [
             ("Learned Filter Convergence",
-             "Trained 3x3 kernels autonomously converge to oriented edge detectors, color contrasts, and texture passes without manual supervision."),
+             "Trained 3×3 kernels converge to edge and texture detectors unsupervised."),
             ("Real-Time Prediction Consensus",
-             "Live single-sample forward pass achieves >96% classification confidence, with consensus across NumPy, Keras, and PyTorch."),
+             "A live forward pass reaches >96% confidence, matching across all 3 frameworks."),
             ("Foundational Inductive Bias",
-             "Convolutions enforce spatial locality and weight sharing, cementing CNNs as the foundational bedrock of modern visual intelligence.")
+             "Locality and weight sharing remain the foundation of modern vision models.")
         ]
         self.layout_split_dual_images(slide, "slides/assets/learned_filters_fmnist.png",
                                       "32 Learned 3x3 Convolutional Filter Tensors (Autonomous Edge & Pattern Extraction)",
                                       "slides/assets/live_inference_visual.png",
                                       "Live Inference Dashboard: Multi-Model Single-Sample Classification Consensus",
-                                      "Scientific Synthesis", bullets, COLOR_PRIMARY)
+                                      "Putting It Together", bullets, COLOR_PRIMARY)
         self.add_footer(slide)
 
     # -------------------------------------------------------------------------
-    # Master Build Method
+    # PART V: FROM THEORY TO PRACTICE - THREE REAL ASSIGNMENTS (Slides 40 - 45)
     # -------------------------------------------------------------------------
 
+    def build_slide_40(self):
+        """Slide 40: Three Real Applications at a Glance (Diabetes, Fashion-MNIST, CIFAR-10)"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "From Theory to Practice",
+                        "Three Applications: Tabular MLP, Grayscale CNN, RGB CNN")
+
+        cols = [
+            ("APP 01", "Diabetes (MLP)",
+             [("Task", "Tabular binary classification"),
+              ("Input", "50 normalized features"),
+              ("Model", "MLP, 2,177 parameters")],
+             COLOR_AMBER, "slides/assets/diabetes_tabular_preview.png"),
+
+            ("APP 02", "Fashion-MNIST (CNN)",
+             [("Task", "Grayscale image classification"),
+              ("Input", "1×28×28, 10 classes"),
+              ("Model", "2-block CNN, 421,642 parameters")],
+             COLOR_BLUE, "slides/assets/fmnist_out_8_1.png"),
+
+            ("APP 03", "CIFAR-10 (CNN)",
+             [("Task", "RGB image classification"),
+              ("Input", "3×32×32, 10 classes"),
+              ("Model", "2-block CNN, 545,098 parameters")],
+             COLOR_GREEN, "slides/assets/cifar10_out_8_1.png")
+        ]
+        self.layout_triptych(slide, cols)
+        self.add_footer(slide)
+
+    def build_slide_41(self):
+        """Slide 41: Fashion-MNIST CNN Shape Trace (Grayscale, Single Channel)"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "Fashion-MNIST: Grayscale CNN in Practice",
+                        "Tracing Tensor Shapes Through a Single-Channel CNN")
+
+        bullets = [
+            ("Input Tensor",
+             "(B, 1, 28, 28): single grayscale channel, 28×28 pixels."),
+            ("Conv + Pool Blocks",
+             "Conv(1→32) → Pool → (B,32,14,14); Conv(32→64) → Pool → (B,64,7,7)."),
+            ("Classifier Head",
+             "Flatten to 3,136 → Linear(3136→128) → Linear(128→10).")
+        ]
+        self.layout_split_left_image(slide, "slides/assets/fmnist_out_51_7.png",
+                                     "Fashion-MNIST Training Curves: Loss and Accuracy Across Epochs",
+                                     "421,642 Parameters, All Frameworks", bullets, COLOR_BLUE)
+        self.add_footer(slide)
+
+    def build_slide_42(self):
+        """Slide 42: CIFAR-10 CNN Shape Trace (RGB, 3 Channels)"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "CIFAR-10: RGB CNN in Practice",
+                        "Tracing Tensor Shapes Through a 3-Channel CNN")
+
+        bullets = [
+            ("Input Tensor",
+             "(B, 3, 32, 32): 3 color channels, 32×32 pixels."),
+            ("Conv + Pool Blocks",
+             "Conv(3→32) → Pool → (B,32,16,16); Conv(32→64) → Pool → (B,64,8,8)."),
+            ("Classifier Head",
+             "Flatten to 4,096 → Linear(4096→128) → Linear(128→10).")
+        ]
+        self.layout_split_left_image(slide, "slides/assets/cifar10_out_49_7.png",
+                                     "CIFAR-10 Training Curves: Loss and Accuracy Across Epochs",
+                                     "545,098 Parameters, All Frameworks", bullets, COLOR_GREEN)
+        self.add_footer(slide)
+
+    def build_slide_43(self):
+        """Slide 43: Cross-Framework Rosetta Stone for the Three Assignments"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "Same Math, Three Frameworks",
+                        "Scratch (NumPy), Keras, and PyTorch on the Same 3 Datasets")
+
+        headers = ["Component", "Scratch (NumPy)", "Keras", "PyTorch"]
+        rows = [
+            ["Preprocessing",
+             "/ 255.0, transpose to CHW",
+             "/ 255.0, HWC (native)",
+             "/ 255.0, transpose to CHW"],
+            ["Convolution Layer",
+             "conv2d_forward (im2col)",
+             "layers.Conv2D()",
+             "nn.Conv2d()"],
+            ["Backpropagation",
+             "Manual chain rule functions",
+             "Autodiff in fit()",
+             "loss.backward() (Autograd)"],
+            ["Parameter Updates",
+             "W -= lr * dW",
+             "optimizer='sgd'",
+             "torch.optim.SGD()"]
+        ]
+        widths = [Inches(2.6), Inches(3.4), Inches(3.1), Inches(3.113)]
+        self.layout_native_rosetta_table(slide, headers, rows, widths)
+        self.add_footer(slide)
+
+    def build_slide_44(self):
+        """Slide 44: Empirical Results - Accuracy and Training Time Across 3 Frameworks"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "Empirical Results Across Frameworks",
+                        "Comparable Accuracy, Divergent Training Time")
+
+        bullets = [
+            ("Accuracy Parity",
+             "Diabetes 73-78%, Fashion-MNIST 86-90%, CIFAR-10 57-61% across all 3 frameworks."),
+            ("Identical Parameter Counts",
+             "2,177 / 421,642 / 545,098 params match exactly across Scratch, Keras, PyTorch."),
+            ("Training Time Gap",
+             "Scratch is 15-20x slower than Keras/PyTorch on CNN workloads (pure NumPy im2col).")
+        ]
+        self.layout_split_dual_images(slide, "slides/assets/accuracy_comparison.png",
+                                      "Test Accuracy Comparison Across Diabetes, Fashion-MNIST, and CIFAR-10",
+                                      "slides/assets/training_time_scaling.png",
+                                      "Training Time Scaling: Scratch vs. Keras vs. PyTorch",
+                                      "Speed vs. Transparency Tradeoff", bullets, COLOR_ORANGE)
+        self.add_footer(slide)
+
+    def build_slide_45(self):
+        """Slide 45: Closing Synthesis — Clean 3-Column Bento Grid (Same Style as Other Slides, No Icons, Big Font)"""
+        slide = self.prs.slides.add_slide(self.blank_layout)
+        self.set_background(slide)
+        self.add_header(slide, "Closing Synthesis",
+                        "Empirical Confirmation of CNN Theory Across Three Assignments")
+
+        cols = [
+            ("KEY FINDING 01", "Mathematical Equivalence",
+             [("100% Math Parity", "Identical network topologies and training splits converge to near-identical accuracy across all three frameworks."),
+              ("Empirical Proof", "Diabetes 73-78%, Fashion-MNIST 86-90%, and CIFAR-10 57-61% match closely across implementations."),
+              ("Universal Math", "Fundamental tensor calculus and gradient equations remain completely invariant to framework syntax.")],
+             COLOR_PRIMARY, None),
+
+            ("KEY FINDING 02", "Computational Efficiency",
+             [("15x-20x Speedup", "Compiled C++/CUDA BLAS dramatically outperforms pure NumPy on convolutional workloads."),
+              ("FLOPs Dominance", "Convolutions consume over 90% of total compute; memory caching and SIMD vectorization matter heavily."),
+              ("Engineering Role", "NumPy teaches core mathematical intuition; compiled engines are mandatory for production scale.")],
+             COLOR_ORANGE, None),
+
+            ("KEY FINDING 03", "Abstraction Spectrum",
+             [("NumPy (From Scratch)", "Provides complete visibility into tensor manipulation, im2col matrix unfolding, and col2im backprop."),
+              ("Keras (High-Level)", "Maximizes developer velocity, declarative graph wiring, and rapid model prototyping."),
+              ("PyTorch (Imperative)", "The modern research standard: dynamic autograd execution, pythonic debugging, and modular flexibility.")],
+             COLOR_GREEN, None)
+        ]
+        self.layout_triptych(slide, cols)
+        self.add_footer(slide)
+
     def build_all(self):
-        print("Starting CNN Core Presentation build (39 slides)...")
+        print("Starting CNN Core Presentation build (45 slides)...")
         self.build_slide_01()
         self.build_slide_02()
         self.build_slide_03()
@@ -1424,6 +1588,12 @@ class CNNPresentationBuilder:
         self.build_slide_37()
         self.build_slide_38()
         self.build_slide_39()
+        self.build_slide_40()
+        self.build_slide_41()
+        self.build_slide_42()
+        self.build_slide_43()
+        self.build_slide_44()
+        self.build_slide_45()
 
         os.makedirs(os.path.dirname(self.output_pptx), exist_ok=True)
         self.prs.save(self.output_pptx)
