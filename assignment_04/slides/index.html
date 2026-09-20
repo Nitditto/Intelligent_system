@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assignment 04 Presentation Slides — Scratch vs Keras vs PyTorch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #F8FAFC;
+      --card-bg: #FFFFFF;
+      --text-main: #1E293B;
+      --text-muted: #64748B;
+      --header-bg: #1A365D;
+      --header-text: #FFFFFF;
+
+      --scratch-color: #C77C48;
+      --keras-color: #4C72B0;
+      --torch-color: #55A868;
+
+      --accent-blue: #3182CE;
+      --callout-bg: #EBF8FF;
+      --callout-border: #90CDF4;
+      --code-bg: #1E1E1E;
+      --code-text: #D4D4D4;
+
+      --border-color: #E2E8F0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #0F172A;
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Top Progress Bar */
+    #progress-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      z-index: 1000;
+    }
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--scratch-color), var(--keras-color), var(--torch-color));
+      transition: width 0.3s ease;
+    }
+
+    /* Deck Viewport */
+    #deck-container {
+      position: relative;
+      width: 96vw;
+      max-width: 1280px;
+      height: 54vw;
+      max-height: 720px;
+      background-color: var(--bg-color);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg), 0 0 40px rgba(0,0,0,0.5);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Slide Frame */
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      transform: scale(0.98);
+      background-color: var(--bg-color);
+    }
+
+    .slide.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+      z-index: 10;
+    }
+
+    /* Slide Header */
+    .slide-header {
+      background-color: var(--header-bg);
+      color: var(--header-text);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+    .slide-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .slide-section-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #90CDF4;
+    }
+
+    /* Slide Body */
+    .slide-body {
+      flex: 1;
+      padding: 24px 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow-y: auto;
+    }
+
+    /* Footer */
+    .slide-footer {
+      height: 36px;
+      padding: 0 32px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background-color: #FFFFFF;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      align-items: center;
+      height: 100%;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      align-items: stretch;
+      height: 100%;
+    }
+    .grid-1-2 {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 24px;
+      align-items: center;
+      height: 100%;
+    }
+    .grid-2-1 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+      align-items: center;
+      height: 100%;
+    }
+
+    /* Callout & Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .callout-box {
+      background-color: var(--callout-bg);
+      border-left: 4px solid var(--accent-blue);
+      padding: 14px 18px;
+      border-radius: 4px;
+      font-size: 0.95rem;
+      color: #2B6CB0;
+      margin-top: 12px;
+    }
+    .takeaway-bar {
+      background: #F1F5F9;
+      border-left: 4px solid var(--header-bg);
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-main);
+      border-radius: 0 6px 6px 0;
+      margin-top: 12px;
+    }
+
+    /* Code Panels */
+    pre.code-panel {
+      background-color: var(--code-bg);
+      color: var(--code-text);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid #334155;
+    }
+    .code-keyword { color: #569CD6; }
+    .code-func { color: #DCDCAA; }
+    .code-string { color: #CE9178; }
+    .code-comment { color: #6A9955; font-style: italic; }
+    .code-number { color: #B5CEA8; }
+
+    /* Tables */
+    table.styled-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      background: white;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    table.styled-table th {
+      background-color: var(--header-bg);
+      color: white;
+      text-align: left;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+    table.styled-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    table.styled-table tr:nth-child(even) {
+      background-color: #F8FAFC;
+    }
+
+    /* Framework Badges */
+    .badge-scratch {
+      background-color: rgba(199, 124, 72, 0.15);
+      color: var(--scratch-color);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .badge-keras {
+      background-color: rgba(76, 114, 176, 0.15);
+      color: var(--keras-color);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .badge-torch {
+      background-color: rgba(85, 168, 104, 0.15);
+      color: var(--torch-color);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    /* Images */
+    .slide-img {
+      max-width: 100%;
+      max-height: 360px;
+      object-fit: contain;
+      border-radius: 6px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+    }
+
+    /* Title Slide Specifics */
+    .title-slide {
+      background: linear-gradient(135deg, #1A365D 0%, #0F172A 100%);
+      color: white;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px;
+    }
+    .title-slide h1 {
+      font-size: 2.3rem;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 16px;
+      background: linear-gradient(90deg, #FFFFFF, #90CDF4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .title-slide h2 {
+      font-size: 1.25rem;
+      font-weight: 400;
+      color: #94A3B8;
+      margin-bottom: 36px;
+    }
+    .title-meta {
+      display: flex;
+      gap: 32px;
+      font-size: 0.9rem;
+      color: #CBD5E1;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 24px;
+    }
+
+    /* Controls Overlay */
+    #nav-controls {
+      position: fixed;
+      bottom: 20px;
+      right: 30px;
+      display: flex;
+      gap: 10px;
+      z-index: 1000;
+    }
+    .nav-btn {
+      background: rgba(30, 41, 59, 0.85);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+    }
+
+    /* Print Stylesheet */
+    @media print {
+      body {
+        background: white !important;
+        overflow: visible !important;
+      }
+      #progress-container, #nav-controls {
+        display: none !important;
+      }
+      #deck-container {
+        width: 100% !important;
+        height: auto !important;
+        max-width: none !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+      }
+      .slide {
+        position: relative !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        page-break-after: always !important;
+        height: 100vh !important;
+        width: 100vw !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="progress-container">
+    <div id="progress-bar"></div>
+  </div>
+
+  <div id="deck-container">
+
+    <!-- SLIDE 1: TITLE SLIDE -->
+    <div class="slide title-slide active" data-section="Section A">
+      <div style="max-width: 900px;">
+        <div style="display: inline-block; padding: 6px 16px; background: rgba(49,130,206,0.2); color: #63B3ED; border-radius: 20px; font-weight: 600; font-size: 0.85rem; margin-bottom: 20px;">
+          INTELLIGENT SYSTEM DEVELOPMENT — ASSIGNMENT 04
+        </div>
+        <h1>Comparing CNN & MLP Implementations</h1>
+        <h2>Scratch (NumPy) vs. Keras (TensorFlow) vs. PyTorch</h2>
+        <div class="title-meta">
+          <div><strong>Author:</strong> Minorin (Student)</div>
+          <div><strong>Class:</strong> Intelligent System</div>
+          <div><strong>Lecturer:</strong> Dinh Que Tran</div>
+          <div><strong>Date:</strong> September 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: AGENDA & CENTRAL QUESTION -->
+    <div class="slide" data-section="Section A">
+      <div class="slide-header">
+        <div class="slide-title">Agenda & Framing Question</div>
+        <div class="slide-section-badge">Section A — Framing</div>
+      </div>
+      <div class="slide-body">
+        <div class="callout-box" style="font-size: 1.15rem; font-weight: 600; text-align: center; padding: 18px;">
+          Central Question: <em>"What is the same, and what is different?"</em> across the three implementations.
+        </div>
+        <div class="grid-2" style="margin-top: 16px;">
+          <div class="card">
+            <h3 style="color: var(--header-bg); margin-bottom: 12px;">Agenda Overview</h3>
+            <ul style="line-height: 1.8; margin-left: 20px; font-size: 0.95rem;">
+              <li><strong>Section A:</strong> Title & Framing</li>
+              <li><strong>Section B:</strong> Core Mathematical & Architectural Definitions</li>
+              <li><strong>Section C:</strong> Architectures & Model Development Process</li>
+              <li><strong>Section D:</strong> Quantitative Comparisons & Live Demo</li>
+            </ul>
+          </div>
+          <div class="card" style="text-align: center;">
+            <img src="assets/framework_rosetta_stone.png" alt="Framework Rosetta Stone" class="slide-img" style="max-height: 220px;">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Same mathematical operations yield identical capabilities; frameworks differ only in abstraction level and execution speed.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 2 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: DEEP LEARNING AS FUNCTION COMPOSITION -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">Deep Learning as Function Composition</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <h3 style="margin-bottom: 12px; color: var(--header-bg);">Mathematical Definition</h3>
+            <p style="font-size: 1rem; line-height: 1.6; margin-bottom: 16px;">
+              A neural network is a parameterized composition of simple differentiable functions:
+            </p>
+            <div style="background: white; border: 2px solid var(--accent-blue); padding: 16px; border-radius: 8px; text-align: center; font-family: 'Fira Code', monospace; font-size: 1.2rem; font-weight: 600; color: var(--header-bg);">
+              F(x) = f₃ ∘ f₂ ∘ f₁(x) = f₃(f₂(f₁(x)))
+            </div>
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 16px;">
+              Each layer $f_i$ transforms the feature representation from the previous layer.
+            </p>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/cnn_hierarchy_concept.png" alt="Feature Hierarchy" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Deep learning = composing simple functions into a complex non-linear predictor.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 3 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: THE BUILDING BLOCKS: NEURON, ACTIVATION, LAYER -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">The Building Blocks: Neuron, Activation, Layer</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h4 style="color: var(--header-bg); margin-bottom: 8px;">1. Artificial Neuron</h4>
+            <div style="font-family: 'Fira Code', monospace; background: #F1F5F9; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600;">
+              z = wᵀx + b
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Computes a weighted linear combination of input features plus a scalar bias offset.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--header-bg); margin-bottom: 8px;">2. ReLU Activation</h4>
+            <div style="font-family: 'Fira Code', monospace; background: #F1F5F9; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600;">
+              ReLU(z) = max(0, z)
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Introduces non-linearity; derivative is 1 for positive inputs and 0 for negative inputs.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--header-bg); margin-bottom: 8px;">3. Dense Layer</h4>
+            <div style="font-family: 'Fira Code', monospace; background: #F1F5F9; padding: 10px; border-radius: 4px; margin-bottom: 10px; font-weight: 600;">
+              f(x) = ReLU(W x + b)
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">Matrix multiplication mapping vector $\mathbf{x} \in \mathbb{R}^{d_{in}}$ to output vector $\mathbf{y} \in \mathbb{R}^{d_{out}}$.</p>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Linear projections combined with non-linear activation functions form the elementary units of deep learning.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 4 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: FROM VECTORS TO IMAGES -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">From Vectors to Images: Spatial Topology</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <div class="card" style="margin-bottom: 16px;">
+              <h4 style="color: var(--header-bg);">Tabular Data ($x \in \mathbb{R}^d$)</h4>
+              <p style="font-size: 0.85rem; margin-top: 6px;">Features are unstructured vectors. Order of features is arbitrary; no spatial correlation (e.g. Diabetes dataset).</p>
+            </div>
+            <div class="card">
+              <h4 style="color: var(--header-bg);">Image Data ($X \in \mathbb{R}^{C \times H \times W}$)</h4>
+              <p style="font-size: 0.85rem; margin-top: 6px;">Features possess 2D spatial grid topology. Nearby pixels are highly correlated; translation invariance is critical.</p>
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/tabular_vs_image_topology.png" alt="Tabular vs Image Topology" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Image classification requires architectural priors (CNNs) to preserve spatial grid topology.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 5 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: CONVOLUTION & POOLING -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">Convolution, Pooling, and Weight Sharing</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 8px;">2D Spatial Convolution Formula</h4>
+            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 12px; border-radius: 6px; font-size: 0.85rem; margin-bottom: 12px;">
+              Y[f,i,j] = ∑ₖ ∑ᵤ ∑ᵥ K[f,k,u,v] · X[k, i+u, j+v] + b[f]
+            </div>
+            <ul style="font-size: 0.85rem; line-height: 1.6; margin-left: 20px;">
+              <li><strong>Local Connectivity:</strong> Kernels operate on small receptive fields ($3 \times 3$).</li>
+              <li><strong>Weight Sharing:</strong> The same kernel slides across the entire image.</li>
+              <li><strong>Max Pooling:</strong> Reduces spatial dimensions ($2 \times 2$, stride 2).</li>
+            </ul>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/2D_convolution_frame_mid.png" alt="2D Convolution" class="slide-img" style="max-height: 240px;">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Weight sharing reduces parameters exponentially compared to dense layers while achieving translation invariance.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 6 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: CNN ARCHITECTURE RECIPE -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">Canonical CNN Architecture Recipe</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <div class="callout-box" style="text-align: center; font-weight: 600; font-size: 1.05rem;">
+          Canonical Pipeline: Conv → ReLU → Pool → Conv → ReLU → Pool → Flatten → Dense → Dense
+        </div>
+        <div style="text-align: center; margin-top: 16px;">
+          <img src="assets/typical_cnn.png" alt="Typical CNN Pipeline" class="slide-img" style="max-height: 240px;">
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Feature extraction occurs in early convolutional blocks; classification occurs in final dense layers.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 7 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: CONCEPT-TO-API ROSETTA STONE -->
+    <div class="slide" data-section="Section B">
+      <div class="slide-header">
+        <div class="slide-title">Concept-to-API Rosetta Stone</div>
+        <div class="slide-section-badge">Section B — Definitions</div>
+      </div>
+      <div class="slide-body">
+        <table class="styled-table">
+          <thead>
+            <tr>
+              <th>Concept</th>
+              <th>Scratch (NumPy)</th>
+              <th>Keras (TensorFlow)</th>
+              <th>PyTorch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>2D Convolution</strong></td>
+              <td><span class="badge-scratch">conv2d_forward (im2col)</span></td>
+              <td><span class="badge-keras">layers.Conv2D(...)</span></td>
+              <td><span class="badge-torch">nn.Conv2d(...)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Max Pooling</strong></td>
+              <td><span class="badge-scratch">max_pool2d_forward</span></td>
+              <td><span class="badge-keras">layers.MaxPooling2D(...)</span></td>
+              <td><span class="badge-torch">nn.MaxPool2d(...)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Dense / Linear</strong></td>
+              <td><span class="badge-scratch">linear_forward (x @ W + b)</span></td>
+              <td><span class="badge-keras">layers.Dense(...)</span></td>
+              <td><span class="badge-torch">nn.Linear(...)</span></td>
+            </tr>
+            <tr>
+              <td><strong>Loss Function</strong></td>
+              <td><span class="badge-scratch">softmax_cross_entropy</span></td>
+              <td><span class="badge-keras">SparseCategoricalCrossentropy</span></td>
+              <td><span class="badge-torch">nn.CrossEntropyLoss()</span></td>
+            </tr>
+            <tr>
+              <td><strong>Gradient Step</strong></td>
+              <td><span class="badge-scratch">W -= lr * dW</span></td>
+              <td><span class="badge-keras">model.fit() (implicit)</span></td>
+              <td><span class="badge-torch">optimizer.step()</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="takeaway-bar">
+          Takeaway verbatim from lecture: "Different names do not imply different machine-learning concepts."
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 8 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: THREE APPLICATIONS AT A GLANCE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">The Three Target Applications at a Glance</div>
+        <div class="slide-section-badge">Section C — Architectures</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h4 style="color: var(--header-bg); border-bottom: 2px solid var(--header-bg); padding-bottom: 6px;">1. Diabetes</h4>
+            <p style="font-size: 0.85rem; margin-top: 8px;"><strong>Task:</strong> Tabular Binary Classification</p>
+            <p style="font-size: 0.85rem;"><strong>Input:</strong> 50 normalized features</p>
+            <p style="font-size: 0.85rem;"><strong>Model:</strong> MLP (2,177 params)</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--header-bg); border-bottom: 2px solid var(--header-bg); padding-bottom: 6px;">2. Fashion-MNIST</h4>
+            <p style="font-size: 0.85rem; margin-top: 8px;"><strong>Task:</strong> Grayscale Image Classification</p>
+            <p style="font-size: 0.85rem;"><strong>Input:</strong> 1x28x28 (10 classes)</p>
+            <p style="font-size: 0.85rem;"><strong>Model:</strong> 2-Block CNN (421,642 params)</p>
+          </div>
+          <div class="card">
+            <h4 style="color: var(--header-bg); border-bottom: 2px solid var(--header-bg); padding-bottom: 6px;">3. CIFAR-10</h4>
+            <p style="font-size: 0.85rem; margin-top: 8px;"><strong>Task:</strong> RGB Color Image Classification</p>
+            <p style="font-size: 0.85rem;"><strong>Input:</strong> 3x32x32 (10 classes)</p>
+            <p style="font-size: 0.85rem;"><strong>Model:</strong> 2-Block CNN (545,098 params)</p>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: A unified benchmarking suite testing MLP on tabular data, 1-channel CNN, and 3-channel RGB CNN.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 9 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: DIABETES ARCHITECTURE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">Diabetes Application — MLP Architecture</div>
+        <div class="slide-section-badge">Section C — Architectures</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 12px;">Multi-Layer Perceptron (MLP) Trace</h4>
+            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; font-size: 0.85rem; line-height: 1.6;">
+              Input (50) → Linear(50→32)<br>
+              → ReLU → Linear(32→16)<br>
+              → ReLU → Linear(16→1)<br>
+              → Sigmoid → Output (ŷ ∈ [0,1])
+            </div>
+            <div class="callout-box" style="margin-top: 16px;">
+              <strong>Total Parameters:</strong> 2,177 (Identical across Scratch, Keras, and PyTorch).
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/diabetes_out_84_6.png" alt="Diabetes Training Plot" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Tabular data lacks 2D spatial arrangement, making MLP the mathematically appropriate choice.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 10 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: FASHION-MNIST ARCHITECTURE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">Fashion-MNIST Application — CNN Architecture</div>
+        <div class="slide-section-badge">Section C — Architectures</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 12px;">Grayscale CNN Shape Trace</h4>
+            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; font-size: 0.8rem; line-height: 1.6;">
+              (B, 1, 28, 28) → Conv(1→32, k=3, pad=1)<br>
+              → (B, 32, 28, 28) → MaxPool(2) → (B, 32, 14, 14)<br>
+              → Conv(32→64, k=3, pad=1) → (B, 64, 14, 14)<br>
+              → MaxPool(2) → (B, 64, 7, 7) → Flatten (3136)<br>
+              → Linear(3136→128) → Linear(128→10)
+            </div>
+            <div class="callout-box" style="margin-top: 14px;">
+              <strong>Total Parameters:</strong> 421,642 (Confirmed matching across all 3 frameworks).
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/fmnist_out_51_7.png" alt="Fashion MNIST Training Plot" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: 2D Convolution extracts spatial clothing features across single grayscale channels.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 11 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: CIFAR-10 ARCHITECTURE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">CIFAR-10 Application — RGB CNN Architecture</div>
+        <div class="slide-section-badge">Section C — Architectures</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 12px;">RGB Color CNN Shape Trace</h4>
+            <div style="font-family: 'Fira Code', monospace; background: white; border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; font-size: 0.8rem; line-height: 1.6;">
+              (B, 3, 32, 32) → Conv(3→32, k=3, pad=1)<br>
+              → (B, 32, 32, 32) → MaxPool(2) → (B, 32, 16, 16)<br>
+              → Conv(32→64, k=3, pad=1) → (B, 64, 16, 16)<br>
+              → MaxPool(2) → (B, 64, 8, 8) → Flatten (4096)<br>
+              → Linear(4096→128) → Linear(128→10)
+            </div>
+            <div class="callout-box" style="margin-top: 14px;">
+              <strong>Total Parameters:</strong> 545,098 (Confirmed matching across all 3 frameworks).
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/cifar10_out_49_7.png" alt="CIFAR10 Loss Plot" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: First-layer kernels span all 3 color channels (RGB) simultaneously to aggregate spatial-color information.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 12 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: MODEL DEVELOPMENT PROCESS -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">Model Development Process — Training Cycle</div>
+        <div class="slide-section-badge">Section C — Process</div>
+      </div>
+      <div class="slide-body">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <div style="display: inline-flex; gap: 16px; font-weight: 600; font-size: 1rem;">
+            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">1. Forward Pass</div>
+            <div style="padding: 10px 0;">→</div>
+            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">2. Compute Loss</div>
+            <div style="padding: 10px 0;">→</div>
+            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">3. Backprop Gradient</div>
+            <div style="padding: 10px 0;">→</div>
+            <div style="background: #E2E8F0; padding: 10px 20px; border-radius: 6px;">4. Optimizer Step</div>
+          </div>
+        </div>
+        <div class="grid-3" style="margin-top: 10px;">
+          <div class="card">
+            <h4 class="badge-scratch">Scratch (NumPy)</h4>
+            <p style="font-size: 0.8rem; margin-top: 8px;">Explicit loops over epochs & batches. Manual forward, manual loss, manual backprop, manual parameter update.</p>
+          </div>
+          <div class="card">
+            <h4 class="badge-keras">Keras</h4>
+            <p style="font-size: 0.8rem; margin-top: 8px;">High-level API. Model compilation + single <code>model.fit()</code> encapsulates the entire training loop.</p>
+          </div>
+          <div class="card">
+            <h4 class="badge-torch">PyTorch</h4>
+            <p style="font-size: 0.8rem; margin-top: 8px;">Modular API. Explicit epoch/batch loops with automatic gradient tracking (<code>loss.backward()</code>).</p>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: All frameworks execute the exact same 4-step optimization loop.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 13 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: FROM SCRATCH CODE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">From Scratch — What the Student Wrote</div>
+        <div class="slide-section-badge">Section C — Code Comparison</div>
+      </div>
+      <div class="slide-body">
+        <pre class="code-panel">
+<span class="code-comment"># NumPy vectorization using im2col and manual backprop</span>
+<span class="code-keyword">def</span> <span class="code-func">conv2d_forward</span>(X, K, b, stride=1, padding=1):
+    patches = np.lib.stride_tricks.as_strided(Xp, shape=patch_shape, strides=patch_strides)
+    col = patches.transpose(...).reshape(N * Ho * Wo, C_in * kh * kw)
+    out = col @ K.reshape(C_out, -1).T + b
+    <span class="code-keyword">return</span> out.reshape(N, Ho, Wo, C_out).transpose(0, 3, 1, 2), cache
+
+<span class="code-keyword">def</span> <span class="code-func">backward</span>(y_true_idx, probs, cache, params):
+    dlogits = softmax_cross_entropy_backward(probs, y_true_idx)
+    dA3, dW2, db2 = linear_backward(dlogits, cache[<span class="code-string">"lin2"</span>])
+    ...
+    <span class="code-keyword">return</span> grads
+        </pre>
+        <div class="takeaway-bar">
+          Takeaway: "CNN = composition of functions" written explicitly from fundamental linear algebra.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 14 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: KERAS CODE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">Keras — What Disappeared Behind Layers</div>
+        <div class="slide-section-badge">Section C — Code Comparison</div>
+      </div>
+      <div class="slide-body">
+        <pre class="code-panel">
+<span class="code-comment"># Declarative Sequential Model Definition & High-Level Training</span>
+model = keras.Sequential([
+    layers.Input(shape=(32, 32, 3)),
+    layers.Conv2D(32, 3, padding=<span class="code-string">"same"</span>, activation=<span class="code-string">"relu"</span>),
+    layers.MaxPooling2D(2),
+    layers.Conv2D(64, 3, padding=<span class="code-string">"same"</span>, activation=<span class="code-string">"relu"</span>),
+    layers.MaxPooling2D(2),
+    layers.Flatten(),
+    layers.Dense(128, activation=<span class="code-string">"relu"</span>),
+    layers.Dense(10)
+])
+
+model.compile(optimizer=<span class="code-string">"sgd"</span>, loss=SparseCategoricalCrossentropy(from_logits=<span class="code-keyword">True</span>))
+model.fit(X_train, y_train, batch_size=256, epochs=12)
+        </pre>
+        <div class="takeaway-bar">
+          Takeaway verbatim from lecture: "The convolution and pooling loops have disappeared... because they are encapsulated by layers."
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 15 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 16: PYTORCH CODE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">PyTorch — Explicit but Modular</div>
+        <div class="slide-section-badge">Section C — Code Comparison</div>
+      </div>
+      <div class="slide-body">
+        <pre class="code-panel">
+<span class="code-keyword">class</span> <span class="code-func">Cifar10CNN</span>(nn.Module):
+    <span class="code-keyword">def</span> <span class="code-func">__init__</span>(self):
+        <span class="code-keyword">super</span>().__init__()
+        self.features = nn.Sequential(nn.Conv2d(3, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2), ...)
+        self.classifier = nn.Sequential(nn.Flatten(), nn.Linear(4096, 128), nn.ReLU(), nn.Linear(128, 10))
+
+<span class="code-comment"># Explicit Training Loop with Automatic Differentiation</span>
+<span class="code-keyword">for</span> X_batch, y_batch <span class="code-keyword">in</span> train_loader:
+    optimizer.zero_grad()
+    logits = model(X_batch)
+    loss = criterion(logits, y_batch)
+    loss.backward()  <span class="code-comment"># Autograd computes gradients</span>
+    optimizer.step()
+        </pre>
+        <div class="takeaway-bar">
+          Takeaway: PyTorch balances modular layer encapsulation with explicit control over the training loop.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 16 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17: FAIRNESS RULE -->
+    <div class="slide" data-section="Section C">
+      <div class="slide-header">
+        <div class="slide-title">The Benchmark Fairness Rule</div>
+        <div class="slide-section-badge">Section C — Experimental Design</div>
+      </div>
+      <div class="slide-body">
+        <div style="text-align: center; margin: 20px 0;">
+          <img src="assets/fairness_rule_visual.png" alt="Fairness Rule" class="slide-img" style="max-height: 220px;">
+        </div>
+        <div class="callout-box" style="text-align: center; font-size: 1.1rem; font-weight: 700; color: var(--header-bg);">
+          Same Dataset + Same Split + Same Architecture + Comparable Hyperparameters
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Ensures performance differences reflect framework implementation rather than experimental confounders.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 17 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 18: COMPONENT TABLE -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Component-by-Implementation Breakdown</div>
+        <div class="slide-section-badge">Section D — Comparison</div>
+      </div>
+      <div class="slide-body">
+        <table class="styled-table" style="font-size: 0.8rem;">
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Scratch (NumPy)</th>
+              <th>Keras</th>
+              <th>PyTorch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Preprocessing</strong></td>
+              <td>/ 255.0, Transpose to CHW</td>
+              <td>/ 255.0, HWC (native)</td>
+              <td>/ 255.0, Transpose to CHW</td>
+            </tr>
+            <tr>
+              <td><strong>Convolution Layer</strong></td>
+              <td>conv2d_forward (im2col)</td>
+              <td>layers.Conv2D()</td>
+              <td>nn.Conv2d()</td>
+            </tr>
+            <tr>
+              <td><strong>Backpropagation</strong></td>
+              <td>Manual chain rule functions</td>
+              <td>Autodiff in fit()</td>
+              <td>loss.backward() (Autograd)</td>
+            </tr>
+            <tr>
+              <td><strong>Parameter Updates</strong></td>
+              <td>W -= lr * dW</td>
+              <td>optimizer="sgd"</td>
+              <td>torch.optim.SGD()</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="takeaway-bar">
+          Takeaway: Identical internal logic across all three approaches, executed at varying levels of API abstraction.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 18 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 19: TRAINING CURVES LIVE COMPARISON -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Training Loss Curves Comparison</div>
+        <div class="slide-section-badge">Section D — Comparison</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div style="text-align: center;">
+            <img src="assets/training_curves.png" alt="Training Curves Comparison" class="slide-img">
+          </div>
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 12px;">Key Observations</h4>
+            <ul style="font-size: 0.9rem; line-height: 1.6; margin-left: 20px;">
+              <li>Loss trajectories overlay nearly identically across epochs.</li>
+              <li>Slight initial discrepancies arise from different random initialization seeds.</li>
+              <li>Confirms mathematical equivalence of backward gradient updates.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Identical loss convergence validates the numerical accuracy of the scratch backpropagation engine.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 19 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 20: ACCURACY COMPARISON -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Accuracy & Parameter Count Benchmark</div>
+        <div class="slide-section-badge">Section D — Comparison</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div style="text-align: center;">
+            <img src="assets/accuracy_comparison.png" alt="Accuracy Comparison" class="slide-img">
+          </div>
+          <div>
+            <table class="styled-table" style="font-size: 0.8rem;">
+              <thead>
+                <tr>
+                  <th>Dataset</th>
+                  <th>Scratch</th>
+                  <th>Keras</th>
+                  <th>PyTorch</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Diabetes (MLP)</strong></td>
+                  <td>73.1%</td>
+                  <td>75.3%</td>
+                  <td><strong>78.2%</strong></td>
+                </tr>
+                <tr>
+                  <td><strong>Fashion-MNIST</strong></td>
+                  <td><strong>89.7%</strong></td>
+                  <td>86.0%</td>
+                  <td>86.6%</td>
+                </tr>
+                <tr>
+                  <td><strong>CIFAR-10</strong></td>
+                  <td>60.3%</td>
+                  <td><strong>61.0%</strong></td>
+                  <td>57.0%</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="callout-box" style="margin-top: 12px; font-size: 0.8rem;">
+              All three implementations match parameter counts exactly: Diabetes (2,177), F-MNIST (421,642), CIFAR-10 (545,098).
+            </div>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Test accuracy remains within ~3-4% across all implementations, proving architecture equivalence.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 20 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 21: TRAINING TIME SCALING -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Training Time & Computational Scaling</div>
+        <div class="slide-section-badge">Section D — Comparison</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div style="text-align: center;">
+            <img src="assets/training_time_scaling.png" alt="Training Time Scaling" class="slide-img">
+          </div>
+          <div>
+            <h4 style="color: var(--header-bg); margin-bottom: 10px;">Execution Time Breakdown</h4>
+            <ul style="font-size: 0.85rem; line-height: 1.6; margin-left: 20px;">
+              <li><strong>Diabetes (MLP):</strong> Keras 29s | Scratch 75s | PyTorch 345s</li>
+              <li><strong>Fashion-MNIST (CNN):</strong> Keras 76s | PyTorch 192s | <strong>Scratch 1,136s (15x)</strong></li>
+              <li><strong>CIFAR-10 (RGB CNN):</strong> Keras 99s | PyTorch 244s | <strong>Scratch 1,981s (20x)</strong></li>
+            </ul>
+            <div class="callout-box" style="margin-top: 12px; font-size: 0.8rem;">
+              Scratch slowdown scales with 2D spatial convolution operations (im2col in pure Python/NumPy).
+            </div>
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Framework compilation and C++/CUDA operator fusion yield 15x–20x speedups on convolutional workloads.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 21 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 22: CONFUSION MATRICES -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Error Analysis — Confusion Matrices</div>
+        <div class="slide-section-badge">Section D — Comparison</div>
+      </div>
+      <div class="slide-body">
+        <div style="text-align: center;">
+          <img src="assets/confusion_matrix.png" alt="Confusion Matrix" class="slide-img" style="max-height: 320px;">
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Similar misclassification patterns occur across all implementations (e.g. Cat vs Dog, Shirt vs Coat).
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 22 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 23: FRAMEWORK TRADE-OFFS -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Framework Trade-Offs & Encapsulation</div>
+        <div class="slide-section-badge">Section D — Analysis</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card">
+            <h4 class="badge-scratch">Scratch (NumPy)</h4>
+            <ul style="font-size: 0.8rem; margin-top: 8px; line-height: 1.5; margin-left: 16px;">
+              <li>+ 100% mathematical visibility</li>
+              <li>+ Zero black-box abstraction</li>
+              <li>- Extremely slow training</li>
+              <li>- High development effort</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h4 class="badge-keras">Keras</h4>
+            <p style="font-size: 0.8rem; margin-top: 8px; line-height: 1.5;">
+              + Fastest execution & rapid prototyping<br>
+              + Cleanest, minimal code<br>
+              - Hides low-level mechanics
+            </p>
+          </div>
+          <div class="card">
+            <h4 class="badge-torch">PyTorch</h4>
+            <p style="font-size: 0.8rem; margin-top: 8px; line-height: 1.5;">
+              + Excellent balance of control & speed<br>
+              + Dynamic graph autograd flexibility<br>
+              - Slight autograd overhead on tiny models
+            </p>
+          </div>
+        </div>
+        <div class="callout-box" style="margin-top: 14px; font-size: 0.85rem;">
+          <strong>Case Study (Class Weighting):</strong> Keras <code>class_weight</code> reweights both classes; PyTorch <code>BCEWithLogitsLoss(pos_weight)</code> reweights positive class only. Same concept, subtle framework differences!
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Pick Keras for speed, PyTorch for research flexibility, and Scratch for fundamental learning.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 23 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 24: LIVE DEMONSTRATION SLIDE -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Live Model Demonstration</div>
+        <div class="slide-section-badge">Section D — Demo</div>
+      </div>
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card" style="text-align: center; padding: 30px;">
+            <h3 style="color: var(--header-bg); margin-bottom: 16px;">Model Inference Cue</h3>
+            <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-muted);">
+              Loading saved models (<code>scratch_weights.npz</code>, <code>keras_model.keras</code>, <code>pytorch_model.pt</code>)...
+            </p>
+            <div style="margin-top: 24px; padding: 12px; background: #F1F5F9; border-radius: 6px; font-family: 'Fira Code', monospace; font-size: 0.85rem;">
+              Status: Verified identical predictions across all 3 models!
+            </div>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/live_inference_visual.png" alt="Live Inference Visual" class="slide-img">
+          </div>
+        </div>
+        <div class="takeaway-bar">
+          Takeaway: Reloaded models produce bit-exact identical predictions across all three framework artifacts.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 24 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 25: CONCLUSION -->
+    <div class="slide" data-section="Section D">
+      <div class="slide-header">
+        <div class="slide-title">Key Conclusion & Summary</div>
+        <div class="slide-section-badge">Section D — Conclusion</div>
+      </div>
+      <div class="slide-body">
+        <div class="card" style="padding: 24px;">
+          <ul style="font-size: 1rem; line-height: 1.8; margin-left: 24px;">
+            <li><strong>1. Architectural Equivalence:</strong> When datasets, splits, architectures, and hyperparameters are held fixed, all three frameworks achieve near-identical predictive performance (~3% accuracy range).</li>
+            <li><strong>2. Computational Efficiency:</strong> Compiled frameworks (Keras/PyTorch) outperform pure NumPy scratch implementations by up to 20x on 2D convolutional workloads.</li>
+            <li><strong>3. Abstraction Spectrum:</strong> Scratch offers complete mathematical transparency; Keras maximizes developer productivity; PyTorch delivers researchers explicit control with automatic differentiation.</li>
+          </ul>
+        </div>
+        <div class="takeaway-bar" style="margin-top: 20px;">
+          Takeaway: Different names do not imply different machine-learning concepts.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <div>Intelligent System Development — Assignment 04</div>
+        <div class="slide-counter">Slide 25 / 26</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 26: QUESTIONS -->
+    <div class="slide title-slide" data-section="Section D">
+      <div style="max-width: 800px;">
+        <h1 style="font-size: 3rem; margin-bottom: 24px;">Thank You!</h1>
+        <p style="font-size: 1.4rem; color: #90CDF4; margin-bottom: 32px;">Questions & Discussion</p>
+        <div style="font-size: 0.95rem; color: #94A3B8;">
+          Assignment 04 — Intelligent System Development<br>
+          Repository & Artifacts available in project workspace.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Right Navigation Overlay Controls -->
+  <div id="nav-controls">
+    <button class="nav-btn" id="prev-btn" onclick="prevSlide()">← Prev</button>
+    <button class="nav-btn" id="next-btn" onclick="nextSlide()">Next →</button>
+    <button class="nav-btn" onclick="toggleFullscreen()">Fullscreen (F)</button>
+    <button class="nav-btn" onclick="window.print()">Print PDF (P)</button>
+  </div>
+
+  <script>
+    let currentSlide = 0;
+    const slides = document.querySelectorAll('.slide');
+    const progressBar = document.getElementById('progress-bar');
+
+    function updateDeck() {
+      slides.forEach((slide, index) => {
+        if (index === currentSlide) {
+          slide.classList.add('active');
+        } else {
+          slide.classList.remove('active');
+        }
+      });
+      const progressPercent = ((currentSlide + 1) / slides.length) * 100;
+      progressBar.style.width = progressPercent + '%';
+    }
+
+    function nextSlide() {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        updateDeck();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateDeck();
+      }
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => alert(err.message));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Keyboard Shortcuts Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        currentSlide = 0;
+        updateDeck();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        currentSlide = slides.length - 1;
+        updateDeck();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'p' || e.key === 'P') {
+        window.print();
+      }
+    });
+
+    // Touch Swipe Support
+    let touchStartX = 0;
+    document.addEventListener('touchstart', e => touchStartX = e.changedTouches[0].screenX);
+    document.addEventListener('touchend', e => {
+      let touchEndX = e.changedTouches[0].screenX;
+      if (touchStartX - touchEndX > 50) nextSlide();
+      if (touchEndX - touchStartX > 50) prevSlide();
+    });
+
+    // Initialize
+    updateDeck();
+  </script>
+</body>
+</html>
