@@ -107,7 +107,9 @@ _scratch/
 
 # Kaggle / Raw Datasets (large files fetched via app data scripts)
 **/data/*.csv
+**/data/**/*.csv
 **/data/*.zip
+**/data/**/*.zip
 !**/data/.gitkeep
 # customer_behaviour raw datasets — large, downloaded from Kaggle, not committed
 assignment_02/customer_behaviour/data/sephora/
