@@ -152,3 +152,11 @@ original_*.tex
 
 # Submission archives
 *.zip
+
+# Assignment 05: datasets, trained models, result files and figures
+assignment_05/dataset/**
+!assignment_05/dataset/README.md
+assignment_05/notebook/models/
+assignment_05/notebook/results/
+assignment_05/report/images/
+assignment_05/.venv/
