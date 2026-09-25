@@ -155,7 +155,9 @@ original_*.tex
 
 # Assignment 05: datasets, trained models, result files and figures
 assignment_05/dataset/**
+!assignment_05/dataset/*/
 !assignment_05/dataset/README.md
+!assignment_05/dataset/*/.gitkeep
 assignment_05/notebook/models/
 assignment_05/notebook/results/
 assignment_05/report/images/
