@@ -137,3 +137,18 @@ desktop.ini
 .claude/*
 !.claude/launch.json
 .gemini/
+
+# LaTeX build and temporary files
+*.aux
+*.out
+*.toc
+*.log
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bak
+*.tex.bak
+original_*.tex
+
+# Submission archives
+*.zip
