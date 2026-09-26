@@ -23,10 +23,16 @@ pip install -r requirements.txt
 ```
 
 GPU support:
-- **Apple Silicon:** TensorFlow uses the GPU through `tensorflow-metal` (installed automatically); PyTorch uses `mps`.
-- **NVIDIA:** PyTorch uses `cuda` if a CUDA build of torch is installed. TensorFlow uses the GPU on Linux/WSL2 only
-  (`pip install tensorflow[and-cuda]`); on native Windows it runs on the CPU.
-- Otherwise both run on the CPU (slower, same results).
+
+| Machine | TensorFlow | PyTorch |
+|---|---|---|
+| Apple Silicon | Apple GPU (`tensorflow-metal`, installed automatically) | `mps` |
+| Linux / WSL2 + NVIDIA | NVIDIA GPU (`tensorflow[and-cuda]`, installed automatically) | `cuda` (default Linux wheel) |
+| Windows + NVIDIA | CPU only (no TF GPU builds for native Windows; use WSL2 for the GPU) | `cuda`: first run `pip install torch --index-url https://download.pytorch.org/whl/cu126` |
+| no GPU | CPU | CPU |
+
+Check: the first code cell prints `GPUs: [...]` for TensorFlow and `device: cuda | <GPU name>` for PyTorch.
+TensorFlow is set to take GPU memory only as needed, so both frameworks can share one NVIDIA GPU in the same notebook.
 
 ## Data
 

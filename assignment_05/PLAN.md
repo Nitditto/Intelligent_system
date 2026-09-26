@@ -159,13 +159,15 @@ assignment_05/
 │   ├── sv_svhn.ipynb             # SV only: EDA → TF CNN-3/5 → PT CNN-3/5 → comparison
 │   ├── gt_gtsrb.ipynb            # GT only: same sections
 │   ├── db_diabetes.ipynb         # DB only: same sections
-│   ├── results/                  # <run_id>.json (committed)
+│   ├── results/                  # <run_id>.json (gitignored; metrics are also in each notebook's §6 table)
 │   └── models/                   # saved weights (gitignored)
 └── report/
     ├── Assignment_05.tex         # template from assignment_04
     ├── Assignment_05.pdf
-    ├── make_summary.py           # reads results/*.json → 12-run table + cross-dataset charts
-    └── images/                   # figures exported by the notebooks, named <run_id>_<plot>.png
+    ├── PLAN.md                   # report plan: sections, tables, figure list
+    ├── extract_figures.py        # saves every figure embedded in the executed notebooks
+    ├── make_summary.py           # 12-run table + cross-dataset charts, read from the notebooks
+    └── images/                   # figures from the notebooks, named <run_id>_<plot>.png (committed)
 ```
 
 **One notebook per dataset — never combined.** Each notebook is self-contained (helper functions are in a cell, no shared module) and runs on its own
@@ -283,6 +285,9 @@ spelled out; every table and figure caption uses the run ID.
 
 ## 7. Report outline (`report/Assignment_05.tex`)
 
+Full section-by-section plan with the figure list: [`report/PLAN.md`](report/PLAN.md).
+Figures are taken from the executed notebooks (`python report/extract_figures.py`), not re-generated.
+
 1. Cover page (same as assignment_04)
 2. Executive summary — 12-run table, 3–4 takeaways
 3. CNN fundamentals — terminology & notation (§6), convolution, pooling, BatchNorm,
@@ -302,12 +307,13 @@ spelled out; every table and figure caption uses the run ID.
 | 0 | Kaggle API key (`~/.kaggle/kaggle.json`); branch `assignment-5` | setup |
 | 1 | Scaffold folders, `requirements.txt`, `.gitignore` entries | structure |
 | 2 | Download data manually (`dataset/README.md`); splits created by the notebooks | `splits.npz` × 3 |
-| 3 | `db_diabetes.ipynb` (fastest; validates the whole pipeline) | 4 result JSONs |
-| 4 | `sv_svhn.ipynb` (smoke test on 5k samples first) | 4 result JSONs |
-| 5 | `gt_gtsrb.ipynb` | 4 result JSONs |
-| 6 | `report/make_summary.py` | 12-run table + cross-dataset figures |
-| 7 | Report LaTeX + PDF | `Assignment_05.pdf` |
-| 8 | README, final check, commit | submission |
+| 3 | Smoke-test all notebooks on real data (`A5_SMOKE=1`) | ✅ done |
+| 4 | Full run of `db_diabetes`, `sv_svhn`, `gt_gtsrb` (executed notebooks pushed, commit `9563ae2`) | ✅ done |
+| 5 | `report/extract_figures.py`: figures from the notebooks → `report/images/` | ✅ done (67 figures) |
+| 6 | Fill each notebook's §6 discussion and §7 conclusion from its results | todo |
+| 7 | `report/make_summary.py`: 12-run table + cross-dataset charts | ✅ done |
+| 8 | Report LaTeX + PDF following `report/PLAN.md` | ✅ done (15 pages) |
+| 9 | README, final check, commit | todo |
 
 **Compute estimate:** 12 runs × ≤20 epochs on ~70k training samples each. On an Apple
 Silicon GPU this takes about 20–40 s per epoch for images and a few seconds for DB,
