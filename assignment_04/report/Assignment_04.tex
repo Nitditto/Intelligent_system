@@ -51,9 +51,8 @@
 {\huge \bfseries Comparing CNN and MLP Implementations: Scratch vs. Keras vs. PyTorch}\\[2cm]
 
 \begin{tabular}{ll}
-Authors: & Bùi Nguyên Hoàng Việt (B23DCDT285) \\
-         & Lưu Anh Dũng (B23DCDK036) \\
-         & Nguyễn Văn Trường (B23DCCE095) \\[0.5cm]
+Student name: & Nguyễn Văn Trường \\[0.5cm]
+Student ID: & B23DCCE095 \\[0.5cm]
 Class: & E23CNPM02 \\[0.5cm]
 Course: & Intelligent System Development \\[0.5cm]
 Lecturer: & Assoc. Prof. Dinh Que Tran, Ph.D. \\[0.5cm]
@@ -106,29 +105,30 @@ CIFAR-10 & image, $32\times32\times3$ & 10-class classification & CNN (545,098 p
 \end{tabular}
 \end{table}
 
-Two results stand out ahead of the detailed sections below. First, the
-parameter count for every application is identical across all three
-implementations, confirmed by a direct assertion in each notebook
-(\code{assert keras\_param\_count == scratch\_param\_count}, and the same
-check against PyTorch), which is the most basic and most important sanity
-check this assignment makes: the three implementations really are the same
-architecture, not three architectures that happen to share a name. Second,
-the winning implementation changes from application to application, PyTorch
-on diabetes, scratch on Fashion-MNIST, Keras on CIFAR-10, and every winner's
-margin over the other two is small, at most a few accuracy points. That
-instability in the ranking, combined with the closeness of the scores, is
-itself evidence for Lecture 04's claim rather than against it: if one
-implementation reliably won every time, that would suggest a real difference
-in modeling power between scratch, Keras, and PyTorch, but a ranking that
-flips application to application is what three equally capable
-implementations of the same architecture should produce, differences settled
-by small, framework-level details, not by one implementation being
-fundamentally a better learner than the others. Training time tells a much
-less noisy story: Keras is fastest in every application, and the from-scratch
-NumPy implementation is dramatically slower than the other two specifically
-on the two convolutional networks, a real, measurable cost of visibility that
-the diabetes MLP, small enough that no implementation's overhead dominates,
-does not show.
+Two results are worth highlighting before the detailed, per-application
+sections below. The first is that every application ends up with exactly the
+same parameter count across all three implementations, a fact each notebook
+does not merely assume but actively checks
+(\code{assert keras\_param\_count == scratch\_param\_count}, and an identical
+check against PyTorch); this is the single most important sanity check in
+the whole assignment, since it confirms the three implementations are
+genuinely one architecture rather than three unrelated architectures that
+happen to share a name. The second is that no implementation dominates
+across applications: PyTorch wins on diabetes, scratch wins on Fashion-MNIST,
+and Keras wins on CIFAR-10, with the margin between winner and runners-up
+never exceeding a few accuracy points in any of the three cases. Rather than
+undermining Lecture 04's claim, this shifting ranking supports it, because a
+single implementation winning every single time would point to a real
+difference in modeling power, whereas a ranking that reshuffles from
+application to application is exactly what three equally capable
+implementations of one architecture should produce, with the outcome decided
+by small, framework-level details rather than by any implementation being
+inherently the stronger learner. Training time is the far cleaner signal of
+the two: Keras finishes fastest in every application, and the from-scratch
+NumPy code falls dramatically behind the other two specifically once real
+convolutions are involved, a concrete cost of full visibility that stays
+hidden on the diabetes MLP, whose network is small enough that no
+implementation's overhead has room to dominate.
 
 % ---------------------------------------------------------------------
 \section{Connection to Lecture 04: Same Architecture, Different Abstraction}
@@ -143,19 +143,19 @@ repeating it.
 
 \subsection{The central question}
 
-Lecture 04 opens with a single question that frames the entire assignment: for
+The whole assignment is framed by one question Lecture 04 opens with: across
 three implementations of the same CNN, from-scratch NumPy, TensorFlow/Keras,
-and PyTorch, \textit{what is the same, and what is different?} The lecture's
-own answer, stated directly, is that the conceptual architecture is unchanged
-across all three; what changes is only the level of abstraction. A
-\code{Conv2d} in scratch is an explicit function performing an \code{im2col}
-matrix multiply, written and read line by line. The same operation in Keras
-is one line, \code{Conv2D(...)}, with the multiply-and-accumulate hidden
-inside a compiled, optimized library routine. The same operation in PyTorch,
-\code{nn.Conv2d(...)}, sits in between: the layer itself is a one-line module
-like Keras's, but the training loop that calls it, and the backward pass that
-updates it, both stay explicit in the student's own code rather than being
-absorbed into a single \code{fit()} call.
+and PyTorch, \textit{what actually stays the same, and what actually
+changes?} The lecture answers this directly, the conceptual architecture does
+not change at all between the three; only the level of abstraction does. In
+scratch, a \code{Conv2d} is a concrete function carrying out an
+\code{im2col} matrix multiply that can be read and traced line by line. In
+Keras, the same operation collapses to a single line, \code{Conv2D(...)},
+with the underlying multiply-and-accumulate work hidden inside a compiled
+library routine. PyTorch's \code{nn.Conv2d(...)} lands in between the two:
+the layer definition is as compact as Keras's, but the training loop invoking
+it and the backward pass updating it remain explicit in the student's own
+code instead of being folded into one \code{fit()} call.
 
 \subsection{Concept, not name, is what has to match}
 
@@ -537,15 +537,15 @@ architecture) and training time by implementation.}
 \subsection{Comparison discussion}
 \label{sec:diabetes-compare}
 
-By accuracy and F1, PyTorch comes out slightly ahead (0.782, 0.480), Keras is
-close behind (0.753, 0.476), and scratch trails by a similar small margin
-(0.731, 0.469). All three land within about five points of each other on both
-metrics, the expected outcome for three implementations of the same
-architecture trained on the same data with the same hyperparameters: the gap
-is small enough to plausibly come from framework-level details (default
-numerical precision, exactly how each framework shuffles batches, small
-differences in how the balanced weighting is applied) rather than from one
-implementation being a meaningfully better model than the others.
+On accuracy and F1, PyTorch finishes slightly in front (0.782, 0.480), with
+Keras not far behind (0.753, 0.476) and scratch a similar small step further
+back (0.731, 0.469). All three sit within roughly five points of one another
+on both metrics, which is what should happen when the same architecture is
+trained on the same data with the same hyperparameters three separate times:
+a gap this size is easily attributable to framework-level details, default
+numerical precision, exactly how each framework shuffles its batches, minor
+differences in how the balanced weighting gets applied, rather than to one
+implementation actually learning a meaningfully better model.
 
 One number in Table \ref{tab:diabetes-quant} is genuinely not comparable
 across implementations, and it is worth explaining rather than glossing over:
@@ -1281,30 +1281,31 @@ explain.
 
 This report built three intelligent systems, diabetes risk screening (MLP),
 Fashion-MNIST clothing recognition (CNN), and CIFAR-10 object recognition
-(CNN), each with a single architecture implemented three separate times, from
-scratch in NumPy with every forward pass, loss, backward pass, and parameter
-update derived and coded by hand, in TensorFlow/Keras, and in PyTorch. Every
-application's parameter count matched exactly across all three
-implementations, and every application's accuracy spread stayed within a few
-points, confirming Lecture 04's central claim that the conceptual architecture
-is unchanged across abstraction levels, only its expression changes. What
-genuinely differed, and differed by a large, measurable margin once real
-convolutions were involved, was training time: a from-scratch NumPy
-implementation, however correct, cannot match a mature framework's
-operator-level optimization for an operation like convolution, a real cost of
-full visibility that a tiny MLP's forward pass does not expose but a CNN's
-does, and the gap widens further with input size and channel count rather
-than with parameter count. Keeping every implementation's own training loop
-and loss computation fully visible, rather than trusting a packaged
-\code{fit()} call, is also what surfaced two concrete findings a framework
-would have absorbed silently: PyTorch's \code{pos\_weight} class-weighting
-mechanism scales the training loss differently from scratch's and Keras's
-symmetric weighting despite sharing the same balanced-weighting intent, and a
-redundant division bug in a from-scratch backward pass, caught only by a
-numerical gradient check comparing hand-derived gradients against a
-finite-difference approximation. Both are the kind of detail visible only to
-someone who wrote every gradient by hand, exactly the payoff building a CNN
-from scratch is meant to provide.
+(CNN), and for each one implemented a single architecture three separate
+times: from scratch in NumPy, with every forward pass, loss, backward pass,
+and parameter update derived and coded by hand; in TensorFlow/Keras; and in
+PyTorch. Across all three implementations, every application's parameter
+count matched exactly and every application's accuracy spread stayed within
+a few points, which together confirm Lecture 04's central claim that the
+conceptual architecture stays fixed across abstraction levels and only its
+expression changes. Training time, in contrast, genuinely diverged, and by a
+large margin once real convolutions entered the picture: a from-scratch
+NumPy implementation, no matter how correct, simply cannot match a mature
+framework's operator-level optimization for something like convolution, a
+real cost of full visibility that a small MLP's forward pass never exposes
+but a CNN's does, and one that grows further with input size and channel
+count rather than with parameter count. Keeping each implementation's
+training loop and loss computation fully visible instead of relying on a
+packaged \code{fit()} call is also what surfaced two concrete findings a
+framework would otherwise have absorbed without a trace: PyTorch's
+\code{pos\_weight} class-weighting mechanism scales the training loss
+differently from scratch's and Keras's symmetric weighting despite sharing
+the same balanced-weighting goal, and a redundant division bug in a
+from-scratch backward pass that only a numerical gradient check, comparing
+hand-derived gradients against a finite-difference approximation, was able to
+catch. Both details are visible only to someone who wrote every gradient by
+hand, which is exactly the payoff building a CNN from scratch is meant to
+deliver.
 
 % ---------------------------------------------------------------------
 \section{Reproducibility}
