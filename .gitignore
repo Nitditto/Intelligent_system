@@ -137,3 +137,37 @@ desktop.ini
 .claude/*
 !.claude/launch.json
 .gemini/
+
+# LaTeX build and temporary files
+*.aux
+*.out
+*.toc
+*.log
+*.synctex.gz
+*.fls
+*.fdb_latexmk
+*.bak
+*.tex.bak
+original_*.tex
+
+# Submission archives
+*.zip
+
+# Assignment 05: datasets, trained models, result files and figures
+assignment_05/dataset/**
+!assignment_05/dataset/*/
+!assignment_05/dataset/README.md
+!assignment_05/dataset/*/.gitkeep
+assignment_05/notebook/models/
+assignment_05/notebook/results/
+assignment_05/report/images/
+assignment_05/report/summary.csv
+assignment_05/report/extract_figures.py
+assignment_05/report/make_summary.py
+assignment_05/report/PLAN.md
+assignment_05/report/summary_table.tex
+assignment_05/report/*.aux
+assignment_05/report/*.log
+assignment_05/report/*.out
+assignment_05/report/*.toc
+assignment_05/.venv/
