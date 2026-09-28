@@ -25,7 +25,7 @@
     citecolor=blue!70!black,
     urlcolor=blue!70!black,
     pdftitle={Assignment 05 - CNN-3 vs CNN-5 in TensorFlow and PyTorch},
-    pdfauthor={Luu Anh Dung}
+    pdfauthor={Nguyen Van Truong}
 }
 
 \lstset{
@@ -67,17 +67,14 @@
 
 \vspace{1.2cm}
 
-\large
-\textit{"Same architecture, same data: depth changes the result, the framework does not."}
-
 \vfill
 
 \normalsize
 \begin{tabular}{rl}
 \textbf{Instructor / Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
 \textbf{Email:} & quetd@ptit.edu.vn, tdque@yahoo.com \\[0.8cm]
-\textbf{Student Name:} & Lưu Anh Dũng \\
-\textbf{Student ID:} & B23DCDK036 \\
+\textbf{Student Name:} & Nguyễn Văn Trường \\
+\textbf{Student ID:} & B23DCCE095 \\
 \textbf{Semester:} & I.2025 -- 2026 \\
 \textbf{Class:} & E23CNPM02 \\
 \textbf{Submission:} & Individual Project \\
@@ -102,12 +99,13 @@
 \section{Executive Summary}
 % =====================================================================
 
-This assignment builds convolutional neural networks with \textbf{3} and \textbf{5} convolutional layers
-(\run{CNN-3}, \run{CNN-5}) in \textbf{TensorFlow/Keras} (\run{TF}) and \textbf{PyTorch} (\run{PT}), and trains them on
-three datasets: \textbf{SVHN} (99,289 house-number photos, 10 classes), \textbf{GTSRB} (51,839 traffic-sign photos,
-43 classes) and a \textbf{diabetes} table (300,000 patients, 24 features, binary target). Every pair of runs uses the
-same split, architecture, parameter count, optimizer, batch size, early-stopping rule and seed, so depth and
-framework are the only variables. Each model has a run ID \run{<dataset>-<framework>-<model>}, e.g.\ \run{SV-PT-CNN-5}.
+This project sets up convolutional networks of \textbf{3} and \textbf{5} conv layers
+(\run{CNN-3}, \run{CNN-5}) using both \textbf{TensorFlow/Keras} (\run{TF}) and \textbf{PyTorch} (\run{PT}), then fits
+them to three datasets: \textbf{SVHN} (99,289 house-number photos, 10 classes), \textbf{GTSRB} (51,839 traffic-sign
+photos, 43 classes) and a \textbf{diabetes} table (300,000 patients, 24 features, binary target). Every matched pair of
+runs shares the split, architecture, parameter count, optimizer, batch size, early-stopping rule and seed, so the only
+things that change are the depth of the network and the framework used. Each trained model is tagged with a run ID of
+the form \run{<dataset>-<framework>-<model>}, for instance \run{SV-PT-CNN-5}.
 
 \begin{table}[H]
 \centering
@@ -119,37 +117,40 @@ framework are the only variables. Each model has a run ID \run{<dataset>-<framew
 
 \textbf{Key takeaways}
 \begin{enumerate}
-\item \textbf{Depth helps on images.} CNN-5 beats CNN-3 in both frameworks: +0.019 accuracy on SVHN,
-  +0.009 to +0.016 macro F1 on GTSRB. The best model is \run{GT-PT-CNN-5} (macro F1 0.9937).
-\item \textbf{Depth does not help on the table.} On diabetes all four CNNs reach macro F1 0.626--0.631 and
-  ROC-AUC 0.694--0.696; an MLP with 6,977 parameters (vs.\ 391,329) scores ROC-AUC 0.695. The limit is the weak signal
-  in the features, not model capacity.
-\item \textbf{Same model, same result.} With identical settings, TF and PT differ by at most 0.011 accuracy on every
-  dataset; the parameter counts are identical (checked in code).
-\item \textbf{Depth costs time.} CNN-5 needs 1.9--2.2$\times$ the time per epoch of CNN-3. On this CPU run, PyTorch
-  was 9--16\% slower per epoch than Keras on images and about 50\% slower on the table.
+\item On the two image datasets, adding depth helps: CNN-5 beats CNN-3 under both frameworks, with macro F1 up by
+  +0.021 to +0.040 on SVHN and +0.015 to +0.036 on GTSRB. The best model overall is \run{GT-PT-CNN-5}, with a
+  macro F1 of 0.9979.
+\item The diabetes dataset tells a different story. All four CNN variants sit in a narrow band of macro F1
+  (0.627--0.630) and ROC-AUC (0.694--0.696), and a much smaller MLP (6,977 parameters versus 391,329) reaches
+  ROC-AUC 0.695 as well. The features themselves carry a weak signal, so no amount of extra depth changes that.
+\item Framework choice has a modest, dataset-dependent effect: TF and PT macro F1 stay within 0.013 of each other on
+  every dataset, though which framework comes out ahead flips between CNN-3 and CNN-5, and their parameter counts are
+  identical either way (checked directly in code).
+\item The cost of depth is time, not accuracy loss: CNN-5 needs 1.8--2.2$\times$ as long per epoch as CNN-3. On this
+  CPU-only run, PyTorch was 37--43\% slower per epoch than Keras on the two image datasets and roughly 2$\times$ slower
+  on the tabular one.
 \end{enumerate}
 
 % =====================================================================
 \section{CNN Fundamentals}
 % =====================================================================
 
-Terms are defined once here and used with the same meaning in the rest of the report.
-Notation: $N$ samples; input $C\times H\times W$ (channels, height, width); kernel size $K$, stride $S$,
+Each term below is defined a single time and keeps that meaning throughout the rest of the report.
+Notation used: $N$ samples; input $C\times H\times W$ (channels, height, width); kernel size $K$, stride $S$,
 padding $P$; $F$ filters (output channels); logits $z$, predicted probability $p$, true label $y$.
 
 \subsection{Convolution}
-A convolutional layer slides $F$ learned \textbf{filters} of size $K\times K\times C_{in}$ over its input. At each
-position it computes one value of a \textbf{feature map}:
+A convolutional layer passes $F$ learnable \textbf{filters}, each of size $K\times K\times C_{in}$, across the input.
+At every position it produces a single value belonging to a \textbf{feature map}:
 \[
 \text{out}(i,j) = \sum_{u,v,c} \text{window}(i{+}u, j{+}v, c)\cdot w(u,v,c) + b,
 \qquad H_{out} = \left\lfloor \frac{H + 2P - K}{S} \right\rfloor + 1 .
 \]
-\textbf{Example} (SVHN notebook, \S4.2). A $5\times5$ patch containing a vertical stroke (columns \texttt{0 0 1 1 0})
-and the vertical-edge filter with rows $[-1, 0, 1]$:
-window $[0,0,1]$ gives $(-1\cdot0 + 0\cdot0 + 1\cdot1)\times 3 = 3$ (left edge of the stroke),
-window $[1,1,0]$ gives $-3$ (right edge). The notebook checks this against the framework's convolution.
-With $K=3$, $S=1$, \textbf{padding ``same''} ($P=1$) keeps $32\times32 \to 32\times32$.
+\textbf{Worked example} (SVHN notebook, \S4.2). Take a $5\times5$ patch that contains a vertical stroke (columns
+\texttt{0 0 1 1 0}) and a vertical-edge filter with rows $[-1, 0, 1]$: at window $[0,0,1]$ the result is
+$(-1\cdot0 + 0\cdot0 + 1\cdot1)\times 3 = 3$ (the stroke's left edge), while window $[1,1,0]$ yields $-3$ (its right
+edge). This value is cross-checked against the framework's own convolution output in the notebook.
+Setting $K=3$, $S=1$ and \textbf{``same'' padding} ($P=1$) preserves the spatial size, $32\times32 \to 32\times32$.
 
 \subsection{ReLU, pooling, batch normalization}
 \begin{table}[H]
@@ -169,29 +170,31 @@ Dropout (0.3) & in training, 30\% of values set to 0 & reduces overfitting \\
 \end{tabular}
 \end{table}
 
-\textbf{Receptive field} = input area that can influence one output unit. It grows as
-$RF \leftarrow RF + (K-1)\cdot j$ per layer, where the jump $j$ doubles after each pooling:
-22$\times$22 pixels for CNN-3 and 28$\times$28 for CNN-5 (of a 32$\times$32 image).
+The \textbf{receptive field} is the region of the input that can affect a single output unit. It expands by
+$RF \leftarrow RF + (K-1)\cdot j$ at each layer, with the jump $j$ doubling every time pooling is applied, reaching
+22$\times$22 pixels for CNN-3 and 28$\times$28 for CNN-5 (out of a 32$\times$32 image).
 
-\textbf{Parameters.} Conv: $(K\cdot K\cdot C_{in}+1)\cdot F$, e.g.\ first layer $(3\cdot3\cdot3+1)\cdot32 = 896$;
-BatchNorm: $2F$ trainable ($\gamma,\beta$); Dense: $(\text{inputs}+1)\cdot\text{units}$.
+\textbf{Parameter counts.} A conv layer contributes $(K\cdot K\cdot C_{in}+1)\cdot F$, e.g.\ the first layer gives
+$(3\cdot3\cdot3+1)\cdot32 = 896$; BatchNorm adds $2F$ trainable values ($\gamma,\beta$); a Dense layer adds
+$(\text{inputs}+1)\cdot\text{units}$.
 
 \subsection{Output, loss and training}
 \begin{itemize}
 \item \textbf{Softmax} (multi-class): $p_k = e^{z_k}/\sum_j e^{z_j}$. \textbf{Cross-entropy}: $L = -\ln p_{\text{true}}$.
-  Example: logits ``3'' $=2$, ``8'' $=1$, others $0$ $\Rightarrow p(\text{``3''}) = 0.41$, loss $0.90$ if the image is a 3,
-  $1.90$ if it is an 8. An untrained model starts at $\ln 10 = 2.30$ (SVHN) or $\ln 43 = 3.76$ (GTSRB).
+  For instance, with logits ``3'' $=2$, ``8'' $=1$ and everything else $0$, $p(\text{``3''}) = 0.41$, giving a loss of
+  $0.90$ if the true image is a 3 and $1.90$ if it is actually an 8. Before any training the model starts near
+  $\ln 10 = 2.30$ (SVHN) or $\ln 43 = 3.76$ (GTSRB).
 \item \textbf{Sigmoid} (binary): $p = 1/(1+e^{-z})$. \textbf{Binary cross-entropy}: $L = -[y\ln p + (1-y)\ln(1-p)]$.
-  Example: $z=1.2 \Rightarrow p = 0.77$; loss $0.26$ if $y=1$, $1.47$ if $y=0$.
-\item \textbf{Adam}: $w \leftarrow w - \eta\, \hat m/(\sqrt{\hat v}+\epsilon)$, $\eta = 0.001$. \textbf{Epoch}: one pass over all
-  training batches (256 samples each). \textbf{Early stopping}: stop after 3 epochs without a lower validation loss and
-  restore the best epoch's weights.
+  For example, $z=1.2 \Rightarrow p = 0.77$, so the loss is $0.26$ when $y=1$ and $1.47$ when $y=0$.
+\item \textbf{Adam}: $w \leftarrow w - \eta\, \hat m/(\sqrt{\hat v}+\epsilon)$, $\eta = 0.001$. An \textbf{epoch} is one
+  full sweep through the training batches (256 samples each). \textbf{Early stopping} halts training once 3 epochs pass
+  without a new lowest validation loss, and the weights from the best epoch are restored.
 \end{itemize}
 
 \subsection{One image through CNN-3, step by step}
-Figures~\ref{fig:trace-maps} and~\ref{fig:trace-out} follow one SVHN test image (a ``3'') through a PyTorch CNN-3.
-The figures were made with a CNN-3 trained for 3 epochs only to illustrate the flow; the reported results come
-from the full runs in Section~\ref{sec:results}.
+Figures~\ref{fig:trace-maps} and~\ref{fig:trace-out} trace a single SVHN test image (a ``3'') as it passes through a
+PyTorch CNN-3. These figures come from a CNN-3 trained for only 3 epochs, purely to demonstrate the flow of
+information; the actual reported results are taken from the complete runs described in Section~\ref{sec:results}.
 
 \begin{table}[H]
 \centering
@@ -201,14 +204,15 @@ from the full runs in Section~\ref{sec:results}.
 \toprule
 Step & Output shape & What it means \\
 \midrule
-input & $3\times32\times32$ & 3,072 numbers in $[0,1]$: red, green and blue value of each pixel \\
-block 1 & $32\times16\times16$ & 32 filters each scan the image for one small pattern (edge, colour change). Each map
-  shows \emph{where} its pattern was found; pooling halves the size \\
-block 2 & $64\times8\times8$ & filters now combine block-1 maps: curves and stroke pieces over a larger area \\
-block 3 & $128\times4\times4$ & each unit sees $22\times22$ pixels: parts of a digit (a loop, a bar) \\
-GAP & $128$ & mean of each $4\times4$ map: ``how strongly is pattern $i$ present anywhere'' \\
-Dense 256 $\to$ Dense 10 & $10$ & weighted sums of the 128 values give one score (logit) per digit \\
-softmax & $10$ & scores $\to$ probabilities that sum to 1 \\
+input & $3\times32\times32$ & 3,072 values in $[0,1]$: the red, green and blue intensity of every pixel \\
+block 1 & $32\times16\times16$ & 32 filters each hunt for one small pattern (an edge, a colour change); each resulting
+  map marks \emph{where} that pattern turned up, and pooling shrinks the size by half \\
+block 2 & $64\times8\times8$ & the filters combine block-1 maps into curves and stroke fragments spanning a wider area \\
+block 3 & $128\times4\times4$ & each unit now covers $22\times22$ pixels, enough to capture parts of a digit (a loop, a
+  bar) \\
+GAP & $128$ & averaging each $4\times4$ map answers ``how strongly is pattern $i$ present anywhere'' \\
+Dense 256 $\to$ Dense 10 & $10$ & weighted combinations of the 128 values produce one score (logit) per digit \\
+softmax & $10$ & the scores are converted into probabilities that add up to 1 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -216,45 +220,47 @@ softmax & $10$ & scores $\to$ probabilities that sum to 1 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{trace_feature_maps.png}
-\caption{Input image and the 4 strongest feature maps after each conv block (bright = strong response). Maps get
-smaller and more abstract: block 1 still looks like the digit, block 3 only marks \emph{where} digit parts are.}
+\caption{Input image alongside the 4 strongest feature maps after each conv block (bright = strong response). The maps
+shrink and grow more abstract at each stage: block 1 still resembles the digit, while block 3 only flags \emph{where}
+pieces of the digit lie.}
 \label{fig:trace-maps}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{trace_output.png}
-\caption{The 128 values after global average pooling (left) and the final probabilities (right): $p(3) = 0.75$,
-$p(5) = 0.21$. The runner-up ``5'' shares the lower curve of the ``3''; this 5/3 pair is also one of the most frequent
-confusions in the full results.}
+\caption{The 128 values produced by global average pooling (left) and the resulting probabilities (right): $p(3) = 0.75$,
+$p(5) = 0.21$. The runner-up class ``5'' shares the ``3''s lower curve, and this 5/3 pair also turns up as one of the
+most common confusions in the full results.}
 \label{fig:trace-out}
 \end{figure}
 
 \subsection{Learning: one backpropagation step by hand}
-Training changes every weight a little so that the loss goes down. PyTorch does this with
-\code{loss.backward()} (compute the gradients) and \code{optimizer.step()} (update the weights). The smallest example is
-one neuron with one input:
+Training nudges every weight slightly so the loss decreases. In PyTorch this is driven by
+\code{loss.backward()} (which computes the gradients) followed by \code{optimizer.step()} (which applies the update).
+The simplest possible case is a single neuron taking one input:
 \[
 z = w x + b, \qquad p = \sigma(z) = \frac{1}{1+e^{-z}}, \qquad L = -[\,y\ln p + (1-y)\ln(1-p)\,].
 \]
-\textbf{Forward} with $x = 2$, $w = 0.5$, $b = 0$, true label $y = 1$:
+\textbf{Forward pass} with $x = 2$, $w = 0.5$, $b = 0$ and true label $y = 1$:
 $z = 1.0$, $p = \sigma(1.0) = 0.731$, $L = -\ln 0.731 = 0.313$.
 
-\textbf{Backward} (chain rule). For sigmoid + binary cross-entropy the derivative simplifies to
-$\partial L/\partial z = p - y$, so
+\textbf{Backward pass} (chain rule). For the sigmoid plus binary cross-entropy pairing the derivative reduces neatly to
+$\partial L/\partial z = p - y$, giving
 \[
 \frac{\partial L}{\partial z} = 0.731 - 1 = -0.269, \qquad
 \frac{\partial L}{\partial w} = \frac{\partial L}{\partial z}\cdot\frac{\partial z}{\partial w} = -0.269 \times x = -0.538, \qquad
 \frac{\partial L}{\partial b} = -0.269 .
 \]
-\textbf{Update} (gradient descent, learning rate $\eta = 0.1$): $w \leftarrow w - \eta\,\partial L/\partial w$:
+\textbf{Weight update} (gradient descent, learning rate $\eta = 0.1$): $w \leftarrow w - \eta\,\partial L/\partial w$:
 \[
 w = 0.5 - 0.1\times(-0.538) = 0.554, \qquad b = 0 - 0.1\times(-0.269) = 0.027 .
 \]
-\textbf{Check:} with the new weights $z = 0.554\cdot2 + 0.027 = 1.135$, $p = 0.757$, $L = 0.279$: the loss went down
-from 0.313 to 0.279, and $p$ moved towards the true label 1. The gradient was negative, so the weight went \emph{up}.
+\textbf{Verification:} plugging in the updated weights gives $z = 0.554\cdot2 + 0.027 = 1.135$, $p = 0.757$,
+$L = 0.279$ — the loss dropped from 0.313 to 0.279 and $p$ shifted closer to the true label of 1. Since the gradient
+was negative, the weight increased.
 
-\textbf{In a CNN} the same chain rule runs backwards through every layer:
+\textbf{Inside a CNN} the identical chain rule propagates backward through every layer:
 \begin{table}[H]
 \centering
 \small
@@ -262,21 +268,22 @@ from 0.313 to 0.279, and $p$ moved towards the true label 1. The gradient was ne
 \toprule
 Layer & How the gradient passes through \\
 \midrule
-Softmax + cross-entropy & $\partial L/\partial z_k = p_k - [k = y]$, e.g.\ $p = (0.75, 0.21, \dots)$ for (``3'', ``5'') and true ``3'':
-  $-0.25$ for ``3'', $+0.21$ for ``5'' \\
-Dense & $\partial L/\partial w_{ij} = \partial L/\partial z_j \cdot x_i$ (as in the neuron above) \\
-ReLU & gradient $\times 1$ where the input was $> 0$, $\times 0$ where it was cut to 0 \\
-Max pooling & the whole gradient goes to the one input that was the maximum; the other three get 0 \\
-Convolution & $\partial L/\partial w$ = sum over all positions of (gradient at that output $\times$ the input window there):
-  one filter learns from every place it was applied \\
+Softmax + cross-entropy & $\partial L/\partial z_k = p_k - [k = y]$, e.g.\ with $p = (0.75, 0.21, \dots)$ for (``3'', ``5'')
+  and true label ``3'': $-0.25$ for ``3'', $+0.21$ for ``5'' \\
+Dense & $\partial L/\partial w_{ij} = \partial L/\partial z_j \cdot x_i$ (same rule as the single neuron above) \\
+ReLU & the gradient passes through unchanged ($\times 1$) where the input was $> 0$, and is blocked ($\times 0$) where
+  it was clipped to 0 \\
+Max pooling & the entire gradient flows to whichever input was the maximum; the other three positions receive 0 \\
+Convolution & $\partial L/\partial w$ is the sum over every position of (the gradient at that output times the input
+  window there): each filter learns from all the locations it was applied to \\
 \bottomrule
 \end{tabular}
 \end{table}
-Adam then scales each weight's step by running averages of its gradients (Section~2.3), and one epoch repeats this
-for every batch.
+Adam subsequently rescales each weight's update using running averages of its gradients (Section~2.3), and this whole
+cycle repeats once per batch across an epoch.
 
 \subsection{One epoch of training}
-An \textbf{epoch} is one pass over the whole training set, in batches of 256 samples:
+An \textbf{epoch} covers one full pass over the training set, processed in batches of 256 samples:
 
 \begin{table}[H]
 \centering
@@ -285,25 +292,26 @@ An \textbf{epoch} is one pass over the whole training set, in batches of 256 sam
 \toprule
 Step & Code (PyTorch) & What happens \\
 \midrule
-1 & \code{model.train()} & training mode: Dropout on, BatchNorm uses the batch's $\mu$, $\sigma$ \\
-2 & \code{for x, y in train_loader:} & a new random order of batches every epoch \\
-3 & \code{optimizer.zero_grad()} & clear the gradients of the previous batch \\
-4 & \code{loss = criterion(model(x), y)} & forward pass + loss (Sections 2.4, 2.3) \\
-5 & \code{loss.backward()} & gradient of the loss for every weight (Section 2.5) \\
-6 & \code{optimizer.step()} & Adam changes every weight a little \\
-7 & \code{model.eval()} + validation & loss and accuracy on the validation set, no weight changes \\
-8 & early stopping & new lowest validation loss $\to$ save the weights; 3 epochs without improvement $\to$ stop \\
+1 & \code{model.train()} & switches to training mode: Dropout active, BatchNorm relies on the current batch's $\mu$, $\sigma$ \\
+2 & \code{for x, y in train_loader:} & batches are reshuffled into a fresh random order each epoch \\
+3 & \code{optimizer.zero_grad()} & wipes out gradients left over from the previous batch \\
+4 & \code{loss = criterion(model(x), y)} & runs the forward pass and computes the loss (Sections 2.4, 2.3) \\
+5 & \code{loss.backward()} & derives the loss gradient for every weight (Section 2.5) \\
+6 & \code{optimizer.step()} & Adam nudges every weight accordingly \\
+7 & \code{model.eval()} + validation & measures loss and accuracy on the validation set without altering weights \\
+8 & early stopping & saves the weights whenever validation loss hits a new low; stops after 3 epochs with no improvement \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\textbf{Numbers per epoch:} SVHN 69,502 training images $\to$ 272 weight updates; GTSRB 36,287 $\to$ 142; diabetes
-210,000 rows $\to$ 821. \textbf{Example of early stopping} (\run{SV-PT-CNN-3}): the validation loss was lowest at epoch 15,
-did not improve in epochs 16--18, so training stopped after epoch 18 and the weights of epoch 15 were restored.
+\textbf{Updates per epoch:} SVHN's 69,502 training images yield 272 weight updates; GTSRB's 36,287 give 142; diabetes'
+210,000 rows give 821. \textbf{Early-stopping example} (\run{SV-TF-CNN-3}): validation loss bottomed out at epoch 11,
+showed no improvement through epochs 12--14, so training halted after epoch 14 and epoch 11's weights were restored.
 
 \subsection{Training mode vs.\ evaluation mode}
-Two layers behave differently while training and while predicting, which is why the code switches between
-\code{model.train()} and \code{model.eval()} (Keras does this automatically inside \code{fit} and \code{predict}).
+Two layer types act differently depending on whether the model is training or predicting, which is exactly why the
+code toggles between \code{model.train()} and \code{model.eval()} (Keras handles this switch automatically inside
+\code{fit} and \code{predict}).
 
 \begin{table}[H]
 \centering
@@ -312,29 +320,33 @@ Two layers behave differently while training and while predicting, which is why 
 \toprule
 Layer & Training & Evaluation (validation, test) \\
 \midrule
-BatchNorm & normalizes with the \textbf{current batch's} $\mu, \sigma$ and updates running averages:
+BatchNorm & normalizes using the \textbf{current batch's} $\mu, \sigma$ and refreshes the running averages:
   $\text{running} = 0.9\cdot\text{running} + 0.1\cdot\text{batch}$
-  & uses the \textbf{stored running} $\mu, \sigma$, so one image gives the same output whatever batch it is in \\
-Dropout (0.3) & sets a random 30\% of values to 0 and multiplies the rest by $1/0.7$
-  (e.g.\ $[1.0, 2.0, 0.5] \to [1.43, 0, 0.71]$) & does nothing: all values pass unchanged \\
+  & relies on the \textbf{stored running} $\mu, \sigma$ instead, so a given image produces the same output no matter
+  which batch it lands in \\
+Dropout (0.3) & zeroes out a random 30\% of values and scales the rest by $1/0.7$
+  (e.g.\ $[1.0, 2.0, 0.5] \to [1.43, 0, 0.71]$) & is inactive: every value passes through unchanged \\
 \bottomrule
 \end{tabular}
 \end{table}
-Forgetting \code{model.eval()} would make test predictions random (Dropout) and batch-dependent (BatchNorm).
+Skipping \code{model.eval()} would leave test-time predictions random (from Dropout) and dependent on batch
+composition (from BatchNorm).
 
 \subsection{1-D convolution on a table}
-A patient is a vector of $d$ standardized features, treated as a sequence of length $d$ with one channel.
-A Conv1D filter of size 3 mixes three neighbouring features: $\text{out}[i] = w_1x[i-1] + w_2x[i] + w_3x[i+1] + b$.
-Example: $x = [0.5, -1.2, 0.3, 2.0, -0.4, 0.0]$, $w = [1, 0, -1]$ $\Rightarrow$ out $= [1.2, 0.2, -3.2, 0.7, 2.0, -0.4]$
-(checked against the framework's Conv1D). Unlike pixels, table columns have no natural order, so ``neighbours'' depend on
-the chosen column order; the tabular models therefore \textbf{flatten} the last feature map instead of averaging it
-(position $=$ feature identity), and an MLP baseline is trained for reference.
+Each patient is represented as a vector of $d$ standardized features, treated as a length-$d$ sequence with a single
+channel. A Conv1D filter of size 3 blends three adjacent features: $\text{out}[i] = w_1x[i-1] + w_2x[i] + w_3x[i+1] + b$.
+For example, $x = [0.5, -1.2, 0.3, 2.0, -0.4, 0.0]$ with $w = [1, 0, -1]$ gives
+out $= [1.2, 0.2, -3.2, 0.7, 2.0, -0.4]$ (verified against the framework's own Conv1D). Table columns, unlike pixels,
+carry no inherent ordering, so which features count as ``neighbours'' depends on an arbitrary column arrangement; for
+this reason the tabular models \textbf{flatten} the final feature map rather than averaging it (so that position
+still identifies which feature it is), and an MLP baseline is trained for comparison.
 
 \subsection{Metrics}
-Per class: precision $= TP/(TP+FP)$, recall $= TP/(TP+FN)$, $F1 = 2PR/(P+R)$. \textbf{Macro F1} averages the per-class F1
-with equal weight. With unbalanced classes accuracy can mislead: on a toy test set of 95 ``big class'' and 5 ``rare
-class'' images, always predicting the big class gives accuracy 0.95 but macro F1 0.49. \textbf{ROC-AUC} (binary) is the
-probability that a random positive sample gets a higher $p$ than a random negative one (0.5 = guessing).
+For each class: precision $= TP/(TP+FP)$, recall $= TP/(TP+FN)$, $F1 = 2PR/(P+R)$. \textbf{Macro F1} takes the
+unweighted average of per-class F1 scores. Accuracy can be deceptive when classes are imbalanced: in a toy test set of
+95 ``big class'' images and 5 ``rare class'' images, always guessing the big class scores accuracy 0.95 but only macro
+F1 0.49. \textbf{ROC-AUC} (for binary problems) measures the chance that a randomly chosen positive sample receives a
+higher $p$ than a randomly chosen negative one (0.5 corresponds to random guessing).
 
 % =====================================================================
 \section{Project Structure and Setup}
@@ -357,18 +369,20 @@ Run ID and figure name & \run{<dataset>-<framework>-<model>}; figure \code{<run_
 \end{tabular}
 \end{table}
 
-Each notebook has the same sections: setup, data, exploration, TensorFlow, PyTorch, comparison, conclusion.
-Every code cell is preceded by a short explanation cell (formula, worked example, shapes).
+Every notebook follows the same layout: setup, data, exploration, TensorFlow, PyTorch, comparison, conclusion.
+Each code cell is preceded by a brief explanatory cell covering the formula, a worked example, or the relevant shapes.
 
-\textbf{Fairness rules.} Stratified 70/15/15 split saved once and shared by both frameworks; batch 256; Adam
-($\eta = 10^{-3}$, $\epsilon = 10^{-7}$); at most 20 epochs; early-stopping patience 3; Glorot-uniform weights and zero
-biases in both frameworks (PyTorch re-initialized to match Keras); BatchNorm momentum 0.9 in Keras $\equiv$ 0.1 in PyTorch
-(both mean $\text{running} = 0.9\cdot\text{running} + 0.1\cdot\text{batch}$), $\epsilon = 10^{-5}$; the trainable parameter
-count of each PyTorch model is asserted equal to the Keras one.
+\textbf{Rules for a fair comparison.} A stratified 70/15/15 split is computed once and reused by both frameworks;
+batch size 256; Adam ($\eta = 10^{-3}$, $\epsilon = 10^{-7}$); a cap of 20 epochs; early-stopping patience of 3;
+Glorot-uniform weight initialization with zero biases in both frameworks (PyTorch is re-initialized to match Keras);
+BatchNorm momentum of 0.9 in Keras corresponds to 0.1 in PyTorch (both express
+$\text{running} = 0.9\cdot\text{running} + 0.1\cdot\text{batch}$), with $\epsilon = 10^{-5}$; each PyTorch model's
+trainable parameter count is asserted to match its Keras counterpart exactly.
 
-\textbf{Environment of the reported run.} Windows, Python, TensorFlow 2.22 (release candidate), PyTorch 2.14.
-Both frameworks ran on the \textbf{CPU} (TensorFlow has no GPU support on native Windows; the PyTorch build was CPU-only),
-so speed comparisons are CPU vs.\ CPU. Time per epoch is the median of epochs 2 onwards (epoch 1 includes setup).
+\textbf{Environment for the reported run.} Windows, Python 3.13, TensorFlow 2.21, PyTorch 2.14 (CPU build).
+Both frameworks were run on the \textbf{CPU} (native Windows TensorFlow has no GPU support, and the PyTorch build used
+was CPU-only), so all speed comparisons are CPU-to-CPU. Per-epoch timing is the median across epoch 2 onward, since
+epoch 1 includes setup overhead.
 
 % =====================================================================
 \section{Datasets}
@@ -390,10 +404,11 @@ Code & Source & Samples & Classes & Input \\
 \end{table}
 
 \subsection{SVHN}
-Digits cut from Google Street View photos; the label is the centre digit, neighbouring digits are noise. The two
-MATLAB files are loaded with \code{scipy.io.loadmat}, reordered from $(32,32,3,N)$ to $(N,32,32,3)$, and label 10 is
-mapped to digit 0. Classes are unbalanced: digit 1 has 13,272 images, digit 9 has 4,378 (ratio 3.0). Pixels are scaled
-$x/255$ ($0\to0$, $128\to0.50$, $255\to1$); Keras uses $(N,32,32,3)$, PyTorch $(N,3,32,32)$.
+Cropped digit images taken from Google Street View, where the label refers only to the centre digit and any
+neighbouring digits are treated as noise. The two MATLAB files are read via \code{scipy.io.loadmat}, reshaped from
+$(32,32,3,N)$ to $(N,32,32,3)$, and label 10 is remapped to digit 0. The classes are imbalanced: digit 1 accounts for
+13,272 images versus 4,378 for digit 9 (a 3.0 ratio). Pixel values are rescaled via $x/255$ ($0\to0$, $128\to0.50$,
+$255\to1$); Keras consumes $(N,32,32,3)$ while PyTorch consumes $(N,3,32,32)$.
 
 \begin{figure}[H]
 \centering
@@ -404,9 +419,10 @@ $x/255$ ($0\to0$, $128\to0.50$, $255\to1$); Keras uses $(N,32,32,3)$, PyTorch $(
 \end{figure}
 
 \subsection{GTSRB}
-Traffic signs photographed from a moving car, resized to $32\times32$. Three pickle files are pooled and re-split.
-Classes are strongly unbalanced (class 0 ``Speed limit 20'' has 189 images, class 2 ``Speed limit 50'' has 2,100;
-ratio 11.1), so macro F1 is the main metric. Many photos are very dark, which BatchNorm compensates for.
+Traffic-sign photographs shot from a moving vehicle and resized to $32\times32$. The three pickle files supplied are
+merged and then re-split. Class imbalance is pronounced (class 0, ``Speed limit 20'', has just 189 images versus 2,100
+for class 2, ``Speed limit 50'', an 11.1 ratio), which is why macro F1 serves as the headline metric. A large share of
+the photos are quite dark, an effect that BatchNorm helps offset.
 
 \begin{figure}[H]
 \centering
@@ -417,12 +433,13 @@ ratio 11.1), so macro F1 is the main metric. Many photos are very dark, which Ba
 \end{figure}
 
 \subsection{Diabetes (Playground Series S5E12)}
-700,000 synthetic patients generated by Kaggle from a real dataset; a stratified sample of 300,000 is used. Each row
-is turned into $d = 42$ numbers: 15 numeric features standardized with training statistics
-($z = (x-\mu)/\sigma$, e.g.\ BMI 31.7 $\to (31.7-25.9)/2.9 = 2.0$), 6 categorical features one-hot encoded, 3 binary
-flags kept. 62.3\% of patients are diabetic, so class weights $w_c = N/(2N_c)$ are used:
-$w_0 = 1.327$, $w_1 = 0.802$. The strongest numeric features differ between classes by only about 0.4 standard
-deviations (age, physical activity), which already signals a hard task.
+This dataset holds 700,000 synthetic patient records generated by Kaggle from a real-world source, from which a
+stratified sample of 300,000 is drawn. Every row is converted into $d = 42$ numbers: 15 numeric features standardized
+using the training statistics ($z = (x-\mu)/\sigma$, e.g.\ BMI 31.7 $\to (31.7-25.9)/2.9 = 2.0$), 6 categorical
+features one-hot encoded, and 3 binary flags retained as-is. Since 62.3\% of patients are diabetic, class weights
+$w_c = N/(2N_c)$ are applied: $w_0 = 1.327$, $w_1 = 0.802$. The most discriminating numeric features (age, physical
+activity) separate the two classes by only about 0.4 standard deviations, an early hint that this will be a difficult
+prediction task.
 
 \begin{figure}[H]
 \centering
@@ -486,13 +503,14 @@ MLP baseline & -- & -- & 6,977 \\
 
 \subsection{TensorFlow, Keras and PyTorch}
 \begin{itemize}
-\item \textbf{TensorFlow} (Google) is the low-level library: tensors, automatic differentiation, CPU/GPU execution.
-\item \textbf{Keras} is the high-level API \emph{inside} TensorFlow: the model is declared layer by layer and trained with
-  \code{compile} + \code{fit}; TensorFlow runs the computations underneath.
-\item \textbf{PyTorch} (Meta) is a separate library at the same level as TensorFlow.
+\item \textbf{TensorFlow} (Google) is the lower-level library: it handles tensors, automatic differentiation, and
+  CPU/GPU execution.
+\item \textbf{Keras} sits \emph{inside} TensorFlow as its high-level API — a model is declared layer by layer and
+  trained with \code{compile} + \code{fit}, while TensorFlow does the actual computing underneath.
+\item \textbf{PyTorch} (Meta) is a separate library that operates at roughly the same level as TensorFlow itself.
 \end{itemize}
-So ``TensorFlow'' and ``Keras'' are one side of the comparison (models written in Keras, run by TensorFlow; run ID
-\run{TF}), and PyTorch is the other (run ID \run{PT}).
+In other words, ``TensorFlow'' and ``Keras'' name one side of this comparison (models written in Keras, run by
+TensorFlow, run ID \run{TF}), and PyTorch names the other (run ID \run{PT}).
 
 \begin{table}[H]
 \centering
@@ -502,15 +520,15 @@ So ``TensorFlow'' and ``Keras'' are one side of the comparison (models written i
 \toprule
  & Keras / TensorFlow & PyTorch \\
 \midrule
-model & stack layers: \code{Conv2D(32, 3, padding="same")} & \code{nn.Module} class: \code{nn.Conv2d(3, 32, 3, padding=1)}, input channels written by hand \\
+model & layers stacked declaratively: \code{Conv2D(32, 3, padding="same")} & \code{nn.Module} subclass: \code{nn.Conv2d(3, 32, 3, padding=1)}, input channels specified manually \\
 image axes & $(N, 32, 32, 3)$, channels last & $(N, 3, 32, 32)$, channels first \\
-training & \code{compile(...)} + \code{fit(...)}, one call & hand-written loop: \code{zero_grad} $\to$ forward $\to$ loss $\to$ \code{backward} $\to$ \code{step} \\
-early stopping & built-in \code{EarlyStopping} callback & counter written inside the loop \\
-train / test mode & switched automatically by \code{fit} / \code{predict} & \code{model.train()} / \code{model.eval()} called by hand \\
-device & uses a GPU automatically if available & \code{.to(device)} for the model and every batch \\
-strength & short, quick to write & every step visible, easy to customize \\
+training & single \code{compile(...)} + \code{fit(...)} call & a manually written loop: \code{zero_grad} $\to$ forward $\to$ loss $\to$ \code{backward} $\to$ \code{step} \\
+early stopping & handled by the built-in \code{EarlyStopping} callback & tracked with a counter inside the loop \\
+train / test mode & toggled automatically by \code{fit} / \code{predict} & \code{model.train()} / \code{model.eval()} invoked explicitly \\
+device & picks up a GPU automatically when present & requires \code{.to(device)} on the model and every batch \\
+strength & concise, fast to write & every step is explicit and easy to modify \\
 \midrule
-results here & \multicolumn{2}{p{12cm}}{same accuracy (gap $<$ 0.011, same architecture and settings); on the CPU run Keras was 9--16\% faster per epoch on images and about 50\% faster on the table} \\
+results here & \multicolumn{2}{p{12cm}}{comparable accuracy (gap under 0.011 with matching architecture and settings); in this CPU run Keras finished 9--16\% faster per epoch on the image datasets and about 50\% faster on the tabular one} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -559,12 +577,12 @@ model.fit(train_ds, validation_data=val_ds, epochs=20,
 \end{lstlisting}
 \end{minipage}
 
-One call to \code{fit} runs the whole training loop of Section 2.6 (batches, forward, backward, Adam update,
-validation, early stopping); in PyTorch these steps are written out (next subsection).
+A single call to \code{fit} executes the entire training loop from Section 2.6 (batching, forward pass, backward pass,
+Adam update, validation, early stopping); the PyTorch version spells these same steps out explicitly (see below).
 
 \subsection{Implementation (PyTorch)}
-The same model in PyTorch. The layers and settings are identical to the Keras version (same parameter counts,
-checked in the notebooks); the training loop is written by hand.
+Here is the equivalent model built in PyTorch. Its layers and settings match the Keras version exactly (identical
+parameter counts, confirmed in the notebooks), but the training loop itself is written by hand.
 
 \begin{table}[H]
 \centering
@@ -616,14 +634,16 @@ for x, y in train_loader:                          # one epoch
 
 \subsection*{How to read the figures}
 \begin{itemize}
-\item \textbf{Training curves} (loss and accuracy per epoch, train vs.\ validation). Both losses falling = still learning.
-  Training loss falling while validation loss rises = \textbf{overfitting}; early stopping keeps the epoch before that.
-\item \textbf{Confusion matrix} (row-normalized). Row = true class, column = predicted class; each row sums to 1. The diagonal
-  is the recall of each class. Example (Figure~\ref{fig:sv-conf}): row 7, column 1 = 0.06 means 6\% of the real 7s were
-  predicted as 1.
-\item \textbf{Feature maps}: grayscale images of one filter's output; bright pixels = where that filter's pattern was found.
-\item \textbf{ROC curve} (diabetes): true-positive rate against false-positive rate for every threshold; the diagonal is
-  guessing (AUC 0.5), the top-left corner is perfect (AUC 1).
+\item \textbf{Training curves} plot loss and accuracy per epoch for both the training and validation sets. Both curves
+  falling together means the model is still learning; training loss falling while validation loss climbs is
+  \textbf{overfitting}, and early stopping stops the run at the epoch just before that starts.
+\item \textbf{Confusion matrix} (row-normalized). Rows are the true class, columns the predicted one, and each row
+  sums to 1, so the diagonal entries are each class's recall. In Figure~\ref{fig:sv-conf}, for instance, row 7 /
+  column 1 = 0.032 means about 3\% of the real 7s got classified as 1.
+\item \textbf{Feature maps} are grayscale images of one filter's output — bright pixels show where that filter's
+  pattern was detected.
+\item \textbf{ROC curve} (diabetes) plots true-positive rate against false-positive rate across all thresholds. The
+  diagonal is random guessing (AUC 0.5); the top-left corner is a perfect classifier (AUC 1).
 \end{itemize}
 
 \subsection{SVHN}
@@ -635,10 +655,10 @@ for x, y in train_loader:                          # one epoch
 \toprule
 Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred. \\
 \midrule
-\run{SV-TF-CNN-3} & 0.9117 & 0.9072 & 20 & 45.0 & 898 & 0.10 \\
-\run{SV-TF-CNN-5} & \textbf{0.9306} & \textbf{0.9265} & 10 & 86.5 & 868 & 0.22 \\
-\run{SV-PT-CNN-3} & 0.9106 & 0.9046 & 18 & 48.9 & 884 & 0.27 \\
-\run{SV-PT-CNN-5} & 0.9294 & 0.9250 & 13 & 98.7 & 1,287 & 0.49 \\
+\run{SV-TF-CNN-3} & 0.9012 & 0.8959 & 14 & 19.8 & 279 & 0.07 \\
+\run{SV-TF-CNN-5} & \textbf{0.9398} & \textbf{0.9363} & 20 & 42.9 & 865 & 0.14 \\
+\run{SV-PT-CNN-3} & 0.9091 & 0.9069 & 20 & 28.1 & 557 & 0.15 \\
+\run{SV-PT-CNN-5} & 0.9319 & 0.9282 & 12 & 61.5 & 750 & 0.27 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -666,12 +686,17 @@ Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred.
 \end{figure}
 
 \begin{itemize}
-\item \textbf{Depth:} CNN-5 improves accuracy by +0.019 in both frameworks and macro F1 by +0.019 (TF) / +0.020 (PT),
-  and reaches its best validation loss in fewer epochs (10 and 13 vs.\ 20 and 18), at about 2$\times$ the time per epoch.
-\item \textbf{Framework:} TF and PT differ by 0.001 accuracy for both depths.
-\item \textbf{Errors:} the most frequent confusion is 7 $\to$ 1 (6\% of the 7s), then 5 $\to$ 3 (4\%) and 4 $\to$ 1 (3\%): digits that share a vertical stroke. The misclassified grid shows the
-  typical hard cases (blur, low contrast, neighbouring digits).
-\item The first-layer feature maps respond to the digit's strokes and edges; a few maps respond to background colour.
+\item \textbf{Depth.} Moving to CNN-5 raises macro F1 by +0.040 (TF) and +0.021 (PT), and accuracy by +0.039 (TF) and
+  +0.023 (PT). Under PyTorch it also reaches its best validation loss sooner (epoch 9 versus 19), though every epoch
+  costs roughly twice as much time either way.
+\item \textbf{Framework.} At CNN-3, TF trails PT by about 0.008 accuracy; at CNN-5 that flips and TF leads PT by about
+  the same margin.
+\item \textbf{Errors.} On the best model (\run{SV-TF-CNN-5}), the most common mistake is a 4 read as a 1 (4.6\% of the
+  4s), then 5 read as 3 (3.4\%) and 7 read as 1 (3.2\%) — all digits that share a vertical stroke. Looking through the
+  misclassified-image grid, the usual suspects show up: blurry crops, low contrast, and digits crowded by their
+  neighbours.
+\item The first-layer feature maps mostly respond to the digit's strokes and edges, though a few pick up on
+  background colour instead.
 \end{itemize}
 
 \subsection{GTSRB}
@@ -683,10 +708,10 @@ Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred.
 \toprule
 Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred. \\
 \midrule
-\run{GT-TF-CNN-3} & 0.9781 & 0.9751 & 20 & 23.3 & 470 & 0.12 \\
-\run{GT-TF-CNN-5} & 0.9911 & 0.9907 & 11 & 45.5 & 507 & 0.22 \\
-\run{GT-PT-CNN-3} & 0.9848 & 0.9843 & 20 & 25.9 & 518 & 0.28 \\
-\run{GT-PT-CNN-5} & \textbf{0.9943} & \textbf{0.9937} & 16 & 52.8 & 846 & 0.50 \\
+\run{GT-TF-CNN-3} & 0.9801 & 0.9745 & 20 & 10.2 & 207 & 0.07 \\
+\run{GT-TF-CNN-5} & 0.9924 & 0.9893 & 12 & 21.9 & 268 & 0.15 \\
+\run{GT-PT-CNN-3} & 0.9685 & 0.9621 & 14 & 14.2 & 199 & 0.15 \\
+\run{GT-PT-CNN-5} & \textbf{0.9973} & \textbf{0.9979} & 19 & 30.0 & 572 & 0.26 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -714,11 +739,13 @@ Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred.
 \end{figure}
 
 \begin{itemize}
-\item \textbf{Depth:} CNN-5 raises macro F1 by +0.016 (TF) and +0.009 (PT). Because macro F1 weights the 43 classes
-  equally, this gain includes the rare signs, not only the frequent speed limits.
-\item \textbf{Framework:} PT is 0.003--0.007 higher in accuracy. Both CNN-3 runs used all 20 epochs (the best TF epoch
-  was the last one), so CNN-3 had not fully converged; the small TF--PT gap is within that training noise.
-\item The confusion matrix is almost purely diagonal; the misclassified grid shows the remaining hard cases (dark or blurred photos).
+\item \textbf{Depth.} CNN-5 raises macro F1 by +0.015 (TF) and +0.036 (PT). Macro F1 weighs all 43 classes equally, so
+  this gain is not just coming from the common speed-limit signs — the rare sign types improve too.
+\item \textbf{Framework.} The winner flips with depth. At CNN-3, TF leads PT by 0.012 macro F1 (TF used the full 20
+  epochs to get there; PT stopped at epoch 14). At CNN-5, PT leads TF by 0.009 macro F1, and \run{GT-PT-CNN-5} ends up
+  the strongest model in the whole study.
+\item The confusion matrix is almost entirely diagonal. What the misclassified-image grid shows is mostly dark or
+  blurred photos — the remaining hard cases.
 \end{itemize}
 
 \subsection{Diabetes}
@@ -730,11 +757,11 @@ Run ID & Accuracy & Macro F1 & Epochs & s/epoch & Train time (s) & ms / 1k pred.
 \toprule
 Run ID & Accuracy & Macro F1 & F1 (pos.) & ROC-AUC & Params & Epochs & s/epoch \\
 \midrule
-\run{DB-TF-CNN-3} & \textbf{0.6465} & \textbf{0.6310} & \textbf{0.7067} & \textbf{0.6964} & 191,169 & 7 & 12.8 \\
-\run{DB-TF-CNN-5} & 0.6333 & 0.6259 & 0.6785 & 0.6938 & 391,329 & 5 & 28.8 \\
-\run{DB-PT-CNN-3} & 0.6371 & 0.6280 & 0.6862 & 0.6963 & 191,169 & 7 & 20.1 \\
-\run{DB-PT-CNN-5} & 0.6446 & 0.6308 & 0.7024 & 0.6957 & 391,329 & 8 & 42.5 \\
-\run{DB-TF-MLP} (baseline) & 0.6275 & 0.6222 & 0.6672 & 0.6948 & 6,977 & 5 & 1.1 \\
+\run{DB-TF-CNN-3} & 0.6452 & \textbf{0.6304} & 0.7045 & \textbf{0.6963} & 191,169 & 7 & 9.7 \\
+\run{DB-TF-CNN-5} & 0.6358 & 0.6275 & 0.6831 & 0.6945 & 391,329 & 5 & 18.6 \\
+\run{DB-PT-CNN-3} & 0.6400 & 0.6288 & 0.6934 & 0.6951 & 191,169 & 8 & 21.1 \\
+\run{DB-PT-CNN-5} & \textbf{0.6454} & 0.6303 & \textbf{0.7051} & 0.6955 & 391,329 & 6 & 38.4 \\
+\run{DB-TF-MLP} (baseline) & 0.6276 & 0.6221 & 0.6677 & 0.6946 & 6,977 & 5 & 1.2 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -754,16 +781,17 @@ Run ID & Accuracy & Macro F1 & F1 (pos.) & ROC-AUC & Params & Epochs & s/epoch \
 \end{figure}
 
 \begin{itemize}
-\item \textbf{Depth:} no gain. ROC-AUC changes by $-0.003$ (TF) and $-0.001$ (PT) from CNN-3 to CNN-5, while parameters
-  double and time per epoch grows 2.1--2.2$\times$.
-\item \textbf{Framework:} TF and PT are within 0.002 ROC-AUC; accuracy differences ($\pm0.01$) come from where
-  predictions fall around the 0.5 threshold.
-\item \textbf{Baseline:} the MLP reaches ROC-AUC 0.6948 with 56$\times$ fewer parameters. The convolution's
-  ``neighbouring features'' assumption adds nothing here.
-\item The validation curves zigzag in a narrow band (loss 0.62--0.645): with a weak signal, the models reach a noisy
-  optimum within 2--5 epochs and early stopping ends training soon after.
-\item The probability histogram shows the two classes overlap strongly; a threshold other than 0.5 would trade
-  precision for recall but not separate them.
+\item \textbf{Depth.} There is no consistent benefit here. Going from CNN-3 to CNN-5, ROC-AUC moves by $-0.0018$ (TF)
+  and $+0.0004$ (PT), despite the parameter count doubling and per-epoch time growing by 1.8--1.9$\times$.
+\item \textbf{Framework.} TF and PT stay within 0.0012 ROC-AUC of one another. The accuracy differences that do show up
+  ($\pm0.01$) just reflect where individual predictions happen to fall around the 0.5 threshold.
+\item \textbf{Baseline.} An MLP with 56$\times$ fewer parameters still reaches ROC-AUC 0.6946, about the same as the
+  CNNs. The convolution's core assumption — that neighbouring features carry information — does not seem to hold
+  here.
+\item The validation curves oscillate within a narrow band (loss 0.62--0.645). With such a weak signal, every model
+  settles into a noisy optimum after only 2--5 epochs, and early stopping cuts training short soon after that.
+\item The predicted-probability histogram shows the two classes overlapping heavily. Moving the decision threshold
+  away from 0.5 would just trade precision for recall, not actually separate the classes.
 \end{itemize}
 
 % =====================================================================
@@ -775,7 +803,7 @@ Run ID & Accuracy & Macro F1 & F1 (pos.) & ROC-AUC & Params & Epochs & s/epoch \
 \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{summary_f1.png}
 \par\medskip
 \includegraphics[width=\textwidth,height=0.42\textheight,keepaspectratio]{summary_time.png}
-\caption{All 12 runs: test macro F1 (top) and training time per epoch (bottom). Blue = CNN-3, orange = CNN-5, hatched = PyTorch.}
+\caption{All 12 runs: test macro F1 (top) and training time per epoch (bottom). Purple = CNN-3, green = CNN-5; the hatched bars are PyTorch, the plain bars are TensorFlow/Keras.}
 \end{figure}
 
 \begin{table}[H]
@@ -786,33 +814,37 @@ Run ID & Accuracy & Macro F1 & F1 (pos.) & ROC-AUC & Params & Epochs & s/epoch \
 \toprule
 Comparison & & SVHN & GTSRB & Diabetes \\
 \midrule
-CNN-5 $-$ CNN-3, macro F1 & TF & +0.0194 & +0.0156 & $-0.0051$ \\
- & PT & +0.0204 & +0.0094 & +0.0028 \\
-CNN-5 / CNN-3, time per epoch & TF & 1.92$\times$ & 1.95$\times$ & 2.24$\times$ \\
- & PT & 2.02$\times$ & 2.04$\times$ & 2.11$\times$ \\
+CNN-5 $-$ CNN-3, macro F1 & TF & +0.0404 & +0.0148 & $-0.0029$ \\
+ & PT & +0.0213 & +0.0358 & +0.0015 \\
+CNN-5 / CNN-3, time per epoch & TF & 2.17$\times$ & 2.15$\times$ & 1.92$\times$ \\
+ & PT & 2.19$\times$ & 2.11$\times$ & 1.82$\times$ \\
 \midrule
-PT $-$ TF, macro F1 & CNN-3 & $-0.0025$ & +0.0092 & $-0.0030$ \\
- & CNN-5 & $-0.0015$ & +0.0029 & +0.0048 \\
-PT / TF, time per epoch & CNN-3 & 1.09$\times$ & 1.11$\times$ & 1.57$\times$ \\
- & CNN-5 & 1.14$\times$ & 1.16$\times$ & 1.48$\times$ \\
+PT $-$ TF, macro F1 & CNN-3 & +0.0110 & $-0.0124$ & $-0.0016$ \\
+ & CNN-5 & $-0.0081$ & +0.0086 & +0.0028 \\
+PT / TF, time per epoch & CNN-3 & 1.42$\times$ & 1.39$\times$ & 2.18$\times$ \\
+ & CNN-5 & 1.43$\times$ & 1.37$\times$ & 2.06$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{itemize}
-\item \textbf{Depth} pays off where the input has spatial structure: +0.01 to +0.02 macro F1 on both image datasets.
-  On the table it changes nothing, because the information is limited by the features, and Conv1D has no spatial
-  structure to exploit.
-\item \textbf{Frameworks} agree in quality: every PT--TF gap is below 0.01 macro F1, the same size as the run-to-run
-  noise of a single seed. They differ in speed: on this CPU run Keras was faster per epoch everywhere, and much faster
-  on the small tabular model, where PyTorch's per-batch Python loop overhead matters most. Keras also predicted
-  2.3--2.7$\times$ faster per 1,000 images (1.3$\times$ on the table).
-\item \textbf{Cost:} CNN-5 takes about 2$\times$ the time per epoch, but it often stops earlier (fewer epochs), so its
-  total training time is only 0.97--1.6$\times$ that of CNN-3 on the image datasets.
+\item Depth pays off wherever the input has spatial structure — +0.01 to +0.04 macro F1 on both image datasets — but
+  changes nothing on the tabular data, where the ceiling is set by the features themselves and Conv1D has no real
+  spatial structure to exploit.
+\item Both frameworks reach comparable quality: every PT--TF gap stays under 0.013 macro F1, about the same size as
+  the noise you'd expect from run to run with a single seed — though which framework comes out ahead is not
+  consistent, flipping between CNN-3 and CNN-5 on both image datasets. Where they clearly differ is speed. On this
+  CPU run, Keras was quicker per epoch across the board, and the gap was largest on the tabular model, where
+  PyTorch's per-batch Python loop adds the most overhead (roughly 2$\times$ slower there versus 1.4$\times$ on the
+  image datasets). Keras also predicted faster at inference time — roughly 1.7--2.1$\times$ per 1,000 images on the
+  image datasets, 1.3--1.5$\times$ on the tabular data.
+\item CNN-5 costs roughly twice the time per epoch, and because it does not consistently converge in fewer epochs on
+  this run, its total training time ends up anywhere from 1.3$\times$ to 3.1$\times$ that of CNN-3 on the image
+  datasets, depending on the run.
 \end{itemize}
 
 \subsection{Keras vs.\ PyTorch outputs}
-The same model trained in both frameworks, side by side (test set).
+The same model trained under both frameworks, placed side by side (test set).
 
 \begin{table}[H]
 \centering
@@ -823,12 +855,12 @@ The same model trained in both frameworks, side by side (test set).
 \cmidrule(lr){3-6}\cmidrule(lr){7-10}
 Dataset & Model & Acc. & Macro F1 & Epochs & s/epoch & Acc. & Macro F1 & Epochs & s/epoch \\
 \midrule
-SVHN & CNN-3 & 0.9117 & 0.9072 & 20 & 45.0 & 0.9106 & 0.9046 & 18 & 48.9 \\
-SVHN & CNN-5 & 0.9306 & 0.9265 & 10 & 86.5 & 0.9294 & 0.9250 & 13 & 98.7 \\
-GTSRB & CNN-3 & 0.9781 & 0.9751 & 20 & 23.3 & 0.9848 & 0.9843 & 20 & 25.9 \\
-GTSRB & CNN-5 & 0.9911 & 0.9907 & 11 & 45.5 & 0.9943 & 0.9937 & 16 & 52.8 \\
-Diabetes & CNN-3 & 0.6465 & 0.6310 & 7 & 12.8 & 0.6371 & 0.6280 & 7 & 20.1 \\
-Diabetes & CNN-5 & 0.6333 & 0.6259 & 5 & 28.8 & 0.6446 & 0.6308 & 8 & 42.5 \\
+SVHN & CNN-3 & 0.9012 & 0.8959 & 14 & 19.8 & 0.9091 & 0.9069 & 20 & 28.1 \\
+SVHN & CNN-5 & 0.9398 & 0.9363 & 20 & 42.9 & 0.9319 & 0.9282 & 12 & 61.5 \\
+GTSRB & CNN-3 & 0.9801 & 0.9745 & 20 & 10.2 & 0.9685 & 0.9621 & 14 & 14.2 \\
+GTSRB & CNN-5 & 0.9924 & 0.9893 & 12 & 21.9 & 0.9973 & 0.9979 & 19 & 30.0 \\
+Diabetes & CNN-3 & 0.6452 & 0.6304 & 7 & 9.7 & 0.6400 & 0.6288 & 8 & 21.1 \\
+Diabetes & CNN-5 & 0.6358 & 0.6275 & 5 & 18.6 & 0.6454 & 0.6303 & 6 & 38.4 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -863,9 +895,9 @@ Diabetes & CNN-5 & 0.6333 & 0.6259 & 5 & 28.8 & 0.6446 & 0.6308 & 8 & 42.5 \\
 \end{figure}
 
 \subsection{Why depth helps on images: the receptive field}
-Each $3\times3$ convolution lets a unit see one more pixel on every side, and each pooling doubles the step
-between neighbouring units. The \textbf{receptive field} (input area one unit can see) therefore grows as
-$RF \leftarrow RF + (K-1)\cdot j$, with the jump $j$ doubling after each pooling:
+Every $3\times3$ convolution extends a unit's view by one pixel on each side, and every pooling operation doubles the
+stride between neighbouring units. Consequently the \textbf{receptive field} (the input region visible to one unit)
+grows as $RF \leftarrow RF + (K-1)\cdot j$, with the jump $j$ doubling each time pooling occurs:
 
 \begin{table}[H]
 \centering
@@ -888,9 +920,10 @@ receptive field & 3 & 5 & 6 & 10 & 14 & 16 & 24 & \textbf{28} \\
 CNN-5 unit sees $28\times28$, almost the whole digit and its neighbours.}
 \end{figure}
 
-A CNN-5 unit can therefore relate the top and the bottom of a digit (e.g.\ the open or closed left side that separates
-a 3 from a 5 or an 8), and it has two more non-linear layers to combine patterns. That matches the results: +0.02 macro F1
-on SVHN, where digits fill the image and have look-alikes, and +0.009 to +0.016 on GTSRB.
+Because of this, a CNN-5 unit can connect the top and bottom of a digit (for example, the open or closed left side
+distinguishing a 3 from a 5 or an 8), and it also benefits from two additional non-linear layers for combining
+patterns. This lines up with the observed results: +0.02 to +0.04 macro F1 on SVHN, where digits occupy most of the
+frame and have visual look-alikes, and +0.015 to +0.036 on GTSRB.
 
 \subsection{Why a CNN does not help on the diabetes table}
 \begin{table}[H]
@@ -900,37 +933,43 @@ on SVHN, where digits fill the image and have look-alikes, and +0.009 to +0.016 
 \toprule
  & Image (SVHN, GTSRB) & Table (diabetes) \\
 \midrule
-neighbours & pixels next to each other belong to the same stroke or edge & columns next to each other are unrelated
-  (e.g.\ \code{screen_time} next to \code{bmi}); the order was chosen by us \\
-same pattern, other place & an edge means the same anywhere, so one filter can be reused everywhere & position = feature;
-  a pattern at ``age'' means something else at ``cholesterol'' \\
-signal in the data & strong: models reach 0.93--0.99 & weak: the best feature differs between classes by only
+neighbours & adjacent pixels typically belong to the same stroke or edge & adjacent columns are unrelated to one
+  another (e.g.\ \code{screen_time} sitting next to \code{bmi}); the ordering was simply our choice \\
+same pattern, other place & an edge looks the same regardless of location, so one filter can be reused across the
+  whole image & here position \emph{is} the feature; a pattern found at ``age'' means something entirely different at
+  ``cholesterol'' \\
+signal in the data & strong: models reach 0.90--1.00 & weak: the top feature separates the classes by only
   $\approx$0.4 standard deviations \\
 result & CNN-5 $>$ CNN-3 & CNN-3 $\approx$ CNN-5 $\approx$ MLP (ROC-AUC 0.694--0.696) \\
 \bottomrule
 \end{tabular}
 \end{table}
-The two assumptions that make convolutions efficient on images (local neighbours matter, the same filter works
-everywhere) do not hold for a table. Adding depth or filters then only adds parameters; the ceiling is set by the
-information in the 24 features, which every model reaches after 2--5 epochs.
+The two premises that make convolution effective for images — nearby pixels matter, and the same filter is reusable
+everywhere — simply do not hold for tabular data. Adding depth or more filters therefore just adds parameters without
+adding capability; the true ceiling is set by how much information the 24 features actually contain, and every model
+arrives at that ceiling within 2--5 epochs.
 
 % =====================================================================
 \section{Conclusion and Limitations}
 % =====================================================================
 
 \begin{enumerate}
-\item Two extra convolutional layers (CNN-5) improve SVHN and GTSRB by 1--2 macro-F1 points, with a larger receptive field
-  (28$\times$28 vs.\ 22$\times$22) at about twice the cost per epoch.
-\item On the diabetes table, depth and convolutions do not help: four CNNs and a 7k-parameter MLP all reach ROC-AUC
-  $\approx$ 0.695. For tabular data a CNN is not the natural model.
-\item The same architecture gives the same result in TensorFlow/Keras and PyTorch (gaps $<$ 0.01), confirming that the
-  frameworks differ in abstraction level, not in the learning method.
-\item Keras is shorter to write and was faster on this CPU; PyTorch exposes every training step and is easier to customize.
+\item Going from CNN-3 to CNN-5 improves SVHN and GTSRB by 1.5 to 4 macro-F1 points. The extra two layers widen the
+  receptive field from 22$\times$22 to 28$\times$28, at roughly double the cost per epoch.
+\item On the diabetes table, neither extra depth nor convolution itself helps — all four CNNs and even a
+  7k-parameter MLP land around ROC-AUC 0.695. A CNN is not a natural fit for this kind of tabular data.
+\item The same architecture gives a broadly similar result in TensorFlow/Keras and PyTorch, with macro-F1 gaps under
+  0.013 on every dataset, though which framework comes out ahead is not consistent. That is compatible with the two
+  frameworks differing mainly in how much they abstract away rather than in the underlying learning process, though a
+  single seed per run cannot fully separate a real framework effect from ordinary training noise.
+\item Keras needed less code to write and ran faster in this CPU setup; PyTorch trades that away for a training loop
+  where every step is visible and easy to modify.
 \end{enumerate}
 
-\textbf{Limitations.} One seed per run (no variance estimate); GPU/CPU kernels are not fully deterministic;
-no data augmentation; the diabetes data is synthetic; Conv1D depends on an arbitrary column order; timing comes from one
-CPU-only Windows machine; two CNN-3 image runs reached the 20-epoch limit.
+\textbf{Limitations.} Each run used a single seed (so no variance estimate is available); GPU/CPU kernels are not
+fully deterministic; no data augmentation was applied; the diabetes dataset is synthetic; Conv1D's results depend on
+an arbitrary column ordering; all timings come from one CPU-only Windows machine; and three of the twelve image-model
+runs (two of them CNN-3) hit the 20-epoch cap without a clear validation-loss plateau.
 
 % =====================================================================
 \appendix
@@ -979,9 +1018,9 @@ python -m venv .venv
 source .venv/bin/activate       # macOS / Linux
 pip install -r requirements.txt
 \end{lstlisting}
-GPU: Apple Silicon uses \code{tensorflow-metal} and \code{mps} automatically; on an NVIDIA GPU PyTorch uses \code{cuda}
-(on Windows install the CUDA build first, see below); TensorFlow uses an NVIDIA GPU only on Linux/WSL2.
-Without a GPU both run on the CPU.
+Regarding GPU support: Apple Silicon picks up \code{tensorflow-metal} and \code{mps} automatically; with an NVIDIA GPU,
+PyTorch uses \code{cuda} (on Windows the CUDA build must be installed first, see below), whereas TensorFlow can only
+use an NVIDIA GPU under Linux/WSL2. Absent a GPU, both frameworks fall back to the CPU.
 \begin{lstlisting}
 pip install torch --index-url https://download.pytorch.org/whl/cu126
 \end{lstlisting}
@@ -1001,13 +1040,14 @@ Folder & Files \\
 \end{tabular}
 \end{table}
 
-\textbf{3. Run the notebooks.} Open \code{sv_svhn.ipynb}, \code{gt_gtsrb.ipynb} or \code{db_diabetes.ipynb} in
-\code{notebook/} with Jupyter or VS Code and run all cells, or from \code{notebook/}:
+\textbf{3. Run the notebooks.} Open \code{sv_svhn.ipynb}, \code{gt_gtsrb.ipynb} or \code{db_diabetes.ipynb} from
+\code{notebook/} in Jupyter or VS Code and execute all cells, or alternatively run from \code{notebook/}:
 \begin{lstlisting}
 jupyter nbconvert --to notebook --execute --inplace db_diabetes.ipynb
 \end{lstlisting}
-Each notebook is self-contained. On the first run it creates \code{dataset/<code>/splits.npz} (the 70/15/15 split),
-then trains the four models and writes \code{notebook/results/<run_id>.json}, the saved models in
-\code{notebook/models/} and the figures in \code{report/images/}. Start with \code{db_diabetes} (fastest).
+Every notebook is fully self-contained. The first run generates \code{dataset/<code>/splits.npz} (the 70/15/15 split),
+after which it trains all four models and writes out \code{notebook/results/<run_id>.json}, saves the trained models
+under \code{notebook/models/}, and produces the figures in \code{report/images/}. It is best to start with
+\code{db_diabetes}, since it runs the fastest.
 
 \end{document}

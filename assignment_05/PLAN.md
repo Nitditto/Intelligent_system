@@ -1,6 +1,6 @@
 # Assignment 05 — Plan
 
-**Authors:**  Lưu Anh Dũng (B23DCDK036)
+**Authors:**  Nguyễn Văn Trường (B23DCCE095)
 **Class:** E23CNPM02 | **Course:** Intelligent System Development | **Lecturer:** Assoc. Prof. Dinh Que Tran, Ph.D.
 
 ## 1. Brief
