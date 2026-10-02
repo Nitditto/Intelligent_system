@@ -1,5 +1,7 @@
 # Assignment 06 — Requirements
 
+This document states **what must be delivered and when it counts as done**. How the work is organised is in [PLAN.md](PLAN.md); what was found is in the report.
+
 ## Brief (verbatim from the lecturer)
 
 > **Assignment_06 RNN**
@@ -11,40 +13,32 @@
 
 ## Deliverables
 
-| # | Requirement | Where it is met |
-|---|---|---|
-| R1 | **Concepts, functions, operators** needed to understand an RNN: sequence data, hidden state, recurrence `h_t = tanh(W_xh x_t + W_hh h_{t-1} + b)`, weight sharing across time, unrolling, BPTT, vanishing/exploding gradients, gradient clipping, LSTM and GRU gates, `tanh` / `sigmoid` / element-wise product / matrix product / softmax, sliding-window supervised framing, many-to-one vs many-to-many | `notebook/00_rnn_concepts.ipynb` and report chapter 2 |
-| R2 | Two **time-related** datasets: **(EC)** a service process in e-commerce, **(ST)** stock prices | `dataset/`, PLAN §2 |
-| R3 | **RNN from scratch** (NumPy only, hand-written forward pass and BPTT) on both datasets | `ec_*.ipynb` §4, `st_*.ipynb` §4 |
-| R4 | **RNN in Keras** on both datasets | `ec_*.ipynb` §5, `st_*.ipynb` §5 |
-| R5 | **RNN in PyTorch** on both datasets | `ec_*.ipynb` §6, `st_*.ipynb` §6 |
-| R6 | Comparison, evaluation and visualization of the three implementations | each notebook §7, report chapter 5 |
+| # | Requirement |
+|---|---|
+| R1 | An explanation of the **concepts, functions and operators** needed to understand an RNN: sequence data, hidden state, recurrence, weight sharing, unrolling, back-propagation through time, vanishing/exploding gradients, gradient clipping, LSTM and GRU gates, and the mathematical operators involved (matrix product, element-wise product, `tanh`, `sigmoid`, softmax) |
+| R2 | Two **time-related datasets**: one describing a **service process in e-commerce**, one of **stock** prices |
+| R3 | An **RNN implemented from scratch** (NumPy only, hand-written forward pass and back-propagation) applied to both datasets |
+| R4 | An **RNN implemented in Keras** applied to both datasets |
+| R5 | An **RNN implemented in PyTorch** applied to both datasets |
+| R6 | A **comparison, evaluation and visualization** of the three implementations |
+| R7 | A written **report** (PDF with LaTeX source) and the runnable code (notebooks) |
 
-Total: 2 datasets × 3 implementations = **6 core runs** (+ LSTM/GRU extras in Keras and PyTorch, PLAN §3).
+## Constraints
 
-## Conventions (assignment 6 is self-contained)
+- **Dataset size.** Each assignment's dataset is larger than the previous assignment's, but not much larger, so that later assignments can keep growing. The previous assignment used up to 300,000 samples; this assignment must be above that and stay moderate (a few hundred thousand more at most). Raw files should be small enough to download and train on a single CPU.
+- **Independence.** The assignment is self-contained: its own data, code, environment file and report; datasets that were used in other assignments are not reused.
+- **Same problem, three implementations.** Data, split, architecture, starting weights, loss, optimizer and stopping rule are identical across scratch, Keras and PyTorch; only the abstraction level differs.
+- **Layout.** `dataset/`, `notebook/`, `report/`; one notebook per dataset, each runnable top to bottom, plus one notebook for the concepts.
+- **Time-series validity.** The split is chronological (train, then validation, then test); no random split across time. Scalers are fitted on the training period only.
+- **Baselines.** Every model is compared with at least one naive baseline (persistence or equivalent).
+- **Metrics.** Error in original units (RMSE, MAE) and a scale-free score; for stocks also directional accuracy. Forecasts are plotted against the true series on the test period.
+- **Report.** LaTeX; every term defined once and used consistently; explanations backed by worked numeric examples; results stated as measured, including negative results.
 
-- Folder layout `dataset/`, `notebook/`, `report/`; **one notebook per dataset**, self-contained, same section order.
-- The three implementations share the **same data, split, architecture, loss, optimizer, seed** — only the abstraction level changes ("different names do not imply different machine-learning concepts").
-- Datasets differ from those of earlier assignments and are **larger than the previous assignment's (300k samples) but not much larger** (~400–450k windows), so later assignments can keep growing (lecturer's requirement).
-- Fixed run-ID / figure / result naming (PLAN §6) so any number in the report traces back to a cell.
-- Report is LaTeX; explanations are method-focused with worked numeric examples.
-- Raw data is gitignored; `dataset/README.md` lists download links and target paths.
-- Commit locally only; ask before any `git push`.
+## Acceptance criteria
 
-## Time-series-specific requirements
-
-- **Chronological split** (train → validation → test in time order). Random splitting leaks the future and is forbidden.
-- Scalers fitted on **train only**.
-- Every model is compared with at least a **naive baseline** (last value / persistence) — a recurrent net that cannot beat persistence has learned nothing.
-- Report error in original units (RMSE, MAE) and relative error (MAPE or sMAPE); for stocks also directional accuracy.
-- Forecasts are plotted against the true series on the test period.
-
-## Acceptance checklist
-
-- [ ] Concepts notebook runs and every formula has a numeric example checked against NumPy.
-- [ ] Scratch RNN passes a numerical gradient check (relative error < 1e-5).
-- [ ] Scratch, Keras and PyTorch forward passes agree on identical weights (max abs diff < 1e-5).
-- [ ] Both dataset notebooks run top to bottom without error, results saved to `notebook/results/*.json`.
-- [ ] Comparison table + plots in each notebook; cross-dataset table in the report.
-- [ ] Report PDF builds; README explains setup and run.
+- [ ] Every formula in the concepts material has a numeric example checked against NumPy or PyTorch.
+- [ ] The scratch RNN's analytic gradients match numerical gradients (relative error < 1e-5).
+- [ ] With identical weights, the scratch, Keras and PyTorch forward passes agree (max absolute difference < 1e-5) and the parameter counts are equal.
+- [ ] Both dataset notebooks run top to bottom without error and save a result file for every run.
+- [ ] Each dataset has a results table with baselines, loss curves, forecast plots and a comparison of implementations.
+- [ ] The report PDF builds without errors; the README explains setup and execution.
