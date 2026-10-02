@@ -1,0 +1,21 @@
+\begin{tabular}{lrrrr}
+\toprule
+Run & test RMSE & $R^2$ & params & s/epoch \\
+\midrule
+\run{EC-SC-RNN} & 62.51 & 0.439 & 1,409 & 3.9 \\
+\run{EC-TF-RNN} & 63.01 & 0.438 & 1,409 & 6.2 \\
+\run{EC-PT-RNN} & 62.84 & 0.439 & 1,409 & 11.2 \\
+\run{EC-TF-LSTM} & 62.44 & 0.446 & 5,537 & 14.6 \\
+\run{EC-PT-LSTM} & 62.03 & 0.447 & 5,665 & 22.0 \\
+\run{EC-TF-GRU} & 62.41 & 0.449 & 4,257 & 16.4 \\
+\run{EC-PT-GRU} & 62.24 & 0.448 & 4,257 & 28.4 \\
+\midrule
+\run{ST-SC-RNN} & 0.0159 & -0.017 & 1,217 & 4.2 \\
+\run{ST-TF-RNN} & 0.0159 & -0.017 & 1,217 & 6.5 \\
+\run{ST-PT-RNN} & 0.0158 & -0.016 & 1,217 & 11.8 \\
+\run{ST-TF-LSTM} & 0.0158 & -0.014 & 4,769 & 14.9 \\
+\run{ST-PT-LSTM} & 0.0158 & -0.012 & 4,897 & 20.3 \\
+\run{ST-TF-GRU} & 0.0158 & -0.015 & 3,681 & 17.0 \\
+\run{ST-PT-GRU} & 0.0158 & -0.013 & 3,681 & 29.7 \\
+\bottomrule
+\end{tabular}

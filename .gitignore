@@ -171,3 +171,17 @@ assignment_05/report/*.log
 assignment_05/report/*.out
 assignment_05/report/*.toc
 assignment_05/.venv/
+
+# Assignment 06: datasets, trained models, result files and figures
+assignment_06/dataset/**
+!assignment_06/dataset/*/
+!assignment_06/dataset/README.md
+!assignment_06/dataset/*/.gitkeep
+assignment_06/notebook/models/
+assignment_06/notebook/results/
+assignment_06/report/images/
+assignment_06/report/*.aux
+assignment_06/report/*.log
+assignment_06/report/*.out
+assignment_06/report/*.toc
+assignment_06/.venv/
