@@ -1,0 +1,23 @@
+{
+  "input_shape": [
+    3,
+    32,
+    32
+  ],
+  "class_names": [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck"
+  ],
+  "architecture": "Conv(3->32,3,pad1)-ReLU-Pool2 -> Conv(32->64,3,pad1)-ReLU-Pool2 -> Flatten -> Linear(4096->128)-ReLU -> Linear(128->10)",
+  "batch_size": 256,
+  "epochs": 12,
+  "learning_rate": 0.05
+}

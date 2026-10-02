@@ -1,0 +1,23 @@
+{
+  "input_shape": [
+    1,
+    28,
+    28
+  ],
+  "class_names": [
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot"
+  ],
+  "architecture": "Conv(1->32,3,pad1)-ReLU-Pool2 -> Conv(32->64,3,pad1)-ReLU-Pool2 -> Flatten -> Linear(3136->128)-ReLU -> Linear(128->10)",
+  "batch_size": 256,
+  "epochs": 10,
+  "learning_rate": 0.05
+}

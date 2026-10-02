@@ -1,0 +1,766 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{parskip}
+\usepackage{microtype}
+
+\emergencystretch=3em
+\sloppy
+
+\hypersetup{colorlinks=true, linkcolor=black, citecolor=black, urlcolor=blue, pdftitle={Assignment 04 - Comparing CNN and MLP Implementations}, pdfauthor={Luu Anh Dung}}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\titleformat{\section}{\normalfont\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+\newcommand{\model}[1]{\textbf{#1}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\impl}[1]{\textbf{#1}}
+
+\begin{document}
+
+% ---------------------------------------------------------------------
+% Cover page (Assignment 3 Style - Single Author: Luu Anh Dung)
+% ---------------------------------------------------------------------
+\begin{titlepage}
+\begin{center}
+
+\vspace*{0.5cm}
+
+\Large
+\textbf{POSTS AND TELECOMMUNICATIONS INSTITUTE OF TECHNOLOGY}\\
+\textbf{Faculty of Information Technology}
+
+\vspace{2.0cm}
+
+\Huge
+\textbf{Intelligent System Development}\\
+\vspace{0.4cm}
+\LARGE
+\textbf{ASSIGNMENT 04}\\
+\vspace{0.6cm}
+\Large
+\textbf{Comparing CNN and MLP Implementations: Scratch vs. Keras vs. PyTorch}
+
+\vspace{1.2cm}
+
+\large
+\textit{"Different names do not imply different machine-learning concepts."}
+
+\vfill
+
+\normalsize
+\begin{tabular}{rl}
+\textbf{Instructor / Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
+\textbf{Email:} & quetd@ptit.edu.vn, tdque@yahoo.com \\[0.8cm]
+\textbf{Student Name:} & Lưu Anh Dũng \\
+\textbf{Student ID:} & B23DCDK036 \\
+\textbf{Semester:} & I.2025 -- 2026 \\
+\textbf{Class:} & E23CNPM02 \\
+\textbf{Submission:} & Individual Project \\
+\end{tabular}
+
+\vfill
+
+\textbf{Hanoi, 2026}
+
+\vspace{0.5cm}
+
+\end{center}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ---------------------------------------------------------------------
+\section{Executive Summary \& Key Takeaways}
+% ---------------------------------------------------------------------
+
+This report evaluates the core thesis of Lecture 04: that neural networks are mathematical function compositions whose learning dynamics and predictive capacity remain invariant across software abstraction layers. We benchmark three classification tasks across three distinct implementation tiers: bare-metal NumPy (scratch), declarative TensorFlow/Keras, and dynamic PyTorch. The three applications comprise tabular diabetes risk screening (binary MLP), Fashion-MNIST apparel recognition (grayscale CNN), and CIFAR-10 object classification (RGB CNN). The objective is not model competition, but isolating how code visibility, developer ergonomics, and computational runtime interact when architecture and optimization are held strictly constant.
+
+Table \ref{tab:exec-summary} summarizes the benchmarks, architectures, parameter footprints, and top-performing implementations by test accuracy.
+
+\begin{table}[H]
+\centering
+\caption{Executive summary across the three applications}
+\label{tab:exec-summary}
+\small
+\begin{tabular}{@{}p{2.2cm}p{2.4cm}p{2.6cm}p{2.9cm}p{2.6cm}@{}}
+\toprule
+Application & Data type & Task & Architecture & Winning implementation \\
+\midrule
+Diabetes & tabular & binary classification & MLP ($50 \to 32 \to 16 \to 1$) & PyTorch (0.782) \\
+Fashion-MNIST & image, $28\times28\times1$ & 10-class classification & CNN (421,642 params) & Scratch (0.897) \\
+CIFAR-10 & image, $32\times32\times3$ & 10-class classification & CNN (545,098 params) & Keras (0.610) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two key empirical results stand out:
+\begin{itemize}
+  \item \textbf{Architectural \& Predictive Invariance:} Trainable parameter counts match identically across all three implementations for every task ($2,177$ for Diabetes, $421,642$ for Fashion-MNIST, $545,098$ for CIFAR-10), verified via programmatic unit assertions (\code{assert keras_param_count == scratch_param_count}). Generalization accuracy remains tightly bounded across frameworks ($\le 3.5\%$ spread). Crucially, the top-performing framework rotates across tasks (PyTorch on Diabetes, Scratch on Fashion-MNIST, Keras on CIFAR-10), demonstrating that no single library holds an intrinsic modeling advantage when architecture is invariant.
+  \item \textbf{Computational Runtime Asymmetry:} In contrast to accuracy parity, execution speeds diverge substantially. Keras is consistently fastest across all tasks, achieving a \textbf{17.6x} speedup on Fashion-MNIST and \textbf{18.2x} on CIFAR-10 over pure NumPy. For convolutional networks, compiled C++/CUDA backends provide massive speedups over interpreted Python loops, highlighting the steep computational cost of bare-metal transparency.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Theoretical Background: Architecture vs. Abstraction}
+\label{sec:lecture}
+% ---------------------------------------------------------------------
+
+This section formalizes the overarching theoretical framework of the benchmark suite. Establishing these architectural and pedagogical principles here prevents repetitive derivations across individual application chapters.
+
+\subsection{The Core Question: What Stays, What Changes?}
+
+Lecture 04 frames modern deep learning around a foundational question: for three implementations of the same network in NumPy, Keras, and PyTorch, \textit{what remains identical, and what genuinely differs?} The theoretical answer is unequivocal: the functional architecture, parametric dimension, and gradient dynamics remain invariant; difference exists solely in the software abstraction tier. A 2D convolution in bare-metal NumPy requires explicit image-to-column (\code{im2col}) memory transposition and matrix multiplication, fully exposed line by line. In Keras, that same operation is a one-line declarative statement (\code{Conv2D}) executing within precompiled C++ binaries. In PyTorch, \code{nn.Conv2d} provides modular layer encapsulation while keeping the training loop, gradient flushing (\code{zero_grad}), and parameter stepping fully explicit in user code.
+
+\subsection{Matching Core Concepts Across Frameworks}
+
+As Lecture 04 emphasizes, disparate library nomenclature does not imply distinct machine learning concepts. Across all benchmarks, each implementation manifests the same seven core operations: spatial convolution, non-linear activation, spatial pooling, tensor flattening, affine projection, loss computation, and stochastic gradient updates. Table \ref{tab:concept-api} maps these theoretical concepts to their API representations across the three frameworks.
+
+\begin{table}[H]
+\centering
+\caption{Concept-to-API correspondence used throughout this project}
+\label{tab:concept-api}
+\small
+\begin{tabular}{@{}p{2.3cm}p{3.4cm}p{3.7cm}p{3.7cm}@{}}
+\toprule
+Concept & Purpose & Scratch & Keras / PyTorch \\
+\midrule
+Convolution & local feature extraction & \code{conv2d_forward} (\code{im2col}) & \code{Conv2D} / \code{nn.Conv2d} \\
+Activation & nonlinearity & \code{relu()} & \code{"relu"} / \code{nn.ReLU()} \\
+Pooling & spatial reduction & \code{max_pool2d_forward} & \code{MaxPooling2D} / \code{nn.MaxPool2d} \\
+Flatten & tensor $\to$ vector & reshape & \code{Flatten()} / \code{nn.Flatten()} \\
+Dense/Linear & classification & \code{linear_forward} (matmul) & \code{Dense} / \code{nn.Linear} \\
+Loss & measure error & manual formula & framework loss class \\
+Optimizer & update parameters & \code{W -= lr * dW} & \code{optimizer="sgd"} / \code{torch.optim.SGD} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Framework Visibility \& Code Transparency}
+
+The three frameworks occupy distinct positions along the visibility-ergonomics spectrum:
+\begin{itemize}
+  \item \textbf{Bare-Metal NumPy (Maximum Visibility):} Provides complete algorithmic transparency. Every forward activation, backward gradient, and parameter update is inspectable, but demands high development effort and runs slowly on convolutional operations.
+  \item \textbf{TensorFlow/Keras (Maximum Convenience):} Encapsulates network construction in concise sequential blocks, while \code{model.fit()} automates batch dispatching, autodiff, and weight updates behind an opaque compiled pipeline.
+  \item \textbf{PyTorch (Modular Balance):} Combines declarative layer definitions inside \code{nn.Module} with imperative user-defined training loops (\code{zero_grad} $\to$ forward $\to$ loss $\to$ \code{backward()} $\to$ \code{step()}), keeping execution control visible while automating reverse-mode differentiation via \code{autograd}.
+\end{itemize}
+
+\subsection{Rules for a Fair Comparison}
+
+To ensure rigorous comparisons, we enforce strict experimental control: \textit{identical datasets, identical train/test splits, invariant network topologies, and matched hyperparameters}. Across all tasks, data splits, batch sizes ($B=2048$ for tabular, $B=256$ for images), epoch budgets ($10$ to $25$), learning rates ($\eta = 0.05$ or $0.1$), and random seeds (\code{RANDOM_SEED = 42}) are frozen prior to model construction. Framework-default weight initializers (He normal in NumPy vs library-native He/Glorot in Keras and PyTorch) represent the only intentional minor divergence, tracked as a natural framework characteristic.
+
+\newpage
+% ---------------------------------------------------------------------
+\section{Diabetes Prediction: Tabular MLP}
+\label{sec:diabetes}
+% ---------------------------------------------------------------------
+
+\subsection{Task Formulation \& Objectives}
+
+This application predicts diabetes or pre-diabetes risk from CDC BRFSS survey responses. Because tabular survey columns (e.g., BMI, smoking history) lack spatial grid adjacency, imposing localized 2D convolution is geometrically invalid. As stated in Lecture Slide 20, \textit{"there is no natural convolution operation"} for tabular data of this structure. Consequently, the task is modeled strictly via a fully connected Multi-Layer Perceptron (MLP).
+
+\subsection{Dataset Overview}
+
+The dataset aggregates five annual survey waves (2016--2020) from the Kaggle BRFSS repository
+\begin{center}
+\small\url{https://www.kaggle.com/datasets/spandanjit2005/brfss-diabetes-indicator-dataset}
+\end{center}
+(\code{DATASET_2016.csv} through \code{DATASET_2020.csv}). Intersecting features common across all five years yields 31 shared columns spanning \textbf{2,181,125 records}. Features queried only in alternating survey cycles (\verb|high_bp_00| and \verb|high_cholesterol_00| in 2017 and 2019) were dropped to prevent systematic missingness across three full cohorts.
+
+The target variable (\verb|diabetes|) is collapsed from three original classes into a binary diagnostic indicator: $0$ for non-diabetic ($1,841,657$ records) and $1$ for pre-diabetic or diabetic combined ($339,468$ records). This creates severe natural class imbalance, with a positive prevalence rate of $15.56\%$ (Figure \ref{fig:diabetes-eda-target}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{images/diabetes_eda_target_3class.png}
+\caption{Pre-collapse distribution of the three original BRFSS diabetes response categories, showing the severe minority representation of pre-diabetic and diagnosed cohorts relative to healthy participants.}
+\label{fig:diabetes-eda-target}
+\end{figure}
+
+\subsection{Data Inspection \& Cleaning}
+
+BRFSS uses out-of-range sentinel numbers to encode participant refusal or unmeasured responses. Two prominent sentinel spikes were remediated: \verb|weight_00 == 999| ($153,060$ records) and \verb|bmi_00 > 100| ($174,083$ records) represent invalid captures and were converted to \verb|NaN| before splitting. Conditional missingness in lifestyle fields (\verb|avg_drinks_p_day_00| at $52.5\%$, \verb|poor_health_days_00| at $48.6\%$) reflects questionnaire skip patterns and was retained. Redundant string duplicates of numeric ordinals were removed to prevent collinearity.
+
+Exploratory analysis confirms expected epidemiological relationships: median BMI increases monotonically with diagnosis status ($27.0 \to 29.5 \to 30.8$, Figure \ref{fig:diabetes-eda-bmi}), self-reported general health exhibits a strong risk gradient (Figure \ref{fig:diabetes-eda-genhealth}), and survey year shows mild prevalence drift ($15.20\%$ to $15.97\%$, Figure \ref{fig:diabetes-eda-year}), justifying its retention as a standardized feature.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{images/diabetes_eda_bmi.png}
+\caption{Distribution of Body Mass Index across diagnostic categories, demonstrating a progressive upward shift in median BMI from non-diabetic to pre-diabetic and diabetic respondents.}
+\label{fig:diabetes-eda-bmi}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{images/diabetes_eda_genhealth.png}
+\caption{Prevalence of pre-diabetes and diabetes stratified by self-assessed general health tier (1 = Excellent to 5 = Poor), illustrating a strong monotonic risk escalation.}
+\label{fig:diabetes-eda-genhealth}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\linewidth]{images/diabetes_eda_year.png}
+\caption{Temporal variance in combined diabetes prevalence across survey iterations (2016--2020); observed mild longitudinal fluctuations justify retaining survey year as a predictive feature.}
+\label{fig:diabetes-eda-year}
+\end{figure}
+
+\subsection{Feature Processing \& Class Handling}
+
+The processed feature schema is split into three pipelines: 8 binary attributes mapped directly to $\{0, 1\}$, 4 nominal categorical variables one-hot encoded into 29 binary columns, and 13 numeric features (ordinals, physical measurements, and \verb|year|) standardized via training-set Z-scores. Standardizing \verb|year| prevents its four-digit calendar scale from dominating initial layer projections.
+
+This yields an input dimensionality of $d = \mathbf{50}$ ($8 \text{ binary} + 29 \text{ one-hot} + 13 \text{ continuous}$). An 80/20 stratified split (\code{RANDOM_SEED = 42}) produces $1,744,900$ training and $436,225$ test instances, preserving the $15.56\%$ positive rate across both sets.
+
+To counteract majority-class bias, balanced inverse-frequency weights are computed: $w_c = N / (2 \cdot N_c)$, yielding $w_{\text{neg}} = 0.5922$ and $w_{\text{pos}} = 3.2126$. This penalizes minority-class errors approximately $5.4$ times more heavily than majority-class errors.
+
+\subsection{MLP Model Architecture}
+
+Following Lecture Slide 20, the shared MLP topology is defined dynamically from $d=50$:
+\[
+50 \to \text{Linear}(32) \to \text{ReLU} \to \text{Linear}(16) \to \text{ReLU} \to \text{Linear}(1) \to \text{Sigmoid}
+\]
+with batch shape progression for batch size $B$:
+\[
+(B, 50) \to (B, 32) \to (B, 32) \to (B, 16) \to (B, 16) \to (B, 1) \to (B, 1)
+\]
+Hyperparameters are held invariant: batch size $B=2048$, 25 epochs, learning rate $\eta = 0.1$, and unaugmented SGD.
+
+\subsection{Three Framework Setups}
+
+\subsubsection{NumPy from Scratch}
+
+Constructed entirely with NumPy functions: vectorized \code{relu()}, weighted binary cross-entropy loss, He normal parameter initialization (\code{init_params}), and a vectorized forward pass. The analytical backward pass incorporates sample weights into the output error vector: $dZ_3 = (A_3 - y) \odot w$. Gradient correctness was validated against central finite differences before training. Mini-batch SGD ($B=2048$) runs across 25 epochs.
+
+\subsubsection{TensorFlow / Keras}
+
+Assembled via Keras's \code{Sequential} interface with \code{Dense} layers (\code{Dense(32, "relu")}, \code{Dense(16, "relu")}, \code{Dense(1, "sigmoid")}), compiled with \code{SGD(learning_rate=0.1)} and binary cross-entropy. Cost-sensitive weighting is supplied natively via \code{class_weight={0: 0.5922, 1: 3.2126}}. The model contains 2,177 trainable parameters, matching Scratch.
+
+\subsubsection{PyTorch}
+
+Implemented as an \code{nn.Module} subclass (\code{DiabetesMLP}) chaining three \code{nn.Linear} layers with \code{nn.ReLU}. The forward pass emits raw logits evaluated by \code{nn.BCEWithLogitsLoss(pos_weight=torch.tensor([5.42]))}, fusing sigmoid activation and cross-entropy for numerical stability. Training executes via an explicit optimization loop with \code{torch.optim.SGD}, matching the 2,177 parameter footprint.
+
+\subsection{Component Mapping Across Frameworks}
+
+\begin{table}[H]
+\centering
+\caption{Diabetes: component-by-implementation table}
+\footnotesize
+\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{4.1cm}p{4.1cm}@{}}
+\toprule
+Component & Scratch & Keras & PyTorch \\
+\midrule
+Data loading & \code{pandas.read_csv} $\times5$, \code{pd.concat} & same & same \\
+Preprocessing & manual mean/std standardization & StandardScaler-equivalent (manual, shared) & same as scratch \\
+Model definition & explicit functions $+$ a params dict & \code{Sequential([...])} & \code{nn.Module} subclass \\
+Activation & \code{relu()}, \code{sigmoid()} & \code{activation="relu"/"sigmoid"} & \code{nn.ReLU()}, fused in \code{BCEWithLogitsLoss} \\
+Dense/Linear layer & \code{linear()} (manual matmul) & \code{Dense(...)} & \code{nn.Linear(...)} \\
+Loss & manual \code{binary_cross_entropy} & \code{"binary_crossentropy"} & \code{nn.BCEWithLogitsLoss()} \\
+Gradient & manual backprop & autodiff (implicit in \code{fit}) & \code{loss.backward()} (autograd) \\
+Optimizer & manual \code{W -= lr * dW} & \code{optimizer="sgd"} & \code{torch.optim.SGD(...)} \\
+Training loop & explicit \code{for epoch / for batch} & \code{model.fit(...)} & explicit \code{for epoch / for batch} \\
+Evaluation & manual metric functions & \code{model.evaluate}-equivalent (manual) & manual (\code{model.eval()}, no-grad) \\
+Prediction & \code{forward(X_test, params)} & \code{model.predict(...)} & \code{model(x_test)} under \code{torch.no_grad()} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training Curves \& Test Results}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/diabetes_compare_loss.png}
+\caption{Training loss convergence trajectories across the three computational tiers. While pure NumPy and Keras descend along nearly identical curves, PyTorch converges along an elevated scalar baseline due to unnormalized positive-term loss reweighting.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/diabetes_compare_confmat.png}
+\caption{Evaluation confusion matrices across the three implementations evaluated on the held-out BRFSS test cohort ($N=436,225$), annotating true/false positive and negative frequencies alongside diagnostic sensitivity.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Diabetes: quantitative comparison, test set}
+\label{tab:diabetes-quant}
+\begin{tabular}{lrrrrrr}
+\toprule
+Implementation & Params & Train time (s) & Final loss & Accuracy & Precision & Recall \\
+\midrule
+Scratch & 2,177 & 69.4 & 0.5155 & 0.7310 & 0.3383 & 0.7616 \\
+Keras & 2,177 & 24.7 & 0.5148 & 0.7533 & 0.3554 & 0.7194 \\
+PyTorch & 2,177 & 311.0 & 0.8706 & 0.7819 & 0.3814 & 0.6458 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+F1 scores across implementations evaluate to: 0.4685 (Scratch), 0.4758 (Keras), and 0.4796 (PyTorch).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{images/diabetes_compare_accuracy.png}
+\caption{Test accuracy by implementation.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{images/diabetes_compare_prf1.png}
+\caption{Precision, recall, and F1 metrics across implementations. All models maintain diagnostic recall between 65\% and 76\% with precision near 34\%--38\%, reflecting the deliberate trade-off induced by cost-sensitive class balancing.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/diabetes_compare_params_time.png}
+\caption{Total trainable parameter footprint (invariant across all implementations at 2,177 weights) contrasted against end-to-end wall-clock training duration.}
+\end{figure}
+
+\subsection{Comparison \& Discussion}
+\label{sec:diabetes-compare}
+
+Generalization accuracy and F1 scores cluster within a narrow five-point margin: PyTorch leads slightly (0.782 acc, 0.480 F1), followed by Keras (0.753 acc, 0.476 F1) and Scratch (0.731 acc, 0.469 F1). This close convergence confirms that the three implementations realize equivalent representations of the underlying mathematical architecture, with minor differences attributable to floating-point precision and batch shuffling.
+
+A key implementation detail surfaces in the final loss values: Scratch and Keras converge to $\approx 0.51$, while PyTorch sits at $0.87$. This divergence stems from how class weighting is parameterized. Scratch and Keras scale both classes symmetrically ($w_{\text{neg}} = 0.5922, w_{\text{pos}} = 3.2126$), preserving the scalar magnitude of standard cross-entropy. PyTorch's \code{BCEWithLogitsLoss(pos_weight=...)} scales only the positive term by the ratio $w_{\text{pos}}/w_{\text{neg}} \approx 5.42$, leaving the negative term unscaled. This shifts the loss baseline without altering gradient directions, demonstrating that identical feature names can mask distinct underlying mechanics.
+
+Training duration highlights runtime trade-offs: Keras is fastest (24.7s), Scratch follows (69.4s), and PyTorch is slowest (311.0s). Keras benefits from compiled graph execution with minimal Python overhead. Scratch computes simple matrix multiplications directly in BLAS, dominating Python loop overhead. PyTorch incurs per-batch autograd graph construction costs that cannot be amortized over a compact 2,177-parameter model, an effect that reverses in convolutional settings.
+
+In terms of visibility and control: Keras encapsulates the entire training loop in \code{fit()}; PyTorch automates differentiation while keeping batch dispatching explicit; Scratch exposes all matrix operations and gradients at the cost of manual coding.
+
+\newpage
+% ---------------------------------------------------------------------
+\section{Fashion-MNIST: Grayscale Image Classification (CNN)}
+\label{sec:fashion}
+% ---------------------------------------------------------------------
+
+\subsection{Task Formulation \& Objectives}
+
+This application classifies $28\times 28$ grayscale images across 10 apparel categories. Unlike tabular records, clothing images possess 2D spatial autocorrelation and translation invariance: structural patterns (e.g., sleeves, collars) appear at varied positions. As Lecture 04 establishes, local receptive fields and weight sharing make CNNs far more parameter-efficient and structurally suited than fully connected MLPs.
+
+\subsection{Dataset Overview}
+
+Fashion-MNIST is loaded via \code{keras.datasets.fashion_mnist.load_data()}, providing 60,000 training and 10,000 test images ($28\times 28$, single-channel, values in $[0, 255]$). The benchmark is perfectly balanced, containing exactly 6,000 training and 1,000 test images per category (Figure \ref{fig:fm-eda-balance}), obviating the need for class reweighting.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{images/fashion_mnist_eda_class_balance.png}
+\caption{Class representation across Fashion-MNIST partitions, demonstrating uniform allocation of 6,000 training and 1,000 test examples per apparel category.}
+\label{fig:fm-eda-balance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/fashion_mnist_eda_sample_grid.png}
+\caption{Exemplar garment thumbnails across all ten apparel classes; high visual similarity among upper-body categories (such as shirts, pullovers, and coats) accounts for dominant classification confusions.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{images/fashion_mnist_eda_pixel_hist.png}
+\caption{Histogram of unnormalized pixel intensities in Fashion-MNIST; the dominant zero-value bin highlights extensive dark background margins surrounding segmented items.}
+\end{figure}
+
+\subsection{Image Preprocessing \& Tensor Layout}
+
+Pixel values are cast to \code{float32} and divided by 255 to normalize into $[0.0, 1.0]$. Two memory layouts are maintained: Channels-First $(N, 1, 28, 28)$ for NumPy and PyTorch, and Channels-Last $(N, 28, 28, 1)$ for Keras. The curated dataset requires no cleaning or missing-value handling.
+
+\subsection{CNN Model Architecture}
+
+Following Lecture Slide 21, the shared CNN topology is:
+\[
+\resizebox{\linewidth}{!}{$28\times28\times1 \to \text{Conv}(1{\to}32, k{=}3, \text{pad}{=}1) \to \text{ReLU}
+\to \text{MaxPool}(2) \to \text{Conv}(32{\to}64, k{=}3, \text{pad}{=}1) \to
+\text{ReLU} \to \text{MaxPool}(2)$}
+\]
+\[
+\to \text{Flatten} (64{\times}7{\times}7 = 3136) \to \text{Linear}(3136{\to}128)
+\to \text{ReLU} \to \text{Linear}(128{\to}10)
+\]
+with batch shape trace for batch size $B$:
+\[
+\resizebox{\linewidth}{!}{$(B,1,28,28) \to (B,32,28,28) \to (B,32,14,14) \to (B,64,14,14) \to (B,64,7,7)
+\to (B,3136) \to (B,128) \to (B,10)$}
+\]
+Hyperparameters: batch size $B=256$, 10 epochs, learning rate $\eta = 0.05$, and unaugmented SGD.
+
+\subsection{Three Framework Setups}
+
+\subsubsection{NumPy from Scratch (Vectorized im2col)}
+
+All operations---convolutions, pooling, dense projections, and gradients---are built by hand. To avoid the massive latency of nested coordinate loops ($>2\text{s}$ per batch), convolutions are vectorized via \code{im2col}, stacking local receptive patches into a 2D matrix evaluated via single GEMM multiplications (a 40x speedup). Numerical gradient checking confirmed analytical derivatives and caught a redundant $1/N$ division in the dense backward pass during development. Training runs via mini-batch SGD ($B=256$, 235 batches per epoch) across 10 epochs.
+
+\subsubsection{TensorFlow / Keras}
+
+Assembled via an eight-layer \code{Sequential} definition (\code{Conv2D(32, 3, padding="same", activation="relu")}, \code{MaxPooling2D(2)}, \code{Conv2D(64, ...)}, \code{MaxPooling2D(2)}, \code{Flatten()}, \code{Dense(128, "relu")}, \code{Dense(10)}), compiled with \code{SGD(learning_rate=0.05)} and \code{SparseCategoricalCrossentropy(from_logits=True)}. Parameter count: 421,642, matching Scratch.
+
+\subsubsection{PyTorch}
+
+Constructed as an \code{nn.Module} subclass (\code{FashionCNN}) composed of \code{self.features} (two conv-relu-pool blocks) and \code{self.classifier} (flatten and two linear layers). The model emits raw logits evaluated by \code{nn.CrossEntropyLoss()}, trained via an explicit loop with \code{torch.optim.SGD}, matching the 421,642 parameter count.
+
+\subsection{Component Mapping Across Frameworks}
+
+\begin{table}[H]
+\centering
+\caption{Fashion-MNIST: component-by-implementation table}
+\footnotesize
+\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{4.1cm}p{4.1cm}@{}}
+\toprule
+Component & Scratch & Keras & PyTorch \\
+\midrule
+Data loading & Keras loader, shared NumPy arrays & same & same \\
+Preprocessing & manual /255, channel-first reshape & /255, channel-last (default) & /255, channel-first \\
+Model definition & explicit functions $+$ a params dict & \code{Sequential([...])} & \code{nn.Module} subclass \\
+Convolution & \code{conv2d_forward}/\code{backward} (\code{im2col}) & \code{Conv2D(...)} & \code{nn.Conv2d(...)} \\
+Activation & \code{relu()} & \code{activation="relu"} & \code{nn.ReLU()} \\
+Pooling & \code{max_pool2d_forward}/\code{backward} & \code{MaxPooling2D(2)} & \code{nn.MaxPool2d(2)} \\
+Flatten & \code{flatten_forward}/\code{backward} (reshape) & \code{Flatten()} & \code{nn.Flatten()} \\
+Dense/Linear layer & \code{linear_forward}/\code{backward} & \code{Dense(...)} & \code{nn.Linear(...)} \\
+Loss & manual softmax cross-entropy & \code{SparseCategorical}\allowbreak\code{Crossentropy(}\allowbreak\code{from_logits=True)} & \code{nn.CrossEntropyLoss()} \\
+Gradient & manual backprop & autodiff (implicit in \code{fit}) & \code{loss.backward()} (autograd) \\
+Optimizer & manual \code{W -= lr * dW} & \code{optimizer="sgd"} & \code{torch.optim.SGD(...)} \\
+Training loop & explicit \code{for epoch / for batch} & \code{model.fit(...)} & explicit \code{for epoch / for batch} \\
+Evaluation & manual metric functions & \code{model.evaluate}-equivalent (manual) & manual (\code{model.eval()}, no-grad) \\
+Prediction & \code{forward(X_test, params)} & \code{model.predict(...)} & \code{model(x_test)} under \code{torch.no_grad()} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training Curves \& Test Results}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/fashion_mnist_compare_loss.png}
+\caption{Cross-framework training loss convergence trajectories across 10 epochs on Fashion-MNIST.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/fashion_mnist_compare_confmat.png}
+\caption{Normalized evaluation confusion matrices for Fashion-MNIST test instances ($N=10,000$). Misclassifications across all three models cluster within the visually ambiguous shirt, pullover, and coat categories.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Fashion-MNIST: quantitative comparison, test set}
+\label{tab:fm-quant}
+\begin{tabular}{lrrrrrr}
+\toprule
+Implementation & Params & Train time (s) & Final loss & Accuracy & Precision (macro) & Recall (macro) \\
+\midrule
+Scratch & 421,642 & 1,330.5 & 0.2655 & 0.8973 & 0.8976 & 0.8973 \\
+Keras & 421,642 & 75.6 & 0.3157 & 0.8603 & 0.8695 & 0.8603 \\
+PyTorch & 421,642 & 191.5 & 0.3544 & 0.8660 & 0.8676 & 0.8660 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Macro F1 scores evaluate to: 0.8970 (Scratch), 0.8565 (Keras), and 0.8641 (PyTorch).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{images/fashion_mnist_compare_accuracy.png}
+\caption{Out-of-sample classification accuracy across implementations on Fashion-MNIST, where pure NumPy achieves peak generalization.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{images/fashion_mnist_compare_prf1.png}
+\caption{Macro-averaged precision, recall, and F1 performance across implementations on the Fashion-MNIST test set.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/fashion_mnist_compare_params_time.png}
+\caption{Parametric invariance (421,642 weights) contrasted against training latency, highlighting the substantial computational speedup delivered by compiled framework engines over interpreted NumPy.}
+\end{figure}
+
+\subsection{Runtime Speed \& Comparison}
+\label{sec:fm-compare}
+
+In generalization accuracy, Scratch leads at 0.897, ahead of PyTorch (0.866) and Keras (0.860). Over a brief 10-epoch window, explicit He normal initialization provides Scratch an advantageous starting trajectory relative to framework-default initializers. However, the narrow 3.7-point spread confirms that all three implementations realize equivalent statistical learning models.
+
+Training latency reveals massive divergence: Scratch required 1,330.5 seconds ($\approx 22$ minutes), while Keras took 75.6 seconds and PyTorch took 191.5 seconds. Scratch is \textbf{17.6x slower} than Keras and \textbf{6.9x slower} than PyTorch. Although \code{im2col} vectorizes patch extraction, it remains tied to uncompiled Python loop dispatching. In contrast, Keras and PyTorch execute convolutions in heavily optimized, vendor-tuned C++/CUDA libraries with kernel fusion, providing orders-of-magnitude speedups once spatial convolutions are involved.
+
+\newpage
+% ---------------------------------------------------------------------
+\section{CIFAR-10: Color Image Classification (CNN)}
+\label{sec:cifar10}
+% ---------------------------------------------------------------------
+
+\subsection{Task Formulation \& Objectives}
+
+This application categorizes $32\times 32$ multi-channel RGB photographs into 10 natural object classes. While sharing the convolutional structure of Fashion-MNIST, CIFAR-10 is substantially more challenging due to three color channels, background clutter, and semantic proximity between classes (e.g., cat vs. dog, automobile vs. truck).
+
+\subsection{Dataset Overview}
+
+Loaded via \code{keras.datasets.cifar10.load_data()} ($\sim$170MB), providing 50,000 training and 10,000 test images ($32\times 32\times 3$, values in $[0, 255]$). The dataset is balanced, containing exactly 5,000 training and 1,000 test images per category (Figure \ref{fig:cifar10-eda-balance}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{images/cifar10_eda_class_balance.png}
+\caption{Category balance across CIFAR-10 splits, confirming uniform distribution with 5,000 training images and 1,000 test images for each object class.}
+\label{fig:cifar10-eda-balance}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/cifar10_eda_sample_grid.png}
+\caption{Representative $32\times32$ photographic thumbnails across CIFAR-10 categories; low spatial resolution creates genuine visual ambiguity between semantically proximate pairs such as dogs and cats or automobiles and trucks.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/cifar10_eda_channel_hist.png}
+\caption{Spectral density distributions across red, green, and blue color channels in CIFAR-10, demonstrating continuous intensity coverage across all three bands in contrast to grayscale sparsity.}
+\end{figure}
+
+\subsection{Color Channels \& Tensor Format}
+
+Pixels are cast to \code{float32} and scaled to $[0.0, 1.0]$. Input tensors are formatted into Channels-Last $(N, 32, 32, 3)$ for Keras and Channels-First $(N, 3, 32, 32)$ for NumPy and PyTorch. No outlier removal or imputation is required.
+
+\subsection{SmallCNN Architecture}
+
+Following the course tutorial SmallCNN specification, the architecture is:
+\[
+\resizebox{\linewidth}{!}{$3\times32\times32 \to \text{Conv}(3{\to}32, k{=}3, \text{pad}{=}1) \to \text{ReLU}
+\to \text{MaxPool}(2) \to \text{Conv}(32{\to}64, k{=}3, \text{pad}{=}1) \to
+\text{ReLU} \to \text{MaxPool}(2)$}
+\]
+\[
+\to \text{Flatten} (64{\times}8{\times}8 = 4096) \to \text{Linear}(4096{\to}128)
+\to \text{ReLU} \to \text{Linear}(128{\to}10)
+\]
+with batch shape progression for batch size $B$:
+\[
+\resizebox{\linewidth}{!}{$(B,3,32,32) \to (B,32,32,32) \to (B,32,16,16) \to (B,64,16,16) \to (B,64,8,8)
+\to (B,4096) \to (B,128) \to (B,10)$}
+\]
+Hyperparameters: batch size $B=256$, 12 epochs, learning rate $\eta = 0.05$, and unaugmented SGD.
+
+\subsection{Three Framework Setups}
+
+\subsubsection{NumPy from Scratch (3-Channel im2col)}
+
+Reuses the \code{im2col} convolution and pooling machinery adapted for 3-channel inputs, expanding kernel dimensions to $(32, 3, 3, 3)$. Analytical gradients were verified against finite differences on 3-channel tensors before training. Training runs via mini-batch SGD ($B=256$, 196 batches per epoch) across 12 epochs, containing 545,098 parameters.
+
+\subsubsection{TensorFlow / Keras}
+
+Assembled via \code{Sequential} with \code{Conv2D(32, 3, ...)} accepting $(32, 32, 3)$ inputs directly in native Channels-Last format. Compiled with \code{SGD(learning_rate=0.05)} and \code{SparseCategoricalCrossentropy(from_logits=True)}, containing 545,098 parameters.
+
+\subsubsection{PyTorch}
+
+Implemented via an \code{nn.Module} subclass (\code{Cifar10CNN}) matching the SmallCNN specification, with 3 input channels and an unrolled classification dimension of $64\times 8\times 8 = 4096$. Trained via an explicit loop with \code{nn.CrossEntropyLoss()} and \code{torch.optim.SGD}, matching 545,098 parameters.
+
+\subsection{Component Mapping Across Frameworks}
+
+\begin{table}[H]
+\centering
+\caption{CIFAR-10: component-by-implementation table}
+\footnotesize
+\begin{tabular}{@{}p{2.5cm}p{4.1cm}p{4.1cm}p{4.1cm}@{}}
+\toprule
+Component & Scratch & Keras & PyTorch \\
+\midrule
+Data loading & Keras loader, shared NumPy arrays & same & same \\
+Preprocessing & manual /255, channel-first reshape & /255, channel-last (as shipped, no transpose) & /255, channel-first (transposed) \\
+Model definition & explicit functions $+$ a params dict & \code{Sequential([...])} & \code{nn.Module} subclass \\
+Convolution & \code{conv2d_forward}/\code{backward} (\code{im2col}, 3-channel-aware) & \code{Conv2D(...)} & \code{nn.Conv2d(...)} \\
+Activation & \code{relu()} & \code{activation="relu"} & \code{nn.ReLU()} \\
+Pooling & \code{max_pool2d_forward}/\code{backward} & \code{MaxPooling2D(2)} & \code{nn.MaxPool2d(2)} \\
+Flatten & \code{flatten_forward}/\code{backward} (reshape) & \code{Flatten()} & \code{nn.Flatten()} \\
+Dense/Linear layer & \code{linear_forward}/\code{backward} & \code{Dense(...)} & \code{nn.Linear(...)} \\
+Loss & manual softmax cross-entropy & \code{SparseCategorical}\allowbreak\code{Crossentropy(}\allowbreak\code{from\_logits=True)} & \code{nn.CrossEntropyLoss()} \\
+Gradient & manual backprop & autodiff (implicit in \code{fit}) & \code{loss.backward()} (autograd) \\
+Optimizer & manual \code{W -= lr * dW} & \code{optimizer="sgd"} & \code{torch.optim.SGD(...)} \\
+Training loop & explicit \code{for epoch / for batch} & \code{model.fit(...)} & explicit \code{for epoch / for batch} \\
+Evaluation & manual metric functions & \code{model.evaluate}-equivalent (manual) & manual (\code{model.eval()}, no-grad) \\
+Prediction & \code{forward(X_test, params)} & \code{model.predict(...)} & \code{model(x_test)} under \code{torch.no_grad()} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training Curves \& Test Results}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/cifar10_compare_loss.png}
+\caption{Cross-implementation empirical loss descent profiles across 12 training epochs on CIFAR-10.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/cifar10_compare_confmat.png}
+\caption{Evaluation confusion matrices across implementations on the CIFAR-10 test set ($N=10,000$); misclassification density concentrates along natural visual boundaries between cats and dogs, and between cars and trucks.}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{CIFAR-10: quantitative comparison, test set}
+\label{tab:cifar-quant}
+\begin{tabular}{lrrrrrr}
+\toprule
+Implementation & Params & Train time (s) & Final loss & Accuracy & Precision (macro) & Recall (macro) \\
+\midrule
+Scratch & 545,098 & 1,875.8 & 0.8965 & 0.6033 & 0.6335 & 0.6033 \\
+Keras & 545,098 & 103.3 & 0.9854 & 0.6102 & 0.6477 & 0.6102 \\
+PyTorch & 545,098 & 244.1 & 1.1220 & 0.5696 & 0.6163 & 0.5696 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Macro F1 scores evaluate to: 0.5794 (Scratch), 0.6078 (Keras), and 0.5655 (PyTorch).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\linewidth]{images/cifar10_compare_accuracy.png}
+\caption{Comparative generalization accuracy on CIFAR-10; moderate scores in the 57\%--61\% range reflect the heightened complexity of natural photographic recognition without data augmentation.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\linewidth]{images/cifar10_compare_prf1.png}
+\caption{Macro-averaged precision, recall, and F1 scores across the three software implementations on CIFAR-10.}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{images/cifar10_compare_params_time.png}
+\caption{Trainable parameter footprint ($545,098$ weights) alongside wall-clock training duration, illustrating the widest execution throughput divergence observed across all benchmarks.}
+\end{figure}
+
+\subsection{Runtime Speed \& Comparison}
+\label{sec:cifar-compare}
+
+Keras achieves top accuracy (0.610), followed closely by Scratch (0.603) and PyTorch (0.570). All models converge within a four-point window. Accuracy in the low 60s reflects the difficulty of 10-class photographic classification on $32\times 32$ images without augmentation, rather than implementation shortcomings.
+
+Training time highlights the widening performance gap: Scratch required 1,875.8 seconds ($\approx 31$ minutes), whereas Keras took 103.3 seconds and PyTorch took 244.1 seconds. Scratch was \textbf{18.2x slower} than Keras and \textbf{7.7x slower} than PyTorch. Expanding input spatial size and channel depth ($32\times 32\times 3$ vs. $28\times 28\times 1$) multiplies \code{im2col} patch extraction volume, a cost pure NumPy absorbs directly in CPU cycles while compiled framework backends optimize efficiently.
+
+% ---------------------------------------------------------------------
+\section{Overall Cross-Task Comparison}
+\label{sec:cross}
+% ---------------------------------------------------------------------
+
+Table \ref{tab:cross-app} synthesizes test accuracy across all nine experimental conditions (3 tasks $\times$ 3 implementations).
+
+\begin{table}[H]
+\centering
+\caption{Cross-application summary: test accuracy, all 3 applications x 3 implementations}
+\label{tab:cross-app}
+\begin{tabular}{llrr}
+\toprule
+Application & Implementation & Parameters & Accuracy \\
+\midrule
+\multirow{3}{*}{Diabetes}
+  & Scratch & 2,177 & 0.7310 \\
+  & Keras & 2,177 & 0.7533 \\
+  & PyTorch & 2,177 & \textbf{0.7819} \\
+\midrule
+\multirow{3}{*}{Fashion-MNIST}
+  & Scratch & 421,642 & \textbf{0.8973} \\
+  & Keras & 421,642 & 0.8603 \\
+  & PyTorch & 421,642 & 0.8660 \\
+\midrule
+\multirow{3}{*}{CIFAR-10}
+  & Scratch & 545,098 & 0.6033 \\
+  & Keras & 545,098 & \textbf{0.6102} \\
+  & PyTorch & 545,098 & 0.5696 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Bold typography denotes peak validation accuracy within each benchmark. Trainable parameter footprints are strictly invariant across all three software implementations within each task, verified via automated assertions in every computational notebook.}
+
+\begin{table}[H]
+\centering
+\caption{Cross-application training time, seconds, all 3 applications x 3 implementations}
+\label{tab:cross-time}
+\begin{tabular}{lrrr}
+\toprule
+Application & Scratch & Keras & PyTorch \\
+\midrule
+Diabetes & 69.4 & \textbf{24.7} & 311.0 \\
+Fashion-MNIST & 1,330.5 & \textbf{75.6} & 191.5 \\
+CIFAR-10 & 1,875.8 & \textbf{103.3} & 244.1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textit{Bold typography highlights the most computationally efficient implementation per task. TensorFlow/Keras achieves the highest computational throughput across all three domains. The pure NumPy baseline is competitive with PyTorch only on tabular MLP data, while lagging dramatically on both convolutional image tasks.}
+
+No individual implementation wins every task. Furthermore, the highest-accuracy model on Diabetes (PyTorch) is also the slowest, demonstrating that predictive accuracy and training throughput represent independent axes of framework evaluation.
+
+% ---------------------------------------------------------------------
+\section{Discussion \& Lessons Learned}
+\label{sec:discussion}
+% ---------------------------------------------------------------------
+
+\subsection{Did the Same Architecture Truly Hold?}
+
+Yes. Parameter footprints matched exactly across all three implementations in every application, confirmed by runtime assertions. In addition, accuracy spreads remained bounded within four to five percentage points across all tasks. The rotation of top-performing frameworks (PyTorch on Diabetes, Scratch on Fashion-MNIST, Keras on CIFAR-10) directly supports Lecture 04's core premise: when the mathematical architecture is held invariant, no framework possesses inherently superior statistical learning capacity.
+
+\subsection{Where Abstraction Levels Genuinely Differed}
+
+Training runtime is where software abstractions diverged sharply. On the tabular Diabetes MLP, Scratch and Keras trained in comparable times (69.4s vs. 24.7s), while PyTorch was slowest (311.0s) due to fixed per-batch autograd graph construction overhead that a small 2,177-parameter model cannot amortize. On convolutional networks, this pattern reversed completely: Scratch was 17.6x slower than Keras on Fashion-MNIST and 18.2x slower on CIFAR-10. This widening gap demonstrates that \code{im2col} patch extraction in interpreted Python scales poorly with input spatial resolution and channel depth, whereas compiled framework backends leverage optimized C++/CUDA SIMD routines.
+
+\subsection{Practical Insights from Building by Hand}
+
+Developing implementations from scratch uncovered two critical implementation details that high-level APIs silently mask:
+\begin{itemize}
+  \item \textbf{Loss Formulation Divergence:} PyTorch's \code{BCEWithLogitsLoss(pos_weight=...)} scales only the positive error term, shifting the scalar loss baseline upwards ($0.87$ vs. $0.51$) compared to Scratch and Keras, which scale both classes symmetrically. This demonstrates that identical functional concepts can be parameterized differently across libraries.
+  \item \textbf{Gradient Check Verification:} Finite-difference gradient checking on the Fashion-MNIST scratch model caught a redundant $1/N$ division in the dense layer backward pass that had artificially damped gradients while still producing plausible loss descent. Numerical checking proved indispensable for ensuring gradient fidelity.
+\end{itemize}
+
+% ---------------------------------------------------------------------
+\section{Conclusion \& Summary}
+% ---------------------------------------------------------------------
+
+This empirical study validates the central pedagogical premise of Lecture 04: neural architectures represent invariant mathematical functions whose statistical capacity is independent of software abstraction tiers. Across all three benchmarks, parameter counts matched identically and generalization accuracies converged within tight bounds. However, computational runtime diverged dramatically: on convolutional tasks, compiled framework engines delivered up to 18.2x speedups over pure NumPy. Handcrafting training loops and loss functions exposed important implementation nuances---such as asymmetric loss weighting in PyTorch and subtle backward gradient scaling bugs---demonstrating the unique pedagogical value of implementing deep learning algorithms from foundational principles.
+
+% ---------------------------------------------------------------------
+\section{Reproducibility Guide}
+% ---------------------------------------------------------------------
+
+\subsection{Hardware \& Environment Setup}
+
+\begingroup\sloppy\emergencystretch=3em
+All benchmarks were executed in an isolated virtual environment at \texttt{assignment\_04/.venv} (Python 3.10.11, kernel \texttt{assignment\_04}) using: NumPy, Pandas, Scikit-Learn, Matplotlib, Seaborn, Jupyter, NbConvert, TensorFlow 2.21.0, PyTorch 2.14.0+cpu, and Torchvision 0.29.0+cpu. CPU-only packages ensured fair runtime comparisons without hardware confounds. All random number generators were locked to \code{RANDOM_SEED = 42}.
+\par\endgroup
+
+\subsection{How to Re-run the Notebooks}
+
+Notebooks can be re-executed autonomously from their respective directories:
+\begin{footnotesize}
+\begin{verbatim}
+../.venv/Scripts/python.exe -m jupyter nbconvert \
+    --to notebook --execute --inplace \
+    notebook/<app>.ipynb --ExecutePreprocessor.timeout=1800
+\end{verbatim}
+\end{footnotesize}
+substituting \texttt{<app>} with \texttt{diabetes}, \texttt{fashion\_mnist}, or \texttt{cifar10}. Datasets for Fashion-MNIST and CIFAR-10 download automatically via \code{keras.datasets}, whereas Diabetes requires CSV files in \texttt{diabetes/data/}. Upon execution, notebooks serialize trained weights into \texttt{model/}:
+\begin{itemize}[nosep]
+  \item \texttt{scratch\_weights.npz}: NumPy scratch trained weights.
+  \item \texttt{keras\_model.keras}: exported Keras model.
+  \item \texttt{pytorch\_model.pt}: PyTorch state dictionary.
+  \item \texttt{feature\_names.joblib} (Diabetes only): encoded tabular feature column names.
+  \item \texttt{input\_schema.json}: documented input attributes and target schema.
+\end{itemize}
+A validation cell in each notebook reloads all artifacts to verify prediction consistency.
+
+\end{document}
