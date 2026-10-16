@@ -1,0 +1,26 @@
+# Raw Kaggle data (download with the commands in dataset/README.md)
+dataset/ec/*
+dataset/st/*
+!dataset/*/.gitkeep
+
+# Trained models and checkpoints
+notebook/models/
+*.keras
+*.h5
+*.pt
+*.pth
+
+# Python / Jupyter
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+
+# LaTeX build files
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/*.synctex.gz
+
+# OS
+.DS_Store
