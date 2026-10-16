@@ -185,3 +185,9 @@ assignment_06/report/*.log
 assignment_06/report/*.out
 assignment_06/report/*.toc
 assignment_06/.venv/
+
+# Assignment 07 (RNN vs LSTM): raw data and trained models
+assignment_07/dataset/ec/*
+assignment_07/dataset/st/*
+!assignment_07/dataset/*/.gitkeep
+assignment_07/notebook/models/
