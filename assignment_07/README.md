@@ -12,6 +12,13 @@ Data: [dataset/README.md](dataset/README.md). Report: `report/Assignment_07.tex`
 
 ## Run
 
+Set up the environment (Python 3.12):
+
+```
+python3.12 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+```
+
 From `notebook/` with the course venv (Python 3.12, TensorFlow 2.18 + Metal, PyTorch MPS), or open the notebooks in VS Code / Jupyter and *Run All*:
 
 ```
