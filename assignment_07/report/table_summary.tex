@@ -1,0 +1,11 @@
+\begin{tabular}{lllrrrrrrr}
+\toprule
+Data & Framework & Score & RNN & LSTM & $\Delta$ & Params RNN & Params LSTM & s/epoch R / L & Time ratio \\
+\midrule
+EC & Keras & F1 macro & 0.9084 & 0.9161 & +0.0076 & 1{,}321{,}345 & 1{,}445{,}185 & 53 / 256 & 4.8$\times$ \\
+EC & PyTorch & F1 macro & 0.8999 & 0.9176 & +0.0177 & 1{,}321{,}665 & 1{,}446{,}465 & 58 / 143 & 2.5$\times$ \\
+\midrule
+ST & Keras & $R^2_{\text{oos}}$ & 0.0884 & 0.0920 & +0.0036 & 9{,}537 & 38{,}049 & 67 / 175 & 2.6$\times$ \\
+ST & PyTorch & $R^2_{\text{oos}}$ & 0.0871 & 0.0965 & +0.0094 & 9{,}697 & 38{,}689 & 71 / 127 & 1.8$\times$ \\
+\bottomrule
+\end{tabular}

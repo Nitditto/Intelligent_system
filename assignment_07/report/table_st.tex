@@ -1,0 +1,14 @@
+\begin{tabular}{lrrrrrrr}
+\toprule
+Run & RMSE (\%) & MAE (\%) & $R^2_{\text{oos}}$ & Corr. & Params & s/epoch & Epochs (best) \\
+\midrule
+\textit{train mean} & 1.3632 & 0.8809 & 0.0000 & -- & -- & -- & -- \\
+\textit{persistence $|r_t|$} & 1.7783 & 1.1281 & -0.7018 & 0.149 & -- & -- & -- \\
+\textit{20-day mean $|r|$} & 1.3326 & 0.8656 & 0.0443 & 0.251 & -- & -- & -- \\
+\midrule
+\run{ST-TF-RNN} & 1.3015 & 0.8419 & 0.0884 & 0.300 & 9{,}537 & 67 & 3 (1) \\
+\run{ST-TF-LSTM} & 1.2990 & \textbf{0.8158} & 0.0920 & 0.311 & 38{,}049 & 175 & 6 (4) \\
+\run{ST-PT-RNN} & 1.3025 & 0.8238 & 0.0871 & 0.299 & 9{,}697 & 71 & 4 (2) \\
+\run{ST-PT-LSTM} & \textbf{1.2957} & 0.8399 & \textbf{0.0965} & 0.311 & 38{,}689 & 127 & 5 (3) \\
+\bottomrule
+\end{tabular}
