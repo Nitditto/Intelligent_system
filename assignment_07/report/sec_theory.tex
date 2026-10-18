@@ -1,0 +1,232 @@
+% =====================================================================
+\section{A Five-Layer RNN and a Five-Layer LSTM as Compositions of Functions}
+\label{sec:theory}
+% =====================================================================
+
+The assignment asks for the structure of a 5-layer RNN and a 5-layer LSTM written as compositions of elementary functions. This chapter builds both
+networks from five operations, checks every formula on numbers small enough to read (notebook \texttt{00\_rnn\_lstm\_concepts.ipynb}), and explains why each
+piece of the design exists. Notation: a sequence has $T$ steps; the input at step $t$ is a row vector $x_t\in\mathbb{R}^F$; a layer has $H$ hidden units;
+layers are numbered $l=1,\dots,L$ with $L=5$; $h^{(l)}_t$ is the hidden state of layer $l$ at step $t$. Vectors are rows, so a layer is written $xW$.
+
+\subsection{The Five Elementary Functions}
+
+\begin{table}[H]
+\centering
+\caption{The operations from which both networks are built, with the numbers used in the notebook.}
+\label{tab:elem}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+Function & Formula & Example \\
+\midrule
+matrix product & $(xW)_j=\sum_i x_iW_{ij}$ & $(2,1)\begin{pmatrix}1&2\\0&1\end{pmatrix}=(2,5)$ \\
+addition & $a+b$ & $(2,5)+(0.5,-1)=(2.5,4)$ \\
+$\tanh$ & $\tanh z=\dfrac{e^z-e^{-z}}{e^z+e^{-z}}\in(-1,1)$ & $\tanh(2.5)=0.9866$, $\tanh(4)=0.9993$ \\
+sigmoid & $\sigma(z)=\dfrac1{1+e^{-z}}\in(0,1)$ & $\sigma(0)=0.5$, $\sigma(2)=0.8808$ \\
+element-wise product & $(a\odot b)_i=a_ib_i$ & $(0.8,0.2)\odot(5,5)=(4,1)$ \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Their derivatives decide how well a gradient travels: $\tanh'(z)=1-\tanh^2z\le1$ and $\sigma'(z)=\sigma(z)(1-\sigma(z))\le0.25$. A saturated unit passes almost nothing back:
+$\tanh'(3)=1-0.9951^2=0.0099$.
+
+\textbf{Why these five.}
+\begin{itemize}
+\item \emph{Matrix product}: every hidden unit must see every input value, each with its own weight; one product computes all units at once.
+\item \emph{Addition}: the cell merges two sources, the new input and its own memory. Addition keeps both and has derivative 1, so a gradient passes through it unchanged.
+\item \emph{A nonlinearity}: without one, depth is useless, because $(xW_1)W_2=x(W_1W_2)$: five linear layers equal one matrix.
+\item \emph{$\tanh$ instead of ReLU in a recurrence}: the same $W_h$ is applied at every step. If it scales the state by 1.1, an unbounded ReLU state grows $1.1^{40}\approx45$-fold in 40 steps, while $\tanh$ pushes every step back into $(-1,1)$ and is zero-centred.
+\item \emph{Sigmoid for gates}: a gate is a fraction between ``block'' (0) and ``pass'' (1), which is exactly the range of $\sigma$; $\tanh$ also takes negative values and cannot serve.
+\item \emph{$\odot$}: a gate acts on every unit separately (keep unit 1, forget unit 2), so gate and content are multiplied position by position, not with a full matrix.
+\end{itemize}
+
+\subsection{One RNN Cell}
+
+At step $t$ the cell combines the new input with its previous state:
+\begin{equation}
+h_t=\tanh\big(x_tW_x+h_{t-1}W_h+b\big),\qquad h_0=0 .
+\end{equation}
+As a composition, $h_t=\tanh\circ\,\mathrm{add}\,(x_tW_x,\;h_{t-1}W_h,\;b)$: two matrix products, one addition, one $\tanh$. The same $W_x,W_h,b$ are used at every step (weight sharing),
+so the cell is one function applied $T$ times, each time feeding its output back in. Weight sharing is not only an economy: the rule for reading a word should not depend on where the
+word sits (``not good'' means the same at word 3 and at word 80), and a single $W_h$ serves a sequence of any length, whereas separate weights per step would multiply the parameters by $T$.
+Unrolled for three steps, $h_3=\tanh\!\big(x_3W_x+\tanh(x_2W_x+\tanh(x_1W_x+b)W_h+b)W_h+b\big)$: the first input reaches $h_3$ only through nested $W_h$ and $\tanh$,
+which is the root of the gradient problem in Section~\ref{sec:grad}.
+
+\textbf{Worked example} ($F=H=2$). Take $W_x=\begin{pmatrix}0.6&-0.4\\0.3&0.9\end{pmatrix}$, $W_h=\begin{pmatrix}0.2&0.5\\-0.3&0.1\end{pmatrix}$, $b=(0.1,-0.1)$ and the inputs
+$x_1=(1,0.5)$, $x_2=(-0.5,1)$, $x_3=(0,-1)$. Step 1: $x_1W_x=(0.75,\,0.05)$, $h_0W_h=0$, so $a_1=(0.85,-0.05)$ and $h_1=\tanh(a_1)=(0.6911,-0.0500)$.
+Step 2: $x_2W_x=(0.00,\,1.10)$ and $h_1W_h=(0.1532,\,0.3406)$, so $a_2=(0.00+0.1532+0.1,\;1.10+0.3406-0.1)=(0.2532,\,1.3406)$ and $h_2=(0.2479,0.8718)$. Step 3 gives $h_3=(-0.3901,-0.6578)$.
+All numbers were produced by the notebook and agree with this hand calculation.
+
+\subsection{Stacking Five Layers}
+
+A 5-layer RNN stacks five such cells. Layer 1 reads the input sequence; layer $l$ reads the \emph{hidden states of layer $l-1$} as its input sequence:
+\begin{align}
+h^{(1)}_t&=\tanh\big(x_tW^{(1)}_x+h^{(1)}_{t-1}W^{(1)}_h+b^{(1)}\big),\\
+h^{(l)}_t&=\tanh\big(h^{(l-1)}_tW^{(l)}_x+h^{(l)}_{t-1}W^{(l)}_h+b^{(l)}\big),\qquad l=2,\dots,5 .
+\end{align}
+The prediction uses the top layer at the last step, $\hat y=g\big(h^{(5)}_TW_y+b_y\big)$, where $g$ is a softmax for the three-class review task and the identity for the volatility regression.
+Calling $f^{(l)}$ the map that turns a whole sequence into the sequence of layer-$l$ states, the network is the composition
+\begin{equation}
+\hat y=g\circ\mathrm{last}\circ f^{(5)}\circ f^{(4)}\circ f^{(3)}\circ f^{(2)}\circ f^{(1)}\,(x_1,\dots,x_T),
+\end{equation}
+and every $f^{(l)}$ is itself $T$ repetitions of matrix product $\to$ add $\to$ $\tanh$. Figure~\ref{fig:grid} shows the grid: information moves \emph{up} through the layers at one step and \emph{right} through time inside one layer.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{C_grid.png}
+\caption{A 5-layer RNN unrolled over four steps. Blue arrows: up through layers; red arrows: right through time. The prediction reads only the top-right state.}
+\label{fig:grid}
+\end{figure}
+
+\textbf{Why stack, why the last step, why this output function.} Each layer re-reads the sequence produced by the layer below, so higher layers work on more abstract summaries:
+in a review the first layer reacts to single words, a middle layer to short phrases (``not good''), the top layer to the overall verdict; in a price series the first layer sees one day, higher layers see
+weeks. Through the recurrence $h^{(5)}_T$ depends on every input $x_1,\dots,x_T$, so one vector at the last step summarises the sequence; each task needs one answer per sequence. A softmax output gives probabilities
+that sum to one and pairs with cross-entropy; the volatility is a real number trained with squared error, and squashing it would cap the forecast.
+
+\textbf{Shapes.} The same network, shown as the shapes of the tensors it passes (batch of 256):
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Step & EC (reviews) & ST (stocks) \\
+\midrule
+input & $(256,120)$ word ids & $(256,40,5)$ features \\
+embedding & $(256,120,48)$ & --- \\
+layers 1--5 & each $(256,120,64)$ & each $(256,40,32)$ \\
+last step of layer 5 & $(256,64)$ & $(256,32)$ \\
+output & $(256,3)$ after softmax & $(256,1)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Counting Parameters}
+
+Layer 1 maps $F\to H$ and layers 2--5 map $H\to H$. With one bias per unit (the Keras convention) the 5-layer RNN with a head of $K$ outputs has
+\begin{equation}
+\underbrace{FH+H^2+H}_{\text{layer 1}}+\underbrace{4\,(H^2+H^2+H)}_{\text{layers 2--5}}+\underbrace{HK+K}_{\text{head}}
+\end{equation}
+parameters. $W_x$ has shape $F\times H$ (each unit has one weight per input feature) or $H\times H$ for the upper layers (their inputs are the $H$ states below); $W_h$ is $H\times H$ because every unit sees the previous state of all units in its layer.
+The count does not depend on $T$: a 10-word review and a 100-word review use the same weights. PyTorch stores two bias vectors (\texttt{bias\_ih}, \texttt{bias\_hh}) whose sum is the single bias of the formula, so it has $L\cdot H$ more
+parameters and exactly the same function. For the toy sizes $F=3$, $H=5$, $K=1$ the formula gives $(15+25+5)+4(25+25+5)+6=271$; the Keras stack of five \texttt{SimpleRNN} layers plus head has 271 and PyTorch has $271+25=296$, as counted by the notebook.
+
+\textbf{Checking against the frameworks.} The notebook implements the five-layer RNN in NumPy using only matrix product, addition and $\tanh$, copies the weights of a PyTorch \texttt{nn.RNN(3,5,num\_layers=5)} into it and into five Keras \texttt{SimpleRNN} layers, and compares the top-layer states of three random sequences of seven steps:
+the largest absolute difference is $8.3\cdot10^{-8}$ against PyTorch and $1.1\cdot10^{-7}$ against Keras, which is float32 round-off. Naming differs between frameworks: PyTorch keeps $W_x^{\top}$ as \texttt{weight\_ih\_l\{k\}}; Keras keeps $W_x$ as \texttt{kernel} and $W_h$ as \texttt{recurrent\_kernel}.
+
+\subsection{The Gradient Through Depth and Time}
+\label{sec:grad}
+
+Training needs $\partial\mathcal{L}/\partial h^{(l)}_t$ for every layer and step. By the chain rule, going back one step in time multiplies the gradient by
+\begin{equation}
+\frac{\partial h_t}{\partial h_{t-1}}=\mathrm{diag}(1-h_t^2)\,W_h^{\top},\qquad
+\frac{\partial h_T}{\partial h_t}=\prod_{k=t+1}^{T}\mathrm{diag}(1-h_k^2)\,W_h^{\top},
+\end{equation}
+and going down one layer multiplies it by the same kind of factor with $W_x$. Reaching step $t$ from step $T$ takes $T-t$ factors, so the size of the gradient is roughly (typical factor)$^{T-t}$.
+If the typical factor is $0.6$, then after 40 steps $0.6^{40}\approx1.3\cdot10^{-9}$ and the gradient \emph{vanishes}; if it is $1.2$, then $1.2^{40}\approx1{,}470$ and it \emph{explodes}.
+Vanishing means the first words of a review hardly change the weights, so the RNN effectively learns from the last few steps only.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{C_rnn_grad.png}
+\caption{Size of $\lVert\partial\mathcal{L}/\partial h^{(l)}_t\rVert$ (log$_{10}$) in a freshly initialised 5-layer RNN, $T=40$, $H=48$, loss on the last state of the top layer. Step 1 of layer 1 receives $1.7\cdot10^{-9}$ of the gradient at the top-right corner.}
+\label{fig:rnngrad}
+\end{figure}
+
+\textbf{Exploding gradients and clipping.} The opposite failure appears when the recurrent matrix amplifies. We set $W_h=\rho Q$ with $Q$ orthogonal, unroll the 5-layer RNN for 40 steps and measure the gradient norm over all weights (median of five networks):
+\begin{center}
+\small
+\begin{tabular}{@{}l*{9}{r}@{}}
+\toprule
+$\rho$ & 0.3 & 0.6 & 0.9 & 1.0 & 1.2 & 1.5 & 2 & 3 & 5 \\
+\midrule
+$\lVert g\rVert$ & 11.2 & 14.7 & 22.1 & 25.4 & 40.1 & 208 & $1.3\!\cdot\!10^{4}$ & $7.6\!\cdot\!10^{6}$ & $2.2\!\cdot\!10^{10}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\emph{Clipping by norm} replaces $g$ by $g\cdot\min(1,c/\lVert g\rVert)$: the direction is kept and the length is capped at $c$. With $c=1$ a step $-\eta g$ can never exceed $\eta$ in length, even at $\rho=5$, where the raw gradient is $2.2\cdot10^{10}$.
+Clipping cures explosion only. A vanished gradient is already shorter than $c$, so clipping cannot enlarge it; that needs a different cell. All experiments in this report use $c=1$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{C_clip.png}
+\caption{Gradient norm of the 5-layer RNN against the scale $\rho$ of its recurrent matrix, before and after clipping at 1.}
+\end{figure}
+
+\subsection{The LSTM Cell}
+
+An LSTM adds a second state, the \emph{cell} $c_t$, and three \emph{gates} that decide what to forget, what to write and what to show. Each gate is the RNN formula with a sigmoid in place of $\tanh$:
+
+\begin{table}[H]
+\centering
+\caption{One LSTM step. Matrices $W_\bullet,U_\bullet$ act on $x_t$ and $h_{t-1}$.}
+\label{tab:gates}
+\small
+\begin{tabularx}{\textwidth}{@{}l l X@{}}
+\toprule
+ & Formula & Role \\
+\midrule
+input gate & $i_t=\sigma(x_tW_i+h_{t-1}U_i+b_i)$ & how much new content to write \\
+forget gate & $f_t=\sigma(x_tW_f+h_{t-1}U_f+b_f)$ & how much of the old cell to keep \\
+candidate & $g_t=\tanh(x_tW_g+h_{t-1}U_g+b_g)$ & the new content \\
+output gate & $o_t=\sigma(x_tW_o+h_{t-1}U_o+b_o)$ & how much of the cell to show \\
+cell & $c_t=f_t\odot c_{t-1}+i_t\odot g_t$ & memory, updated by addition \\
+hidden & $h_t=o_t\odot\tanh(c_t)$ & output of the step \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The step $(h_t,c_t)=\mathrm{LSTM}(x_t,h_{t-1},c_{t-1})$ uses matrix product, addition, sigmoid, $\tanh$ and $\odot$ and nothing else. A 5-layer LSTM stacks five of them exactly like the RNN: layer $l$ reads $h^{(l-1)}_t$ and keeps its own cell $c^{(l)}_t$.
+\textbf{Worked example:} $f=0.8$, $c_{t-1}=1.5$, $i=0.4$, $g=0.5$ give $c_t=0.8\cdot1.5+0.4\cdot0.5=1.2+0.2=1.4$.
+
+\textbf{Why each piece exists.}
+\begin{itemize}
+\item The gates see $x_t$ and $h_{t-1}$, because the decision to forget or to write depends on context: after reading ``not'', the word ``good'' must be treated differently, and only $h_{t-1}$ knows that ``not'' came before.
+\item The candidate uses $\tanh$ because new content must be able to push a memory up or down.
+\item The cell is updated by \emph{addition}, which keeps a copy of the old memory instead of squashing it again through a matrix and $\tanh$. Hence
+$\dfrac{\partial c_t}{\partial c_{t-1}}\approx\mathrm{diag}(f_t)$: with $f=0.97$ the signal over 40 steps is $0.97^{40}\approx0.30$, whereas the RNN's typical $0.6^{40}\approx1.3\cdot10^{-9}$ is eight orders of magnitude smaller.
+\item $h_t=o_t\odot\tanh(c_t)$ brings the unbounded sum back into $(-1,1)$ for the next layer; the output gate lets the cell hold information without showing it until it is useful.
+\item Nobody sets the gates by hand; training adjusts $W_f,U_f,b_f$ so that $f_t\approx1$ where memory pays off and $f_t\approx0$ where the state should reset.
+\end{itemize}
+
+\textbf{Storage and parameters.} Both frameworks store the four gates side by side in one matrix of width $4H$ in the order $i,f,g,o$ (Keras calls $g$ ``c''): all four use the same inputs, so one large product is faster than four small ones.
+Each layer therefore holds four copies of the RNN's weights,
+\begin{equation}
+4(FH+H^2+H)+4\cdot4\,(2H^2+H)+HK+K ,
+\end{equation}
+exactly four times the recurrent part of the RNN; the cell update and $h_t=o\odot\tanh c_t$ add no parameters. For $F=3$, $H=5$, $K=1$ this is $180+880+6=1{,}066$ (Keras) and $1{,}166$ (PyTorch, $+4LH=100$ for the second bias).
+The same hand-versus-framework check as for the RNN gives maximum differences of $3.7\cdot10^{-8}$ (PyTorch) and $3.8\cdot10^{-8}$ (Keras).
+
+\subsection{Gradient Flow in the LSTM}
+
+Repeating the experiment of Figure~\ref{fig:rnngrad} for the LSTM (Figure~\ref{fig:lstmgrad}) depends on the initial forget-gate bias. At the start $f_t\approx\sigma(b_f)$ and the signal back through the cell is about $f^{T}$:
+with $b_f=0$, $\sigma(0)=0.5$ and $0.5^{40}\approx9\cdot10^{-13}$, the cell begins by forgetting almost everything; with $b_f=1$, $\sigma(1)=0.73$ and $0.73^{40}\approx3.4\cdot10^{-6}$, about $4\cdot10^{6}$ times more.
+Measured on the 5-layer network, step 1 of layer 1 receives $1.7\cdot10^{-9}$ (RNN), $4.1\cdot10^{-9}$ (LSTM, $b_f=0$) and $9.5\cdot10^{-4}$ (LSTM, $b_f=1$) of the gradient at the top-right corner.
+The principle is to start the network remembering and let it learn what to forget. Keras uses $b_f=1$ by default, PyTorch uses 0, so our PyTorch models set it to 1 as well (Section~\ref{sec:impl}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{C_lstm_grad.png}
+\caption{Same measurement as Figure~\ref{fig:rnngrad} for the RNN and for the LSTM with forget bias 0 and 1 (common colour scale).}
+\label{fig:lstmgrad}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{The two architectures side by side.}
+\label{tab:rnnlstm}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+ & 5-layer RNN & 5-layer LSTM \\
+\midrule
+elementary functions & matrix product, add, $\tanh$ & + sigmoid, $\odot$ \\
+state per layer & $h_t$ & $h_t$ and cell $c_t$ \\
+parameters per layer & $FH+H^2+H$ & $4(FH+H^2+H)$ \\
+gradient back one step & $\times\,\mathrm{diag}(1-h^2)W_h^{\top}$: shrinks & through $c$: $\times f_t$, kept when $f_t\approx1$ \\
+PyTorch / Keras & \texttt{nn.RNN(num\_layers=5)} / 5 $\times$ \texttt{SimpleRNN} & \texttt{nn.LSTM(num\_layers=5)} / 5 $\times$ \texttt{LSTM} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The LSTM's advantage is the cell path, which pays off only when the answer depends on information far back in the sequence. When the last few steps carry most of the signal, a plain RNN can do nearly as well at a quarter of the recurrent cost.
+The two experiments below test exactly this.

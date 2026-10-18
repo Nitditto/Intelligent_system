@@ -1,11 +1,15 @@
-\begin{tabular}{lllrrrrrrr}
+\begin{tabular}{llrrrrr}
 \toprule
-Data & Framework & Score & RNN & LSTM & $\Delta$ & Params RNN & Params LSTM & s/epoch R / L & Time ratio \\
+Run & main metric & value & second metric & params & s/epoch & train time (s) \\
 \midrule
-EC & Keras & F1 macro & 0.9084 & 0.9161 & +0.0076 & 1{,}321{,}345 & 1{,}445{,}185 & 53 / 256 & 4.8$\times$ \\
-EC & PyTorch & F1 macro & 0.8999 & 0.9176 & +0.0177 & 1{,}321{,}665 & 1{,}446{,}465 & 58 / 143 & 2.5$\times$ \\
+\run{EC-TF-RNN} & macro-F1 & 0.614 & acc. 0.829 & 760{,}451 & 69.7 & 286 \\
+\run{EC-PT-RNN} & macro-F1 & 0.605 & acc. 0.830 & 760{,}771 & 143.4 & 566 \\
+\run{EC-TF-LSTM} & macro-F1 & 0.682 & acc. 0.834 & 881{,}219 & 278.4 & 1127 \\
+\run{EC-PT-LSTM} & macro-F1 & 0.695 & acc. 0.829 & 882{,}499 & 188.2 & 1126 \\
 \midrule
-ST & Keras & $R^2_{\text{oos}}$ & 0.0884 & 0.0920 & +0.0036 & 9{,}537 & 38{,}049 & 67 / 175 & 2.6$\times$ \\
-ST & PyTorch & $R^2_{\text{oos}}$ & 0.0871 & 0.0965 & +0.0094 & 9{,}697 & 38{,}689 & 71 / 127 & 1.8$\times$ \\
+\run{ST-TF-RNN} & RMSE (\%) & 0.6849 & $R^2$ 0.320 & 9{,}569 & 20.2 & 87 \\
+\run{ST-PT-RNN} & RMSE (\%) & 0.6956 & $R^2$ 0.299 & 9{,}729 & 31.1 & 127 \\
+\run{ST-TF-LSTM} & RMSE (\%) & 0.6788 & $R^2$ 0.332 & 38{,}177 & 86.5 & 362 \\
+\run{ST-PT-LSTM} & RMSE (\%) & 0.6828 & $R^2$ 0.324 & 38{,}817 & 66.3 & 264 \\
 \bottomrule
 \end{tabular}

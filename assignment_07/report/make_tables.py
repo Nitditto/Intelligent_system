@@ -1,16 +1,8 @@
-"""Builds the report's LaTeX tables and comparison charts from the executed notebooks (run after the notebooks).
-
-Reads notebook/results/<run>.json and <code>_comparison.csv, and the accuracy-by-length (EC) and
-error-by-regime (ST) tables printed in the notebooks.
-
-    python report/make_tables.py
-"""
+"""Builds the LaTeX tables and the comparison charts of the report from notebook/results and the executed notebooks.
+Run after the notebooks:  python make_tables.py"""
 import json
-import re
 from pathlib import Path
 
-import matplotlib
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -18,166 +10,149 @@ HERE = Path(__file__).parent
 NB = HERE.parent / "notebook"
 RES = NB / "results"
 IMG = HERE / "images"
-RUNS = ["TF-RNN", "TF-LSTM", "PT-RNN", "PT-LSTM"]
+ORDER = ["TF-RNN", "PT-RNN", "TF-LSTM", "PT-LSTM"]
+plt.rcParams.update({"axes.spines.top": False, "axes.spines.right": False, "figure.dpi": 130})
 
 
 def run(rid): return r"\run{" + rid + "}"
+def num(x): return f"{int(x):,}".replace(",", "{,}")
+f4 = lambda x: f"{x:.4f}"; f3 = lambda x: f"{x:.3f}"; f2 = lambda x: f"{x:.2f}"; f1 = lambda x: f"{x:.1f}"
 
 
 def load(code):
     cmp_ = pd.read_csv(RES / f"{code}_comparison.csv", index_col=0)
     base = cmp_[cmp_.index.str.startswith("baseline")]
-    runs = {k: json.loads((RES / f"{code}-{k}.json").read_text()) for k in RUNS}
+    runs = {k: json.loads((RES / f"{code}-{k}.json").read_text()) for k in ORDER}
     return base, runs
 
 
-def tabular(header, rows, align):
-    out = [r"\begin{tabular}{" + align + "}", r"\toprule", " & ".join(header) + r" \\", r"\midrule"]
-    for r in rows:
-        out.append(r"\midrule" if r == "MID" else " & ".join(r) + r" \\")
-    out += [r"\bottomrule", r"\end{tabular}"]
-    return "\n".join(out) + "\n"
-
-
-def f4(x): return f"{x:.4f}".replace("-0.0000", "0.0000")
-def f3(x): return f"{x:.3f}"
-def thousands(x): return f"{int(x):,}".replace(",", "{,}")
-
-
-def bold_best(rows, col, best):
-    """Bold the best value of column `col` among the model rows (strings already formatted)."""
-    vals = [float(r[col]) for r in rows if r != "MID" and r[col] != "--"]
-    target = f"{best(vals):.4f}"
-    for r in rows:
-        if r != "MID" and r[col] == target:
-            r[col] = r"\textbf{" + target + "}"
-
-
-def table_ec():
-    base, runs = load("EC")
-    rows = []
-    for name, b in base.iterrows():
-        rows.append([r"\textit{" + {"baseline: majority": "majority class", "baseline: tfidf_logreg": "TF-IDF + log. regression"}[name] + "}",
-                     f4(b.accuracy), f4(b.f1_macro), f4(b.f1_negative), f4(b.roc_auc), "--", "--", "--"])
-    rows.append("MID")
-    for k in RUNS:
+def table(code, cols, header, fmt, base_cols=None):
+    base, runs = load(code)
+    lines = [r"\begin{tabular}{l" + "r" * len(cols) + "}", r"\toprule", "Run & " + " & ".join(header) + r" \\", r"\midrule"]
+    for name, row in base.iterrows():
+        label = name.replace("baseline: ", "").replace("_", r"\_")
+        vals = [fmt[c](row[c]) if c in row and pd.notna(row[c]) and c in (base_cols or cols) else "--" for c in cols]
+        lines.append(r"\textit{" + label + "} & " + " & ".join(vals) + r" \\")
+    lines.append(r"\midrule")
+    for k in ORDER:
         r = runs[k]
-        rows.append([run("EC-" + k), f4(r["accuracy"]), f4(r["f1_macro"]), f4(r["f1_negative"]), f4(r["roc_auc"]),
-                     thousands(r["params"]), f"{r['sec_per_epoch']:.0f}", f"{r['epochs']} ({r['best_epoch']})"])
-    model_rows = rows[len(base) + 1:]
-    for c in range(1, 5):
-        bold_best(model_rows, c, max)
-    return tabular(["Run", "Accuracy", "F1 macro", "F1 neg.", "ROC-AUC", "Params", "s/epoch", "Epochs (best)"], rows, "lrrrrrrr")
+        flat = {**r, "epochs": f"{r['epochs']} ({r['best_epoch']})"}
+        lines.append(run(f"{code}-{k}") + " & " + " & ".join(fmt[c](flat[c]) for c in cols) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines)
 
 
-def table_st():
-    base, runs = load("ST")
-    rows = []
-    for name, b in base.iterrows():
-        corr = "--" if pd.isna(b["corr"]) else f3(b["corr"])
-        rows.append([r"\textit{" + name.replace("baseline: ", "").replace("|r_t|", "$|r_t|$").replace("|r|", "$|r|$") + "}",
-                     f4(b["RMSE (%)"]), f4(b["MAE (%)"]), f4(b["r2_oos"]), corr, "--", "--", "--"])
-    rows.append("MID")
-    for k in RUNS:
-        r = runs[k]
-        rows.append([run("ST-" + k), f4(100 * r["rmse"]), f4(100 * r["mae"]), f4(r["r2_oos"]), f3(r["corr"]),
-                     thousands(r["params"]), f"{r['sec_per_epoch']:.0f}", f"{r['epochs']} ({r['best_epoch']})"])
-    model_rows = rows[len(base) + 1:]
-    bold_best(model_rows, 1, min); bold_best(model_rows, 2, min); bold_best(model_rows, 3, max)
-    return tabular(["Run", "RMSE (\\%)", "MAE (\\%)", "$R^2_{\\text{oos}}$", "Corr.", "Params", "s/epoch", "Epochs (best)"], rows, "lrrrrrrr")
+def frame_table(df, fmt=f3, first="", index_fmt=str):
+    lines = [r"\begin{tabular}{l" + "r" * len(df.columns) + "}", r"\toprule",
+             first + " & " + " & ".join(c.replace("_", r"\_").replace("%", r"\%") for c in df.columns) + r" \\", r"\midrule"]
+    for idx, row in df.iterrows():
+        lines.append(index_fmt(idx) + " & " + " & ".join(fmt(v) if pd.notna(v) else "--" for v in row) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    return "\n".join(lines)
 
 
-def table_summary():
-    """RNN vs LSTM per dataset and framework: main score, parameters, time."""
-    rows = []
-    for code, score, label in [("EC", "f1_macro", "F1 macro"), ("ST", "r2_oos", "$R^2_{\\text{oos}}$")]:
-        _, runs = load(code)
-        for fw in ["TF", "PT"]:
-            rnn, lstm = runs[f"{fw}-RNN"], runs[f"{fw}-LSTM"]
-            rows.append([code, {"TF": "Keras", "PT": "PyTorch"}[fw], label,
-                         f4(rnn[score]), f4(lstm[score]), f"{lstm[score] - rnn[score]:+.4f}",
-                         thousands(rnn["params"]), thousands(lstm["params"]),
-                         f"{rnn['sec_per_epoch']:.0f} / {lstm['sec_per_epoch']:.0f}",
-                         f"{lstm['sec_per_epoch'] / rnn['sec_per_epoch']:.1f}$\\times$"])
-        if code == "EC":
-            rows.append("MID")
-    return tabular(["Data", "Framework", "Score", "RNN", "LSTM", "$\\Delta$", "Params RNN", "Params LSTM",
-                    "s/epoch R / L", "Time ratio"], rows, "lllrrrrrrr")
+def parse_text_table(txt, row_labels, cols):
+    lines = [l for l in txt.splitlines() if l.strip()]
+    rows = {}
+    for l in lines[1:]:
+        tok = l.split()
+        for lab in row_labels:
+            n = len(str(lab).split())
+            if " ".join(tok[:n]) == str(lab):
+                rows[lab] = [float(v) for v in tok[n:]]
+    return pd.DataFrame(rows, index=cols).T
 
 
-def notebook_table(file, first_line):
-    """Parse a DataFrame printed by a notebook cell (text/plain output) into a DataFrame."""
-    cells = json.loads((NB / file).read_text(encoding="utf-8"))["cells"]
-    for c in cells:
-        if c["cell_type"] == "code" and "".join(c["source"]).startswith(first_line):
+# ---------- result tables ----------
+ec = table("EC", ["accuracy", "f1_macro", "f1_negative", "f1_neutral", "f1_positive", "roc_auc", "logloss", "params", "sec_per_epoch", "epochs"],
+           ["acc.", "F1 macro", "F1 neg.", "F1 neu.", "F1 pos.", "AUC", "log-loss", "params", "s/epoch", "epochs (best)"],
+           dict(accuracy=f3, f1_macro=f3, f1_negative=f3, f1_neutral=f3, f1_positive=f3, roc_auc=f3, logloss=f3, params=num, sec_per_epoch=f1, epochs=str))
+(HERE / "table_ec.tex").write_text(ec, encoding="utf-8")
+
+# ST: the comparison csv already holds RMSE/MAE of the baselines in percent; the run JSONs hold them as fractions
+base_st, runs_st = load("ST")
+lines = [r"\begin{tabular}{lrrrrrrr}", r"\toprule", r"Run & RMSE (\%) & MAE (\%) & $R^2$ & corr. & params & s/epoch & epochs (best) \\", r"\midrule"]
+for name, row in base_st.iterrows():
+    cells = [f4(row["RMSE (%)"]), f4(row["MAE (%)"]), f3(row["r2_oos"]), f3(row["corr"]) if pd.notna(row["corr"]) else "--", "--", "--", "--"]
+    lines.append(r"\textit{" + name.replace("baseline: ", "") + "} & " + " & ".join(cells) + r" \\")
+lines.append(r"\midrule")
+for k in ORDER:
+    r = runs_st[k]
+    lines.append(run(f"ST-{k}") + f" & {100 * r['rmse']:.4f} & {100 * r['mae']:.4f} & {r['r2_oos']:.3f} & {r['corr']:.3f} & {num(r['params'])} & {r['sec_per_epoch']:.1f} & {r['epochs']} ({r['best_epoch']}) \\\\")
+lines += [r"\bottomrule", r"\end{tabular}"]
+(HERE / "table_st.tex").write_text("\n".join(lines), encoding="utf-8")
+
+# EC: by review length and by star rating (CSV written by the notebook)
+by_len = pd.read_csv(RES / "EC_by_length.csv", index_col=0)
+lt = by_len.drop(columns="reviews")
+lt.insert(0, "reviews", by_len["reviews"].astype(int))
+lt.columns = [c.replace("EC-", "") if c != "reviews" else c for c in lt.columns]
+lines = frame_table(lt.drop(columns="reviews"), f3, "words")
+lines = lines.replace(r"words &", r"words & reviews &", 1)
+body = lines.splitlines()
+out = []
+for i, l in enumerate(body):
+    if i >= 4 and l.split(" & ")[0] in lt.index:
+        lab = l.split(" & ")[0]
+        l = lab + " & " + f"{lt.loc[lab, 'reviews']:,}".replace(",", "{,}") + " & " + l.split(" & ", 1)[1]
+    out.append(l)
+out[0] = r"\begin{tabular}{lr" + "r" * (lt.shape[1] - 1) + "}"
+(HERE / "table_ec_length.tex").write_text("\n".join(out).replace(">", "$>$"), encoding="utf-8")
+
+stars = pd.read_csv(RES / "EC_stars.csv", index_col=0)
+stars_t = stars.drop(columns="reviews"); stars_t.columns = [c.replace("EC-", "") for c in stars_t.columns]
+out = frame_table(stars_t, f3, "stars").splitlines()
+out[0] = out[0]
+(HERE / "table_ec_stars.tex").write_text("\n".join(out), encoding="utf-8")
+
+# ST: by volatility regime and by year (printed tables of the executed notebook)
+labels = ["calmest", "calm", "middle", "turbulent", "most turbulent"]
+d = json.loads((NB / "st_stocks.ipynb").read_text(encoding="utf8"))
+def printed(marker):
+    for c in d["cells"]:
+        if c["cell_type"] == "code" and marker in "".join(c["source"]):
             for o in c["outputs"]:
-                t = o.get("text") or o.get("data", {}).get("text/plain")
-                if t:
-                    text = "".join(t)
-                    lines = [l for l in text.splitlines() if l.strip()]
-                    header = re.split(r"\s{2,}", lines[0].strip())
-                    rows = [re.split(r"\s{2,}", l.strip()) for l in lines[1:]]
-                    return pd.DataFrame(rows, columns=["group"] + header).set_index("group").astype(float)
-    raise KeyError(first_line)
+                if o["output_type"] == "display_data" and "text/plain" in o["data"] and "Figure" not in "".join(o["data"]["text/plain"]):
+                    return "".join(o["data"]["text/plain"])
+                if o["output_type"] == "execute_result":
+                    return "".join(o["data"]["text/plain"])
+    raise KeyError(marker)
+RUN_COLS = ["ST-TF-RNN", "ST-TF-LSTM", "ST-PT-RNN", "ST-PT-LSTM"]            # column order of the notebook tables
+reg = parse_text_table(printed("lvl = pd.qcut"), labels, RUN_COLS + ["EWMA 0.94"]); reg.columns = [c.replace("ST-", "") for c in reg.columns]
+(HERE / "table_st_regime.tex").write_text(frame_table(reg, f3, "20-day volatility"), encoding="utf-8")
+yr = parse_text_table(printed("by_year = pd.DataFrame"), [2022, 2023, 2024], RUN_COLS + ["EWMA 0.94", "mean target (%)"]); yr.columns = [c.replace("ST-", "") for c in yr.columns]
+(HERE / "table_st_year.tex").write_text(frame_table(yr, f3, "year", index_fmt=lambda i: str(int(i))), encoding="utf-8")
 
+# ---------- summary table (8 runs) ----------
+_, ec_runs = load("EC")
+rows = [r"\begin{tabular}{llrrrrr}", r"\toprule", r"Run & main metric & value & second metric & params & s/epoch & train time (s) \\", r"\midrule"]
+for k in ORDER:
+    r = ec_runs[k]
+    rows.append(run(f"EC-{k}") + f" & macro-F1 & {r['f1_macro']:.3f} & acc. {r['accuracy']:.3f} & {num(r['params'])} & {r['sec_per_epoch']:.1f} & {r['train_seconds']:.0f} \\\\")
+rows.append(r"\midrule")
+for k in ORDER:
+    r = runs_st[k]
+    rows.append(run(f"ST-{k}") + f" & RMSE (\\%) & {100 * r['rmse']:.4f} & $R^2$ {r['r2_oos']:.3f} & {num(r['params'])} & {r['sec_per_epoch']:.1f} & {r['train_seconds']:.0f} \\\\")
+rows += [r"\bottomrule", r"\end{tabular}"]
+(HERE / "table_summary.tex").write_text("\n".join(rows), encoding="utf-8")
 
-def table_ec_length():
-    d = notebook_table("ec_reviews.ipynb", "n_te = df.n_words.values[i_te]")
-    rows = []
-    for g, r in d.iterrows():
-        vals = [r[f"EC-{k}"] for k in RUNS]
-        rows.append([g.replace(">", "$>$").replace("-", "--"), *[f3(v) for v in vals],
-                     f"{(r['EC-TF-LSTM'] + r['EC-PT-LSTM'] - r['EC-TF-RNN'] - r['EC-PT-RNN']) / 2:+.3f}", thousands(r["reviews"])])
-    return tabular(["Words", *[run("EC-" + k) for k in RUNS], "LSTM $-$ RNN", "Reviews"], rows, "lrrrrrr")
+# ---------- comparison charts ----------
+colors = {"RNN": "#3b6ea8", "LSTM": "#c8503c"}
+fig, ax = plt.subplots(1, 2, figsize=(10, 3.4))
+for a, (code, key, title, scale) in zip(ax, [("EC", "f1_macro", "EC: macro-F1 (higher is better)", 1), ("ST", "r2_oos", r"ST: out-of-sample $R^2$ (higher is better)", 1)]):
+    _, runs = load(code)
+    vals = [runs[k][key] * scale for k in ORDER]
+    bars = a.bar(ORDER, vals, color=[colors[k.split("-")[1]] for k in ORDER])
+    for b, v in zip(bars, vals): a.text(b.get_x() + b.get_width() / 2, v, f"{v:.3f}", ha="center", va="bottom", fontsize=8)
+    a.set_title(title, fontsize=10); a.set_ylim(0, max(vals) * 1.1)
+plt.tight_layout(); plt.savefig(IMG / "cmp_score.png", bbox_inches="tight"); plt.close()
 
-
-def table_st_regime():
-    d = notebook_table("st_stocks.ipynb", 'lvl = pd.qcut(A["abs_mean20"]')
-    rows = []
-    for g, r in d.iterrows():
-        rows.append([g, *[f4(r[f"ST-{k}"]) for k in RUNS], f4(r["20-day mean"]),
-                     f"{(r['ST-TF-LSTM'] + r['ST-PT-LSTM'] - r['ST-TF-RNN'] - r['ST-PT-RNN']) / 2:+.4f}"])
-    return tabular(["20-day volatility", *[run("ST-" + k) for k in RUNS], "20-day mean", "LSTM $-$ RNN"], rows, "lrrrrrr")
-
-
-def charts():
-    fig, ax = plt.subplots(1, 2, figsize=(11, 3.2))
-    for a, (code, score, label) in zip(ax, [("EC", "f1_macro", "test F1 macro"), ("ST", "r2_oos", "test $R^2_{oos}$")]):
-        base, runs = load(code)
-        names = list(runs)
-        vals = [runs[k][score] for k in names]
-        a.bar(names, vals, color=["C0" if k.endswith("RNN") else "C3" for k in names])
-        ref = base.loc["baseline: tfidf_logreg", "f1_macro"] if code == "EC" else base.loc["baseline: 20-day mean |r|", "r2_oos"]
-        a.axhline(ref, ls=":", c="k", label="TF-IDF + LogReg" if code == "EC" else "20-day mean")
-        lo = min(vals + [ref]); hi = max(vals + [ref])
-        a.set_ylim(lo - (hi - lo) * 0.6, hi + (hi - lo) * 0.4)
-        a.set_title(f"{code}: {label}"); a.legend(fontsize=8)
-        for i, v in enumerate(vals):
-            a.text(i, v, f"{v:.3f}", ha="center", va="bottom", fontsize=8)
-    fig.tight_layout(); fig.savefig(IMG / "cmp_score.png", dpi=150); plt.close(fig)
-
-    fig, ax = plt.subplots(figsize=(7, 3))
-    labels, vals, cols = [], [], []
-    for code in ["EC", "ST"]:
-        _, runs = load(code)
-        for k, r in runs.items():
-            labels.append(f"{code}-{k}"); vals.append(r["sec_per_epoch"]); cols.append("C0" if k.endswith("RNN") else "C3")
-    ax.barh(labels[::-1], vals[::-1], color=cols[::-1])
-    for i, v in enumerate(vals[::-1]):
-        ax.text(v, i, f" {v:.0f}", va="center", fontsize=8)
-    ax.set_xlabel("median seconds per epoch (CPU)")
-    fig.tight_layout(); fig.savefig(IMG / "cmp_time.png", dpi=150); plt.close(fig)
-
-
-def main():
-    out = {"table_ec.tex": table_ec(), "table_st.tex": table_st(), "table_summary.tex": table_summary(),
-           "table_ec_length.tex": table_ec_length(), "table_st_regime.tex": table_st_regime()}
-    for name, tex in out.items():
-        (HERE / name).write_text(tex)
-        print("wrote", name)
-    charts()
-    print("wrote images/cmp_score.png, images/cmp_time.png")
-
-
-if __name__ == "__main__":
-    main()
+fig, ax = plt.subplots(1, 2, figsize=(10, 3.2))
+for a, code in zip(ax, ["EC", "ST"]):
+    _, runs = load(code)
+    vals = [runs[k]["sec_per_epoch"] for k in ORDER]
+    bars = a.bar(ORDER, vals, color=[colors[k.split("-")[1]] for k in ORDER])
+    for b, v in zip(bars, vals): a.text(b.get_x() + b.get_width() / 2, v, f"{v:.0f}", ha="center", va="bottom", fontsize=8)
+    a.set_title(f"{code}: seconds per epoch (CPU)", fontsize=10)
+plt.tight_layout(); plt.savefig(IMG / "cmp_time.png", bbox_inches="tight"); plt.close()
+print("tables and charts written")
