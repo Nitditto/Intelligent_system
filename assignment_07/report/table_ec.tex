@@ -1,0 +1,13 @@
+\begin{tabular}{lrrrrrrr}
+\toprule
+Run & Accuracy & F1 macro & F1 neg. & ROC-AUC & Params & s/epoch & Epochs (best) \\
+\midrule
+\textit{majority class} & 0.7006 & 0.4120 & 0.0000 & 0.5000 & -- & -- & -- \\
+\textit{TF-IDF + log. regression} & 0.9414 & 0.9298 & 0.9011 & 0.9825 & -- & -- & -- \\
+\midrule
+\run{EC-TF-RNN} & 0.9225 & 0.9084 & 0.8726 & 0.9707 & 1{,}321{,}345 & 53 & 4 (2) \\
+\run{EC-TF-LSTM} & 0.9301 & 0.9161 & 0.8817 & 0.9745 & 1{,}445{,}185 & 256 & 4 (2) \\
+\run{EC-PT-RNN} & 0.9183 & 0.8999 & 0.8570 & 0.9676 & 1{,}321{,}665 & 58 & 4 (2) \\
+\run{EC-PT-LSTM} & \textbf{0.9311} & \textbf{0.9176} & \textbf{0.8844} & \textbf{0.9760} & 1{,}446{,}465 & 143 & 5 (3) \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,5 @@
+.venv/
+neo4j_data/
+report/images/
+report/table_*.tex
+dataset/raw/pages/
