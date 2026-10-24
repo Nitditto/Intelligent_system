@@ -1,0 +1,61 @@
+# Graph 01: Diabetes Knowledge Graph from Vinmec with Neo4j
+
+Build a Knowledge Graph about diabetes (đái tháo đường / tiểu đường): its types, symptoms, causes, risk factors, complications, tests, drugs, diet and lifestyle advice, from public Vinmec articles. Store it in Neo4j and query it with Cypher.
+
+| Part | Where |
+|---|---|
+| Crawler (article list → HTML → JSON) | `crawler/` |
+| Raw / cleaned data | `dataset/raw`, `dataset/processed` |
+| Triple extraction + Neo4j loading | `notebook/` |
+| Schema, constraints, example queries | `cypher/` |
+| Report | `report/` |
+
+## Run
+
+```bash
+source .venv/bin/activate
+python crawler/crawl.py      # 1. crawl  -> dataset/raw/pages/*.json (1,096 pages)
+python kg/extract.py                   # 2. extract -> dataset/processed/{entities,triples,articles,mentions}.csv
+docker start neo4j-diabetes || docker run -d --name neo4j-diabetes -p 7474:7474 -p 7687:7687 \
+    -e NEO4J_AUTH=neo4j/diabetes123 -v "$PWD/neo4j_data:/data" neo4j:5
+python kg/load.py                # 3. load into Neo4j (wipes and reloads)
+```
+
+Open http://localhost:7474 (user `neo4j`, password `diabetes123`) and run the queries in `cypher/queries.cypher`.
+
+## Graph
+
+127 entities (DiabetesType, Symptom, RiskFactor, Complication, Test, Drug, DrugClass, Food, Lifestyle, Organ), 345 facts and 1,096 Article nodes. A fact extracted from text needs at least 2 supporting pages (3 for side effects), or must come from a Vinmec disease page; `support` on each relationship counts the pages. Facts with `source = "curated"` (drug class, affected organ, subtype) and the diagnostic thresholds are background knowledge, not extracted.
+
+## Website
+
+A small explorer for the graph: search any entity, see its facts with the number of supporting articles and the source links, compare diabetes types, check symptoms, and find connections between two entities.
+
+```
+browser (web/, React + Vite) ──/api──▶ api/ (FastAPI) ──Cypher, read-only──▶ Neo4j
+```
+
+```bash
+docker start neo4j-diabetes                       # the graph must be loaded (python kg/load.py)
+uvicorn api.main:app --reload --port 8000         # API, docs at http://localhost:8000/docs
+cd web && npm install && npm run dev              # site at http://localhost:5173
+```
+
+| Page | URL |
+|---|---|
+| Home: search, graph size, start points | `#/` |
+| Entity: facts grouped by relation, evidence links, neighbourhood, articles | `#/entity/Metformin` |
+| Diabetes types side by side | `#/types/Đái tháo đường type 2` |
+| Symptom checker | `#/symptoms` |
+| Connections (shortest chains between two entities) | `#/paths?from=…&to=…` |
+
+## Report
+
+`report/Graph_01.tex` → `report/Graph_01.pdf` (XeLaTeX, 50 pages; plan in `report/PLAN.md`). Figures and tables are generated, never typed by hand:
+
+```bash
+python report/extract_figures.py     # notebook figures -> report/images/
+python report/take_screenshots.py    # website screenshots (API + site running)
+python report/make_tables.py         # report/table_*.tex from the CSVs and Neo4j
+cd report && xelatex Graph_01.tex && xelatex Graph_01.tex
+```
