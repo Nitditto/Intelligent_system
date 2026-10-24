@@ -192,7 +192,7 @@ Figure~\ref{fig:overview} shows the whole system. Each box is a separate program
     arr/.style={-{Stealth[length=2.2mm]}, thick}]
 % top row: the build pipeline
 \node[box] (web) at (0,0) {vinmec.com\\ \scriptsize sitemap, 1,197 pages};
-\node[box] (crawl) at (3.25,0) {\textbf{Crawler}\\ \scriptsize\texttt{crawler/crawl.py}};
+\node[box] (crawl) at (3.25,0) {\textbf{Crawler}\\ \scriptsize\texttt{kg/crawl.py}};
 \node[box] (extract) at (6.5,0) {\textbf{Extractor}\\ \scriptsize\texttt{kg/extract.py}};
 \node[box] (load) at (9.75,0) {\textbf{Loader}\\ \scriptsize\texttt{kg/load.py}};
 \node[box, fill=green!8] (neo) at (13,0) {\textbf{Neo4j}\\ \scriptsize graph database};
@@ -823,14 +823,14 @@ The system is written in Python (crawler, extractor, loader, API, notebook) and 
 \toprule
 Path & Role \\
 \midrule
-\code{crawler/crawl.py} & sitemap $\rightarrow$ candidate URLs $\rightarrow$ download $\rightarrow$ relevance filter $\rightarrow$ \code{dataset/raw/pages/*.json} and \code{index.csv}; resumable \\
+\code{kg/crawl.py} & sitemap $\rightarrow$ candidate URLs $\rightarrow$ download $\rightarrow$ relevance filter $\rightarrow$ \code{dataset/raw/pages/*.json} and \code{index.csv}; resumable \\
 \code{kg/vocab.py} & vocabulary (106 entities, 320 aliases), section rules, food polarity, curated classes, organs and thresholds \\
 \code{kg/extract.py} & pages $\rightarrow$ votes $\rightarrow$ support filter $\rightarrow$ \code{dataset/processed/*.csv} \\
 \code{kg/load.py} & CSV files $\rightarrow$ Neo4j (wipes and reloads; idempotent) \\
 \code{kg/retriever.py} & \code{graph\_facts(entity, hops)}: bounded graph retrieval \\
 \code{kg/visualize.py} & NetworkX drawings of the graph \\
 \code{kg/evaluate.py} & draws the random sample of facts for the quality check \\
-\code{cypher/queries.cypher} & the 15 example queries, ready for Neo4j Browser \\
+\code{kg/queries.cypher} & the 15 example queries, ready for Neo4j Browser \\
 \code{notebook/01\_diabetes\_kg.ipynb} & explains and runs every stage, with all figures \\
 \code{api/} & FastAPI service: read-only Cypher queries behind a small REST interface \\
 \code{web/} & React website for exploring the graph \\
@@ -899,7 +899,7 @@ MATCH (t:DiabetesType {name: 'Đái tháo đường type 2'})-[r:HAS_SYMPTOM]->(
 RETURN s.name, r.support
 \end{codeblock}
 
-Read from left to right: find a \code{DiabetesType} node called ``type 2'', follow an outgoing \code{HAS\_SYMPTOM} arrow to a \code{Symptom} node, return the symptom's name and the arrow's support. Neo4j uses the name index to jump to the ``type 2'' node and then looks only at the arrows attached to it; it never scans the rest of the database. The work grows with the number of arrows followed, not with the size of the database. The fifteen example queries of \code{cypher/queries.cypher} and their results are presented in Section~\ref{sec:queries}.
+Read from left to right: find a \code{DiabetesType} node called ``type 2'', follow an outgoing \code{HAS\_SYMPTOM} arrow to a \code{Symptom} node, return the symptom's name and the arrow's support. Neo4j uses the name index to jump to the ``type 2'' node and then looks only at the arrows attached to it; it never scans the rest of the database. The work grows with the number of arrows followed, not with the size of the database. The fifteen example queries of \code{kg/queries.cypher} and their results are presented in Section~\ref{sec:queries}.
 
 \subsection{Graph Retrieval}
 \label{sec:retrieval}
@@ -1142,7 +1142,7 @@ The lecture insists that an intelligent system must be evaluated systematically,
 \subsection{Query Results}
 \label{sec:queries}
 
-The queries below are taken from \code{cypher/queries.cypher}, which contains fifteen queries in total (the lecture requires at least five). Each is shown with its result, produced directly from the database, and a short interpretation.
+The queries below are taken from \code{kg/queries.cypher}, which contains fifteen queries in total (the lecture requires at least five). Each is shown with its result, produced directly from the database, and a short interpretation.
 
 \subsubsection{One-hop: everything about Metformin}
 
@@ -1635,7 +1635,7 @@ python -m venv .venv && source .venv/bin/activate
 python -m pip install -r requirements.txt
 
 # 1. crawl (about 20 minutes, resumable)  -> dataset/raw/pages/*.json, dataset/raw/index.csv
-python crawler/crawl.py
+python kg/crawl.py
 
 # 2. extract                              -> dataset/processed/{entities,triples,articles,mentions}.csv
 python kg/extract.py
@@ -1661,7 +1661,7 @@ cd web && npm install && npm run dev           # http://localhost:5173
 cd report && xelatex Graph_01.tex && xelatex Graph_01.tex
 \end{codeblock}
 
-The Cypher queries of Section~\ref{sec:queries} are in \code{cypher/queries.cypher} and can be pasted into Neo4j Browser at \url{http://localhost:7474} (user \code{neo4j}, password \code{diabetes123}).
+The Cypher queries of Section~\ref{sec:queries} are in \code{kg/queries.cypher} and can be pasted into Neo4j Browser at \url{http://localhost:7474} (user \code{neo4j}, password \code{diabetes123}).
 
 
 \end{document}

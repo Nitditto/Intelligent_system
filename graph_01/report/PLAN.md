@@ -74,7 +74,7 @@ Title: *"Graph 01: A Diabetes Knowledge Graph from Vinmec Health Articles with N
 - Success criteria: the lecture's minimums (R2, R4); precision measured on a random sample; every fact traceable to articles.
 
 ### §3 Data Collection (R1)
-Sources: `crawler/crawl.py`, `dataset/raw/index.csv`, notebook Part 2.
+Sources: `kg/crawl.py`, `dataset/raw/index.csv`, notebook Part 2.
 1. **Why Vinmec**: Vietnamese, written or reviewed by doctors, structured disease pages, ~1,000 diabetes articles.
 2. **Finding pages**: the search page is rendered by JavaScript, so the sitemap is used instead (~222,000 URLs). Slug keywords are split into strong and weak; `thao-nhat` is excluded. Result: 1,197 candidates. Politeness: `robots.txt` and 1 request per second.
 3. **Relevance filter**: why removing accents causes collisions (*tiểu dương*, *đại dương*), the four keep-rules, and a **table** of kept/rejected counts by slug strength (934/10 and 162/85) with rejected examples.
@@ -105,7 +105,7 @@ Sources: `kg/vocab.py`, `kg/extract.py`, notebook Parts 1, 3, 4.
 6. **Mini Project 3 checklist table**: requirement vs achieved (50 vs 127, 100 vs 339, 5 vs 12, 3 vs 10, 5 vs 14 queries).
 
 ### §5 System Implementation (R4, R6, R7)
-Sources: `kg/load.py`, `cypher/queries.cypher`, `kg/retriever.py`, `api/`, `web/`.
+Sources: `kg/load.py`, `kg/queries.cypher`, `kg/retriever.py`, `api/`, `web/`.
 1. **Architecture figure (TikZ)**: crawler → extract → CSV → Neo4j → API → web, and notebook / Cypher Browser.
 2. **File map table**: each folder and its role.
 3. **Neo4j**: why a graph database rather than tables. The data model (two labels per node, evidence stored on relationships, Article nodes). Loader listing: constraint, `UNWIND` + `MERGE`, and why each is used.

@@ -8,8 +8,8 @@ Pipeline:
   5. write one JSON per page + an index CSV
 
 Usage:
-  python crawler/crawl.py               # full crawl (resumable)
-  python crawler/crawl.py --limit 20    # quick test
+  python kg/crawl.py               # full crawl (resumable)
+  python kg/crawl.py --limit 20    # quick test
 """
 import argparse
 import csv
