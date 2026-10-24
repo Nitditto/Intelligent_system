@@ -51,11 +51,4 @@ cd web && npm install && npm run dev              # site at http://localhost:517
 
 ## Report
 
-`report/Graph_01.tex` → `report/Graph_01.pdf` (XeLaTeX, 50 pages; plan in `report/PLAN.md`). Figures and tables are generated, never typed by hand:
-
-```bash
-python report/extract_figures.py     # notebook figures -> report/images/
-python report/take_screenshots.py    # website screenshots (API + site running)
-python report/make_tables.py         # report/table_*.tex from the CSVs and Neo4j
-cd report && xelatex Graph_01.tex && xelatex Graph_01.tex
-```
+`report/Graph_01.pdf` (50 pages), built from `report/Graph_01.tex` with XeLaTeX; plan in `report/PLAN.md`.

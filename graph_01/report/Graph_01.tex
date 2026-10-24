@@ -835,7 +835,7 @@ Path & Role \\
 \code{api/} & FastAPI service: read-only Cypher queries behind a small REST interface \\
 \code{web/} & React website for exploring the graph \\
 \code{evaluation/manual\_audit.csv} & the 50 sampled facts with the manual judgement \\
-\code{report/} & this report, \code{make\_tables.py}, \code{extract\_figures.py}, \code{take\_screenshots.py} \\
+\code{report/} & this report and its plan \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -1402,7 +1402,7 @@ Table~\ref{tab:support} shows how the graph shrinks as more evidence is required
 \section{Demo}
 \label{sec:demo}
 
-This section walks through the website as a user would, with screenshots of the running system. Each scenario corresponds to one of the questions of Table~\ref{tab:questions}. All screenshots were taken automatically (\code{report/take\_screenshots.py}) from the live website connected to the Neo4j database described above.
+This section walks through the website as a user would, with screenshots of the running system. Each scenario corresponds to one of the questions of Table~\ref{tab:questions}. All screenshots were taken from the live website connected to the Neo4j database described above.
 
 \subsection{Scenario 1: Finding an Entity}
 
@@ -1658,9 +1658,6 @@ uvicorn api.main:app --reload --port 8000      # API, docs at http://localhost:8
 cd web && npm install && npm run dev           # http://localhost:5173
 
 # 7. report
-python report/extract_figures.py
-python report/take_screenshots.py              # API and website must be running
-python report/make_tables.py
 cd report && xelatex Graph_01.tex && xelatex Graph_01.tex
 \end{codeblock}
 
