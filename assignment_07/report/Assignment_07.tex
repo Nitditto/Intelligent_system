@@ -1,3 +1,4 @@
+%!TEX program = xelatex
 \documentclass[11pt, a4paper]{article}
 
 \usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2cm]{geometry}
@@ -70,7 +71,7 @@
 
 \normalsize
 \begin{tabular}{rl}
-\textbf{Instructor / Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
+\textbf{Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
 \textbf{Email:} & quetd@ptit.edu.vn, tdque@yahoo.com \\[0.8cm]
 \textbf{Student Name:} & Nguyễn Văn Trường \\
 \textbf{Student ID:} & B23DCCE095 \\
@@ -88,7 +89,10 @@
 \end{center}
 \end{titlepage}
 
-\tableofcontents
+{
+    \hypersetup{linkcolor=black}
+    \tableofcontents
+}
 \newpage
 
 % =====================================================================
@@ -440,30 +444,5 @@ This spread, about 0.01 in macro-F1 and 1\,\% in RMSE, is the yardstick for read
 
 % =====================================================================
 \appendix
-\section{Reproducing the Results}
-% =====================================================================
-
-\begin{lstlisting}
-assignment_07/
-  dataset/ec/Amazon_Unlocked_Mobile.csv     (Kaggle: PromptCloudHQ/amazon-reviews-unlocked-mobile-phones)
-  dataset/st/sp500_stocks.csv               (Kaggle: andrewmvd/sp-500-stocks)
-  notebook/00_rnn_lstm_concepts.ipynb       Section 2: structure, parameter counts, gradients, checks
-  notebook/ec_reviews.ipynb                 Experiment 1 (EC-TF-RNN, EC-TF-LSTM, EC-PT-RNN, EC-PT-LSTM)
-  notebook/st_stocks.ipynb                  Experiment 2 (ST-TF-RNN, ST-TF-LSTM, ST-PT-RNN, ST-PT-LSTM)
-  notebook/results/<run>.json, *_comparison.csv, EC_*.csv
-  report/make_tables.py                     builds table_*.tex and cmp_*.png from the results
-  report/Assignment_07.tex                  this report (XeLaTeX)
-\end{lstlisting}
-
-Setup and execution (Python 3.12; the report was produced with Python 3.13, TensorFlow 2.21, Keras 3.15 and PyTorch 2.14 on a CPU under Windows):
-
-\begin{lstlisting}
-pip install -r requirements.txt
-cd notebook
-jupyter nbconvert --to notebook --execute --inplace 00_rnn_lstm_concepts.ipynb
-jupyter nbconvert --to notebook --execute --inplace st_stocks.ipynb       # about 15 min on a CPU
-jupyter nbconvert --to notebook --execute --inplace ec_reviews.ipynb      # about 55 min on a CPU
-cd ../report && python make_tables.py && xelatex Assignment_07 && xelatex Assignment_07
-\end{lstlisting}
 
 \end{document}
