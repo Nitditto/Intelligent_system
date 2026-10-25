@@ -6,3 +6,4 @@ dataset/raw/pages/
 report/make_tables.py
 report/extract_figures.py
 report/take_screenshots.py
+.make/

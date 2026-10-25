@@ -25,6 +25,8 @@ graph_01/
 
 ## Run
 
+`make all` runs every step that is out of date (a step is skipped when its output is newer than its inputs), `make app` starts the API and the website, `make help` lists all targets. The individual commands:
+
 ```bash
 source .venv/bin/activate
 python kg/crawl.py        # 1. crawl   -> dataset/raw/pages/*.json (1,096 pages)
