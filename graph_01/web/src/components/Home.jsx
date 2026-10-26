@@ -13,6 +13,7 @@ export default function Home() {
   return (
     <div className="stack stack--lg">
       <section className="hero">
+        <span className="eyebrow"><span className="dot" aria-hidden="true" />Vinmec articles · Neo4j knowledge graph</span>
         <h1>What do Vinmec articles say about diabetes?</h1>
         <p className="lead">
           A knowledge graph of symptoms, causes, complications, tests, drugs and diet advice, extracted from
@@ -38,26 +39,16 @@ export default function Home() {
         <h2 className="section-title">Start from a diabetes type</h2>
         <div className="cards">
           {DIABETES_TYPES.map((t) => (
-            <a key={t.name} href={href('types', t.name)} className="card card--link">
+            <a key={t.name} href={href('types', t.name)} className="card card--link type-card">
               <strong>{t.short}</strong>
               <span className="card__note">{t.note}</span>
+              <span className="type-card__go" aria-hidden="true">Explore →</span>
             </a>
           ))}
         </div>
       </section>
 
-      {stats.data && (
-        <section className="stack">
-          <h2 className="section-title">Browse by kind</h2>
-          <div className="chips">
-            {stats.data.nodes.map((n) => (
-              <span key={n.name} className={`chip chip--static ${typeClass(n.name)}`}>
-                <span className="dot" aria-hidden="true" />{TYPES[n.name]?.plural || n.name} · {n.n}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
+      {stats.data && <Composition nodes={stats.data.nodes} />}
 
       <details className="card how">
         <summary>How this graph was built</summary>
@@ -79,5 +70,27 @@ function Tile({ value, label }) {
       <span className="tile__value">{fmtInt(value)}</span>
       <span className="tile__label">{label}</span>
     </div>
+  )
+}
+
+// What the graph is made of: one segment per entity type, sized by how many entities it has.
+function Composition({ nodes }) {
+  const total = nodes.reduce((sum, n) => sum + n.n, 0)
+  return (
+    <section className="card">
+      <h2>What is in the graph</h2>
+      <div className="mix" role="img" aria-label={`${fmtInt(total)} entities by kind`}>
+        {nodes.map((n) => (
+          <span key={n.name} className={`mix__seg ${typeClass(n.name)}`} style={{ width: `${(n.n / total) * 100}%` }} title={`${TYPES[n.name]?.plural || n.name}: ${n.n}`} />
+        ))}
+      </div>
+      <ul className="mix-legend">
+        {nodes.map((n) => (
+          <li key={n.name} className={typeClass(n.name)}>
+            <span className="dot" aria-hidden="true" />{TYPES[n.name]?.plural || n.name}<strong>{fmtInt(n.n)}</strong>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }

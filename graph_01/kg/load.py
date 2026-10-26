@@ -1,6 +1,6 @@
 """Load dataset/processed/*.csv into Neo4j.
-
-  docker run -d --name neo4j-diabetes -p 7474:7474 -p 7687:7687 \
+Đưa dữ liệu đã xử lý vào CSDL đồ thị Neo4j.
+  docker run -d --name neo4j-diabetes -p 7474:7474 -p 7687:7687
       -e NEO4J_AUTH=neo4j/diabetes123 -v "$PWD/neo4j_data:/data" neo4j:5
   python kg/load.py            # wipes the database and reloads
 
@@ -9,6 +9,18 @@ Graph:
   (:Article {url, title, page_type, date})  -[:MENTIONS]->  (:Entity)
   (:Article)  -[:ABOUT]->  (:DiabetesType)
 """
+# Kết nối Neo4j
+# Xóa graph cũ
+# Tạo constraint
+# Đọc entities.csv
+# Tạo các node (Disease, Drug, Symptom, ...)
+# Đọc triples.csv
+# Tạo các relationship (HAS_SYMPTOM, TREATED_BY, ...)
+# Đọc articles.csv
+# Tạo node Article
+# Đọc mentions.csv
+# Tạo quan hệ MENTIONS
+
 import csv
 import os
 import time
@@ -29,7 +41,7 @@ def rows(name):
     with open(DATA / name, encoding="utf-8") as f:
         return list(csv.DictReader(f))
 
-
+# chia dữ liệu thành từng lô để ko gửi quá nhiều vào neo4j một lần
 def batches(items, n=500):
     for i in range(0, len(items), n):
         yield items[i:i + n]
@@ -54,12 +66,14 @@ def main():
         s.run("CREATE CONSTRAINT article_url IF NOT EXISTS FOR (a:Article) REQUIRE a.url IS UNIQUE")
 
         ents = rows("entities.csv")
+        # Tạo Entity Nodes
         for lab in LABELS:  # labels cannot be parameters in Cypher
             part = [e for e in ents if e["label"] == lab]
             s.run(f"UNWIND $rows AS r MERGE (e:Entity {{name: r.name}}) SET e:{lab}, "
                   "e.threshold = CASE r.threshold WHEN '' THEN null ELSE r.threshold END", rows=part)
 
         by_rel = defaultdict(list)
+        # Tạo relationships
         for t in rows("triples.csv"):
             t["support"] = int(t["support"])
             t["example_urls"] = t["example_urls"].split()

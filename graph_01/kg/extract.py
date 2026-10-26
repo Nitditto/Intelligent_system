@@ -1,5 +1,5 @@
 """Extract (subject, relation, object) triples from dataset/raw/pages/*.json.
-
+Đọc 1.096 file JSON và tự động trích xuất các bộ ba tri thức (Chủ thể, Quan hệ, Đối tượng)
 For every page:
   subject = the diabetes type in the title (type 1 / 2 / thai kỳ / tiền ĐTĐ), else "Đái tháo đường"
   for every section: heading keywords decide which entity labels are allowed,
@@ -69,7 +69,7 @@ def main():
     articles = []
 
     for f in sorted(PAGES.glob("*.json")):
-        doc = json.loads(f.read_text())
+        doc = json.loads(f.read_text(encoding="utf-8"))
         url, subj = doc["url"], subject_of(doc["title"])
         articles.append((url, doc["title"], doc["page_type"], doc.get("date_published") or "", subj))
         for sec in doc["sections"]:

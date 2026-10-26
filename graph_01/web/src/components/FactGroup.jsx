@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { href } from '../lib/route.js'
-import { relVerb } from '../lib/labels.js'
+import { relVerb, typeClass } from '../lib/labels.js'
 import { ErrorNote, Spinner } from './Feedback.jsx'
 import SupportMeter from './SupportMeter.jsx'
 import TypePill from './TypePill.jsx'
 
 // One relation seen from the current entity, e.g. "Symptoms" or "Used to treat".
 export default function FactGroup({ title, facts, focus }) {
+  const f0 = facts[0]
+  const otherType = f0.subject === focus ? f0.object_type : f0.subject_type
   return (
-    <section className="card fact-group">
+    <section className={`card fact-group ${typeClass(otherType)}`}>
       <h2>{title} <span className="fact-group__count">{facts.length}</span></h2>
       <ul className="fact-list">
         {facts.map((f) => <FactRow key={`${f.subject}|${f.relation}|${f.object}`} fact={f} focus={focus} />)}

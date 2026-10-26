@@ -1,6 +1,6 @@
 import { api } from '../lib/api.js'
 import { go, href } from '../lib/route.js'
-import { relVerb } from '../lib/labels.js'
+import { relVerb, typeClass } from '../lib/labels.js'
 import { useAsync } from '../lib/useAsync.js'
 import { Empty, ErrorNote, Spinner } from './Feedback.jsx'
 import SearchBox from './SearchBox.jsx'
@@ -53,7 +53,7 @@ export default function PathFinder({ from, to }) {
                 {p.nodes.map((n, j) => (
                   <span key={n.name} className="path__step">
                     {j > 0 && <span className="path__rel">{relVerb(p.relations[j - 1], p.forward[j - 1])}</span>}
-                    <a href={href('entity', n.name)} className="path__node">{n.name}</a>
+                    <a href={href('entity', n.name)} className={`path__node ${typeClass(n.type)}`}><span className="dot" aria-hidden="true" />{n.name}</a>
                   </span>
                 ))}
               </li>

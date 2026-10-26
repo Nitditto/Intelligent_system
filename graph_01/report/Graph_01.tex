@@ -1,3 +1,4 @@
+% !TEX program = xelatex
 \documentclass[11pt, a4paper]{article}
 
 \usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2cm]{geometry}
@@ -32,7 +33,7 @@
     citecolor=blue!70!black,
     urlcolor=blue!70!black,
     pdftitle={Graph 01 - A Diabetes Knowledge Graph from Vinmec Health Articles with Neo4j},
-    pdfauthor={Luu Anh Dung}
+    pdfauthor={Nguyen Van Truong}
 }
 
 % code blocks: fvextra keeps Vietnamese text intact (listings garbles it under XeLaTeX)
@@ -78,8 +79,8 @@
 \begin{tabular}{rl}
 \textbf{Instructor / Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
 \textbf{Email:} & quetd@ptit.edu.vn, tdque@yahoo.com \\[0.8cm]
-\textbf{Student Name:} & Lưu Anh Dũng \\
-\textbf{Student ID:} & B23DCDK036 \\
+\textbf{Student Name:} & Nguyễn Văn Trường \\
+\textbf{Student ID:} & B23DCCE095 \\
 \textbf{Semester:} & I.2025 -- 2026 \\
 \textbf{Submission:} & Individual Project \\
 \end{tabular}
@@ -97,64 +98,45 @@
 \newpage
 
 % =====================================================================
-\section*{Summary}
-\addcontentsline{toc}{section}{Summary}
-
-This project turns the diabetes articles published on the website of the Vinmec hospital group into a \textbf{Knowledge Graph}: a network of small, explicit facts such as \emph{(Đái tháo đường type 2, HAS\_SYMPTOM, Khát nhiều)} or \emph{(Metformin, BELONGS\_TO\_CLASS, Biguanide)}. The facts are stored in the graph database \textbf{Neo4j}, can be queried with the Cypher language, and can be explored by anyone through a small \textbf{website} that shows every fact together with the articles it comes from.
-
-The pipeline has four stages. A crawler reads Vinmec's sitemap, selects 1,197 candidate pages whose address mentions diabetes, downloads them politely and keeps the 1,096 that really discuss the disease (about 1.13 million words). An extractor reads each article section by section and uses the section heading (\emph{Triệu chứng}, \emph{Nguyên nhân}, \emph{Biến chứng}, \emph{Điều trị}…) to decide what kind of fact the text below it can contain; it then matches a hand-written vocabulary of 106 diabetes concepts written in 320 different ways. Each article votes for the facts it states, and a fact is kept only when at least two different articles agree. The result, loaded into Neo4j, has \textbf{127 entities of 10 types and 339 facts of 12 relation types}, linked to the 1,096 source articles.
-
-Four results stand out:
-\begin{enumerate}
-    \item \textbf{Section headings are the key signal.} Health articles are organised under standard headings, and using them turns free Vietnamese text into typed facts without any language model. A word found in the wrong section (``mệt mỏi'' in a breakfast article) is simply ignored.
-    \item \textbf{Agreement between articles removes noise.} Requiring support from at least two articles drops one-off mentions, and the support count stored on every fact lets the user choose how cautious to be: 252 facts are stated by three or more articles, 70 by ten or more.
-    \item \textbf{The facts are reliable.} On a random sample of 50 extracted facts, each checked against all its source articles, \textbf{48 were correct (0.96; likely range 0.87--0.99)}. Both errors had the same cause---a fact about a complication attached to the disease itself---which led to a stricter heading rule and a clear analysis of the trade-off it brings.
-    \item \textbf{The graph answers questions no single article answers.} Following two arrows---type 2 diabetes \emph{can cause} diabetic kidney disease, which \emph{affects} the kidney---answers ``which organs can type 2 damage?'', and every answer can be traced back to the articles that state each step.
-\end{enumerate}
-
-The project meets every requirement of the lecture's Mini Project 3 (at least 50 entities, 100 relationships, 5 relationship types, 3 entity types and 5 Cypher queries) and of Exercise 1 (triples stored as CSV, visualisation, one-hop and two-hop queries).
-
-\newpage
-
 % =====================================================================
 \section{Introduction}
 
 \subsection{The Application Problem}
 
-Diabetes is one of the most common chronic diseases in Vietnam, and people who want to understand it usually read health articles on the internet. Vinmec, one of the largest private hospital groups in the country, publishes almost a thousand Vietnamese articles about diabetes alone: what its symptoms are, who is at risk, which complications it causes, how it is diagnosed, which drugs treat it, what patients should eat.
+Diabetes is among the most common chronic diseases in Vietnam, and many people learn about it from health articles online. Vinmec, one of the largest private hospital groups in the country, publishes nearly a thousand Vietnamese articles on diabetes alone: symptoms, who is at risk, complications, diagnosis, drugs, diet.
 
-This knowledge is valuable, but it is locked inside text. A person who wants to know \emph{which complications of type 2 diabetes affect the eyes} has to find the right articles, read them, and put the pieces together themselves. The same symptom is written in different ways in different articles (\emph{uống nhiều}, \emph{khát nước}, \emph{hay khát}), and the answer to a question is often spread across several articles: one article says that type 2 diabetes can cause retinopathy, another explains that retinopathy damages the retina of the eye. A computer program has an even harder time: for it, an article is only a long sequence of characters.
+That knowledge is valuable but locked in text. A reader who asks \emph{which complications of type 2 diabetes affect the eyes?} has to locate the right pages and assemble the answer personally. The same symptom is spelled differently from article to article (\emph{uống nhiều}, \emph{khát nước}, \emph{hay khát}), and an answer is often split: one article says type 2 can cause retinopathy, another that retinopathy damages the retina. For a program the situation is worse, because an article is merely a long string of characters.
 
-The goal of this project is to turn this collection of articles into a form that a program can query directly and that a person can explore without reading hundreds of pages, while keeping the link to the original articles so that every answer can be checked.
+The goal is to convert the article collection into a form that programs can query and people can explore without reading hundreds of pages, while keeping the link to the original articles so that any answer can be checked.
 
-\subsection{Why Conventional Keyword Search Is Insufficient}
+\subsection{Why Keyword Search Falls Short}
 
-The obvious tool for finding information in a collection of documents is keyword search. It fails here for three reasons.
+Keyword search is the obvious tool for a document collection, and it fails here in three ways.
 
-\textbf{The same thing is written in many ways.} A search for \emph{khát nước} (thirsty) misses an article that writes \emph{uống nhiều} (drinking a lot) or \emph{khát nhiều}. A search for \emph{Metformin} misses the brand name \emph{Glucophage}. Every reader would have to know all the synonyms in advance.
+\textbf{Many spellings for one thing.} Searching \emph{khát nước} (thirsty) misses an article that writes \emph{uống nhiều} or \emph{khát nhiều}; searching \emph{Metformin} misses \emph{Glucophage}. The reader would need to know every synonym.
 
-\textbf{A word is not a fact.} An article about breakfast may say that eating well ``helps you feel less \emph{mệt mỏi}'' (tired). A keyword search for \emph{mệt mỏi} finds this article, but the article does not say that fatigue is a symptom of diabetes. Keyword search finds where a word appears, not what the text says about it.
+\textbf{A word is not a fact.} A breakfast article may say that eating well ``helps you feel less \emph{mệt mỏi}'' (tired). A search for \emph{mệt mỏi} returns it, yet the article does not claim fatigue is a symptom of diabetes. Search locates words, not statements.
 
-\textbf{Answers that need two facts cannot be found.} No article contains the sentence ``type 2 diabetes damages the kidney'' in exactly that form; the answer comes from combining ``type 2 can cause diabetic kidney disease'' with ``diabetic kidney disease affects the kidney''. Keyword search returns documents one at a time and has no way to combine statements from different documents.
+\textbf{Two-fact answers are out of reach.} No article states ``type 2 diabetes damages the kidney'' in those words; the answer joins ``type 2 can cause diabetic kidney disease'' with ``diabetic kidney disease affects the kidney''. Search returns documents one at a time and cannot join statements from different ones.
 
 \subsection{Why a Knowledge Graph}
 
-A Knowledge Graph stores knowledge not as sentences but as many small, separate \textbf{facts}, each connecting exactly two things with a named relationship: \emph{(subject, relation, object)}. Drawn as a picture, the things are dots (\textbf{entities} or nodes) and the facts are arrows between them (\textbf{relationships} or edges), so the whole collection forms a network---a graph.
+A Knowledge Graph stores knowledge as many small \textbf{facts}, each linking two things by a named relation: \emph{(subject, relation, object)}. Drawn out, the things are dots (\textbf{entities}, or nodes) and the facts are arrows (\textbf{relationships}, or edges), so the collection forms a network.
 
-This representation answers the three problems above directly:
+This answers the three failures directly:
 \begin{itemize}
-    \item \textbf{Synonyms are resolved once.} When the facts are created, \emph{uống nhiều}, \emph{khát nước} and \emph{hay khát} are all mapped to one entity, \emph{Khát nhiều}. Every later question uses that single entity.
-    \item \textbf{Facts are explicit and typed.} The graph only contains a fact when an article states it in a place where such a statement is made (Section~\ref{sec:extraction}), so ``fatigue is a symptom of diabetes'' is a fact only if articles really say so.
-    \item \textbf{Facts can be combined by following arrows.} A question becomes a walk through the network: start at \emph{type 2}, follow \emph{can cause} to the complications, then \emph{affects} to the organs. The path itself is the explanation of the answer.
+    \item \textbf{Synonyms are resolved once.} While facts are created, \emph{uống nhiều}, \emph{khát nước} and \emph{hay khát} are all mapped to the single entity \emph{Khát nhiều}, and every later question uses it.
+    \item \textbf{Facts are explicit and typed.} A fact exists only if an article states it where such a statement is made (Section~\ref{sec:extraction}).
+    \item \textbf{Facts combine by following arrows.} A question becomes a walk: start at \emph{type 2}, follow \emph{can cause} to the complications, then \emph{affects} to the organs. The path is the explanation.
 \end{itemize}
 
-The lecture notes summarise the difference between the two kinds of retrieval: vector or keyword retrieval asks ``which passages are similar to the question?'', while graph retrieval asks ``which entities and relationships are explicitly connected?''. For questions about how symptoms, causes, complications, tests and treatments relate to each other, the second question is the right one.
+The lecture contrasts the two retrieval styles: vector or keyword retrieval asks ``which passages resemble the question?'', graph retrieval asks ``which entities and relationships are explicitly connected?''. For questions about how symptoms, causes, complications, tests and treatments relate, the second is the right question.
 
-A Knowledge Graph also keeps something a trained model loses: \textbf{provenance}. Every fact in this project stores the articles that state it, so any answer can be checked against its sources. For a medical topic, where a wrong answer can mislead a patient, this is essential.
+A graph also keeps what a trained model loses, \textbf{provenance}. Each fact here records the articles that state it, so an answer can be verified, which matters for a medical topic where a confident wrong answer can mislead a patient.
 
 \subsection{Objectives and Scope}
 
-The task is to build a Knowledge Graph about diabetes from Vinmec data, store and query it with Neo4j, and provide a website to retrieve the data. Table~\ref{tab:requirements} lists the requirements, taken from the task and from the lecture's Mini Project 3 and Exercise 1, and the section of this report that addresses each one.
+The task is to build a diabetes Knowledge Graph from Vinmec data, store and query it with Neo4j, and provide a website to retrieve it. Table~\ref{tab:requirements} lists the requirements, taken from the task and from the lecture's Mini Project 3 and Exercise 1, with the section that addresses each.
 
 \begin{table}[H]
 \centering
@@ -170,19 +152,19 @@ R2 & Build a Knowledge Graph: $\geq$ 50 entities, $\geq$ 100 relationships, $\ge
 R3 & Store the triples as CSV in the form \code{subject, relation, object} & \ref{sec:outputs} \\
 R4 & Store and query the graph in Neo4j; at least 5 Cypher queries, including one-hop and two-hop & \ref{sec:neo4j}, \ref{sec:queries} \\
 R5 & Visualise the graph & \ref{sec:visualisation} \\
-R6 & Graph retrieval starting from an entity, limited to 1--2 hops & \ref{sec:retrieval} \\
-R7 & A website for users to retrieve the data & \ref{sec:website}, \ref{sec:demo} \\
+R6 & Graph retrieval from an entity within 1--2 hops & \ref{sec:retrieval} \\
+R7 & A website for retrieving the data & \ref{sec:website}, \ref{sec:demo} \\
 R8 & Evaluate the system systematically & \ref{sec:evaluation} \\
 R9 & Analyse errors and limitations & \ref{sec:errors}, \ref{sec:limitations} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The structure of the report follows the lecture's \emph{Recommended Final Report Structure} (§37 of \emph{From Deep Learning to Knowledge Graph, RAG and Intelligent Agents}). That outline is written for a complete intelligent assistant and also contains sections on a deep-learning model, a RAG architecture and an agent architecture. This project covers the Knowledge Graph part and a retrieval website, so those three sections are not included. Two sections are added instead because they carry a large part of the work: \textbf{Visualisation} (Section~\ref{sec:visualisation}) and \textbf{Demo} (Section~\ref{sec:demo}), which walks through the website with screenshots.
+The report follows the lecture's \emph{Recommended Final Report Structure} (§37 of \emph{From Deep Learning to Knowledge Graph, RAG and Intelligent Agents}). That outline covers a full intelligent assistant, with sections on a deep-learning model, a RAG architecture and an agent architecture. This project is the Knowledge Graph and retrieval-website part, so those three sections are omitted. Two are added because they hold a large share of the work: \textbf{Visualisation} (Section~\ref{sec:visualisation}) and \textbf{Demo} (Section~\ref{sec:demo}).
 
-\subsection{Summary of the Approach}
+\subsection{Overview of the Approach}
 
-Figure~\ref{fig:overview} shows the whole system. Each box is a separate program, and each one reads the output of the previous one from disk. The stages are separated on purpose: crawling takes about twenty minutes and depends on the website being reachable, so it is done once; extraction is where the rules were changed and re-tested several times, so it must be cheap to re-run without downloading anything; loading into Neo4j can rebuild the database from the CSV files at any time; and the website only reads from the database.
+Figure~\ref{fig:overview} shows the system. Every box is a separate program that reads the previous one's output from disk. The split is deliberate. Crawling takes about twenty minutes and needs the site to be reachable, so it runs once. Extraction is where the rules were revised and retested several times, so it must rerun cheaply without downloading again. Loading can rebuild the database from the CSV files at any moment, and the website only reads from the database.
 
 \begin{figure}[H]
 \centering
@@ -190,16 +172,13 @@ Figure~\ref{fig:overview} shows the whole system. Each box is a separate program
     box/.style={draw, rounded corners, fill=blue!6, minimum height=1.1cm, text width=2.45cm, align=center, font=\small},
     file/.style={draw, fill=gray!8, minimum height=0.85cm, text width=2.45cm, align=center, font=\scriptsize},
     arr/.style={-{Stealth[length=2.2mm]}, thick}]
-% top row: the build pipeline
 \node[box] (web) at (0,0) {vinmec.com\\ \scriptsize sitemap, 1,197 pages};
 \node[box] (crawl) at (3.25,0) {\textbf{Crawler}\\ \scriptsize\texttt{kg/crawl.py}};
 \node[box] (extract) at (6.5,0) {\textbf{Extractor}\\ \scriptsize\texttt{kg/extract.py}};
 \node[box] (load) at (9.75,0) {\textbf{Loader}\\ \scriptsize\texttt{kg/load.py}};
 \node[box, fill=green!8] (neo) at (13,0) {\textbf{Neo4j}\\ \scriptsize graph database};
-% middle row: files on disk
 \node[file] (raw) at (3.25,-1.8) {1,096 JSON pages\\ \texttt{dataset/raw/}};
 \node[file] (csv) at (6.5,-1.8) {4 CSV files\\ \texttt{dataset/processed/}};
-% bottom row: the users of the database
 \node[box, fill=purple!8] (nb) at (6.5,-3.7) {\textbf{Notebook}\\ \scriptsize Cypher, \texttt{graph\_facts}};
 \node[box, fill=orange!10] (site) at (9.75,-3.7) {\textbf{Website}\\ \scriptsize React, \texttt{web/}};
 \node[box, fill=orange!10] (api) at (13,-3.7) {\textbf{API}\\ \scriptsize FastAPI, \texttt{api/}};
@@ -215,7 +194,7 @@ Figure~\ref{fig:overview} shows the whole system. Each box is a separate program
 \draw[arr] (api) -- (site);
 \draw[arr] (neo.south west) -- (nb.north east);
 \end{tikzpicture}
-\caption{Overview of the system. Solid arrows: the flow of data between programs; dashed arrows: files written to and read from disk. The notebook, the Cypher queries and the website all read the same Neo4j database.}
+\caption{System overview. Solid arrows show data flowing between programs, dashed arrows files written to and read from disk. The notebook, the Cypher queries and the website all read the same Neo4j database.}
 \label{fig:overview}
 \end{figure}
 
@@ -225,54 +204,54 @@ Figure~\ref{fig:overview} shows the whole system. Each box is a separate program
 
 \subsection{Input and Output}
 
-\textbf{Input.} The public Vietnamese articles of vinmec.com that are about diabetes: Vinmec's official disease pages (short structured summaries with fixed headings: overview, causes, symptoms, risk groups, prevention, diagnosis, treatment) and the much larger set of news and advice articles written or reviewed by Vinmec doctors. No other source is used.
+\textbf{Input.} The public Vietnamese diabetes articles of vinmec.com: the official disease pages (short structured summaries with fixed headings for overview, causes, symptoms, risk groups, prevention, diagnosis and treatment) and the much larger set of advice articles written or reviewed by Vinmec doctors. No other source is used.
 
 \textbf{Output.} A Knowledge Graph in which
 \begin{itemize}
-    \item every node is a clearly named diabetes concept with a type: a type of diabetes, a symptom, a risk factor, a complication, a diagnostic test, a drug, a drug class, a food, a lifestyle measure or an organ;
-    \item every edge is a fact with a named relation, such as \code{HAS\_SYMPTOM} or \code{TREATED\_BY};
-    \item every extracted fact records how many different articles state it (its \textbf{support}) and which articles they are;
+    \item each node is a named diabetes concept with a type: a form of diabetes, symptom, risk factor, complication, test, drug, drug class, food, lifestyle measure or organ;
+    \item each edge is a fact with a named relation such as \code{HAS\_SYMPTOM} or \code{TREATED\_BY};
+    \item each extracted fact records how many different articles state it (its \textbf{support}) and which ones;
 \end{itemize}
-plus three ways to use it: Cypher queries in Neo4j, a retrieval function that returns the facts around one entity, and a website.
+together with three ways to use it: Cypher queries in Neo4j, a retrieval function returning the facts around one entity, and a website.
 
 \subsection{Questions the System Must Answer}
 
-A Knowledge Graph is only useful if it answers real questions. The design started from the questions a reader of diabetes articles would ask, and each one corresponds to a different kind of graph query:
+A graph is useful only if it answers real questions. The design started from what a reader of diabetes articles would ask, and each question calls for a different query shape (Table~\ref{tab:questions}).
 
 \begin{table}[H]
 \centering
 \small
-\caption{Questions the system must answer and the kind of graph query each one needs.}
+\caption{Questions the system must answer and the query each one needs.}
 \label{tab:questions}
 \begin{tabularx}{\textwidth}{X l X}
 \toprule
-Question & Query type & What the graph must contain \\
+Question & Query type & What the graph must hold \\
 \midrule
-What are the symptoms of type 1 diabetes? What drugs treat type 2? & one-hop & typed facts from each diabetes type \\
-What do we know about Metformin? & one-hop, both directions & facts in which Metformin is the subject or the object \\
-Which organs can type 2 diabetes damage? & two-hop & complications \emph{and} the organ each complication affects \\
-Which types of diabetes match these symptoms? & aggregation over one hop & symptom facts per type, with their support \\
+What are the symptoms of type 1 diabetes? Which drugs treat type 2? & one-hop & typed facts from each diabetes type \\
+What do we know about Metformin? & one-hop, both directions & facts where Metformin is subject or object \\
+Which organs can type 2 diabetes damage? & two-hop & complications \emph{and} the organ each affects \\
+Which types of diabetes match these symptoms? & aggregation over one hop & symptom facts per type, with support \\
 How is obesity connected to the kidney? & shortest path & a connected graph \\
-How is diabetes diagnosed, and at which values? & one-hop + node property & tests, with thresholds stored on the test nodes \\
+How is diabetes diagnosed, at which values? & one-hop + node property & tests with thresholds on the test nodes \\
 Where does this fact come from? & provenance & article URLs stored on each fact \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-These questions decided the design. The two-hop question is the reason for the hand-added \emph{affects organ} facts (Section~\ref{sec:curated}); the symptom checker is the reason why support is stored on every fact rather than used once as a filter; the provenance question is the reason why the articles themselves are nodes in the graph.
+These questions shaped the design. The two-hop question is why \emph{affects organ} facts were added by hand (Section~\ref{sec:curated}); the symptom checker is why support is kept on every fact instead of being used once as a filter; the provenance question is why articles are nodes in the graph.
 
 \subsection{Success Criteria}
 
 \begin{enumerate}
-    \item \textbf{Size and structure} (lecture Mini Project 3 and Exercise 1): at least 50 entities, 100 relationships, 5 relationship types and 3 entity types; triples in CSV; at least five Cypher queries including one-hop and two-hop queries; a visualisation.
-    \item \textbf{Correctness}: measured, not assumed. A random sample of extracted facts is checked by hand against the source articles, and the share of correct facts (precision) is reported with its uncertainty.
-    \item \textbf{Traceability}: every extracted fact links to the articles that state it.
-    \item \textbf{Usability}: a person without any knowledge of Cypher can find an entity, see its facts and their sources, compare diabetes types, check symptoms and find connections, through a website.
+    \item \textbf{Size and structure} (Mini Project 3, Exercise 1): at least 50 entities, 100 relationships, 5 relation types, 3 entity types; triples in CSV; at least five Cypher queries including one-hop and two-hop; a visualisation.
+    \item \textbf{Correctness}, measured and not assumed: a random sample of facts is checked by hand against the source articles, and precision is reported with its uncertainty.
+    \item \textbf{Traceability}: every extracted fact links to the articles behind it.
+    \item \textbf{Usability}: someone who knows no Cypher can find an entity, see its facts and sources, compare diabetes types, check symptoms and find connections.
 \end{enumerate}
 
 \subsection{What the System Is Not}
 
-The graph summarises what public health articles say. It is not a diagnostic tool and not medical advice. ``Correct'' in this report means that the Vinmec articles state the fact for that type of diabetes, not that a doctor has verified it against current clinical guidelines. This distinction is repeated in the website and in the evaluation, because for a medical topic it matters.
+The graph summarises what public health articles say. It is neither a diagnostic tool nor medical advice. ``Correct'' in this report means that the Vinmec articles state the fact for that form of diabetes, not that a physician verified it against current guidelines. The website and the evaluation both repeat this, since on a medical topic the difference matters.
 
 % =====================================================================
 \section{Data Collection}
@@ -280,52 +259,52 @@ The graph summarises what public health articles say. It is not a diagnostic too
 
 \subsection{Why Vinmec}
 
-Three properties made Vinmec a good single source for a Vietnamese diabetes graph. First, the language: the articles are written in Vietnamese, so the graph uses the words Vietnamese readers actually use. Second, coverage: the site has almost a thousand diabetes articles covering every aspect of the disease, from early signs to diet, drugs and pregnancy. Third, consistency: the articles are written or reviewed by the hospital's doctors and follow a recognisable structure, with headings such as \emph{Triệu chứng} (symptoms), \emph{Nguyên nhân} (causes) and \emph{Điều trị} (treatment). Section~\ref{sec:extraction} shows that this structure is what makes automatic extraction possible.
+Three properties make Vinmec a good single source for a Vietnamese diabetes graph. The articles are in Vietnamese, so the graph uses the words readers actually use. Coverage is wide: nearly a thousand diabetes articles span early signs, diet, drugs and pregnancy. And the writing is consistent: doctors write or review it, and it follows recognisable headings such as \emph{Triệu chứng} (symptoms), \emph{Nguyên nhân} (causes) and \emph{Điều trị} (treatment). Section~\ref{sec:extraction} shows that this regularity is what makes automatic extraction feasible.
 
 \subsection{Finding the Pages}
 
-\paragraph{Why not the search box.} The obvious way to find diabetes articles would be the website's search box. That does not work for a program. Vinmec's search results are produced by JavaScript running inside the browser after the page has loaded. When a program downloads the search page directly, it receives the page \emph{before} the JavaScript has run, and there are no results in it. A test request for ``tiểu đường'' returned a 150~KB page containing no article links.
+\paragraph{Why not the search box.} A program cannot use the site's search: results are drawn by JavaScript in the browser, so downloading the search page yields the page before any results exist. A test request for ``tiểu đường'' returned about 150~KB of HTML with no article links.
 
-\paragraph{The sitemap.} Large websites publish a \textbf{sitemap}, a file listing every URL on the site, so that search engines can find all their pages. Vinmec's \code{sitemap.xml} points to about 230 smaller sitemaps. The crawler reads the ones for Vietnamese articles (\code{posts-vi-1.xml} \ldots{} \code{posts-vi-87.xml}) and Vietnamese disease pages (\code{diseases-vi-1.xml}), which together list about 222,000 URLs---the entire Vietnamese website.
+\paragraph{The sitemap.} Websites publish a \textbf{sitemap}, a file listing every URL so that search engines can index them. Vinmec's \code{sitemap.xml} points to about 230 smaller sitemaps. The crawler reads those for Vietnamese articles (\code{posts-vi-*}) and Vietnamese disease pages (\code{diseases-vi-*}), which together list around 222,000 URLs: the whole Vietnamese site.
 
-\paragraph{Selecting by slug.} Every URL ends with a short readable name of the page, its \textbf{slug}, written without Vietnamese accents. The article \emph{``Bệnh đái tháo đường: chế độ ăn như thế nào?''} has the slug \code{benh-dai-thao-duong-che-do-nhu-nao-vi}. This makes it possible to select diabetes pages without downloading all 222,000. Keywords are split into two strengths because they carry different risks:
+\paragraph{Selecting by slug.} Each URL ends in a readable name called the \textbf{slug}, written without accents; the article \emph{``Bệnh đái tháo đường: chế độ ăn như thế nào?''} has the slug \code{benh-dai-thao-duong-che-do-nhu-nao-vi}. Selecting by slug avoids downloading all 222,000 pages. Keywords come in two strengths because their risks differ:
 \begin{itemize}
-    \item \textbf{strong keywords} (\code{tieu-duong}, \code{thao-duong}, \code{dai-duong}): a slug containing one of them is almost certainly about diabetes;
-    \item \textbf{weak keywords} (\code{insulin}, \code{metformin}, \code{hba1c}, \code{duong-huyet} = blood sugar, \code{glucose}, \code{sglt2}, …): the page \emph{might} be about diabetes, but these words also appear in articles about other topics, such as the role of insulin in the body or blood sugar in healthy people.
+    \item \textbf{strong} (\code{tieu-duong}, \code{thao-duong}, \code{dai-duong}): a slug containing one is almost certainly about diabetes;
+    \item \textbf{weak} (\code{insulin}, \code{metformin}, \code{hba1c}, \code{duong-huyet} = blood sugar, \code{glucose}, \code{sglt2}\ldots): the page \emph{may} be about diabetes, but these words also occur in articles on other subjects, such as the role of insulin in the body or blood sugar in healthy people.
 \end{itemize}
-The slug \code{thao-nhat} is excluded explicitly: \emph{đái tháo nhạt} (diabetes insipidus) shares the words ``đái tháo'' with \emph{đái tháo đường} but is a different disease of the kidneys and hormones, unrelated to blood sugar.
+The slug \code{thao-nhat} is excluded: \emph{đái tháo nhạt} (diabetes insipidus) shares ``đái tháo'' with \emph{đái tháo đường} but is a different disease of kidneys and hormones.
 
-This selection gives \textbf{1,197 candidate URLs}. Six of them either failed to download or were the same article published under a second address (the crawler skips a page whose title it has already seen), so \textbf{1,191 pages} were downloaded and checked: 944 with a strong keyword and 247 with only a weak one.
+This yields \textbf{1,197 candidate URLs}. A few either failed to download or duplicated an article under a second address (the crawler skips a title it has already seen), so \textbf{1,191 pages} were downloaded and checked: 944 with a strong keyword and 247 with only a weak one.
 
-\paragraph{Politeness.} The site's \code{robots.txt} (where a website states what automated programs may access) allows these paths. The crawler identifies itself as a student research crawler, waits one second between requests and retries failed requests with increasing pauses, so it never puts noticeable load on the server. It also saves every page as soon as it is processed and skips pages already saved, so an interrupted crawl continues where it stopped.
+\paragraph{Politeness.} The site's \code{robots.txt}, which states what automated programs may fetch, permits these paths. The crawler identifies itself as a student research crawler, waits one second between requests, retries failures with growing pauses, saves each page as soon as it is processed and skips pages already saved, so an interrupted crawl resumes where it stopped.
 
 \subsection{Why a Second Filter Is Needed}
 
-Selecting pages by slug has a hidden problem, caused by the missing accents. Vietnamese has many words that differ only in their accents, and once the accents are removed they become identical:
+Selecting by slug has a flaw caused by the missing accents. Vietnamese has many words that differ only by accent, and without accents they coincide:
 \begin{itemize}
-    \item \code{tieu-duong} is \emph{tiểu đường} (diabetes), but also the beginning of \emph{tiểu dương vật} (a urology question about a child);
-    \item \code{dai-duong} is \emph{đái đường} (diabetes), but also \emph{đại dương} (ocean), as in \emph{cá ngừ đại dương} (ocean tuna);
-    \item \code{duong} also appears in \emph{dưỡng ẩm} (moisturising) and \emph{dương tính} (positive, of a test result).
+    \item \code{tieu-duong} is \emph{tiểu đường} (diabetes), but also the start of \emph{tiểu dương vật} (a urology question about a child);
+    \item \code{dai-duong} is \emph{đái đường}, but also \emph{đại dương} (ocean), as in \emph{cá ngừ đại dương};
+    \item \code{duong} also hides \emph{dưỡng ẩm} (moisturising) and \emph{dương tính} (a positive test result).
 \end{itemize}
-These pages pass the slug test but have nothing to do with diabetes. So after downloading, every page is checked again on its real text, \textbf{with accents}, where the words can no longer be confused. The check counts how often the page mentions diabetes (\emph{tiểu đường}, \emph{đái tháo đường}, \emph{ĐTĐ}---the ``diabetes count'') and how often it uses related terms (\emph{đường huyết}, \emph{insulin}, \emph{HbA1c}, \emph{biến chứng}, …---the ``related count''). A page is kept if:
+These pages pass the slug test and have nothing to do with diabetes. After downloading, each page is therefore rechecked on its real text, \textbf{with accents}, where such words are distinct. The check counts how often the page mentions diabetes (\emph{tiểu đường}, \emph{đái tháo đường}, \emph{ĐTĐ}: the ``diabetes count'') and how often it uses related terms (\emph{đường huyết}, \emph{insulin}, \emph{HbA1c}, \emph{biến chứng}\ldots: the ``related count''). A page is kept if:
 
 \begin{enumerate}
-    \item it is an official Vinmec \textbf{disease page}: Vinmec has already classified it as a diabetes page; or
-    \item its \textbf{title or summary} mentions diabetes and the text mentions it at least twice: the title is the author's own statement of what the article is about, so it is the strongest signal; or
-    \item its slug had a \textbf{strong} keyword and the text mentions diabetes at least three times: this removes the accent collisions, which mention diabetes zero times; or
-    \item its slug had only a \textbf{weak} keyword and the text mentions diabetes at least five times \emph{and} uses related terms at least five times: an article ``Insulin là gì?'' that discusses the hormone thirty times but mentions diabetes once is about biology, not the disease.
+    \item it is an official Vinmec \textbf{disease page}, already classified by Vinmec; or
+    \item its \textbf{title or summary} mentions diabetes and the text does so at least twice (the title is the author's own statement of the topic, the strongest signal); or
+    \item its slug had a \textbf{strong} keyword and the text mentions diabetes at least three times, which removes accent collisions (they mention it zero times); or
+    \item its slug had only a \textbf{weak} keyword and the text mentions diabetes at least five times \emph{and} uses related terms at least five times. An article ``Insulin là gì?'' that names the hormone thirty times and diabetes once is about biology, not the disease.
 \end{enumerate}
 
-The thresholds are deliberately loose where the evidence is strong (the title) and strict where the risk of a wrong page is high (a weak keyword). Table~\ref{tab:relevance} shows the result, and Table~\ref{tab:rejected} shows some of the rejected pages.
+The thresholds are loose where evidence is strong (the title) and strict where a wrong page is likely (a weak keyword). Table~\ref{tab:relevance} gives the outcome and Table~\ref{tab:rejected} some rejected pages.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Candidate pages kept and rejected by the relevance filter, by strength of the slug keyword.}
+\caption{Candidate pages kept and rejected by the relevance filter, by slug keyword strength.}
 \label{tab:relevance}
 \begin{tabular}{lrrr}
 \toprule
-Slug keyword & Kept & Rejected & Candidates \\
+Slug keyword & Kept & Rejected & Checked \\
 \midrule
 \tabinput{table_relevance.tex}
 \bottomrule
@@ -335,7 +314,7 @@ Slug keyword & Kept & Rejected & Candidates \\
 \begin{table}[H]
 \centering
 \small
-\caption{Examples of rejected pages, with their diabetes count and related count. The first four are accent collisions.}
+\caption{Examples of rejected pages with their diabetes and related counts. The first four are accent collisions.}
 \label{tab:rejected}
 \begin{tabularx}{\textwidth}{X l r r}
 \toprule
@@ -346,20 +325,20 @@ Title & Slug keyword & Diabetes count & Related count \\
 \end{tabularx}
 \end{table}
 
-Only 10 of the 944 strong-keyword pages were rejected, and all of them are collisions such as \emph{tiểu dương vật} and \emph{đại dương}. Among the weak-keyword pages a third were rejected: they are about insulin, blood sugar or tests in general rather than about the disease. The filter is not perfect: the article \emph{``Bài thuốc từ bí đao chữa bệnh tiểu đường''} is about diabetes but too short to reach the threshold. Losing a handful of short pages costs little; letting off-topic pages in would add false facts to the graph.
+Only 10 of 944 strong-keyword pages were rejected, all of them collisions like \emph{tiểu dương vật} and \emph{đại dương}. Of the weak-keyword pages, about a third were rejected as being about insulin, blood sugar or tests in general. The filter is imperfect: a short article on a winter-melon remedy for diabetes falls under the threshold. Losing a few short pages costs little, while admitting off-topic ones would put false facts into the graph.
 
 \subsection{Parsing a Page}
 
-The crawler does not save the raw HTML of a page. Raw HTML contains menus, advertisements, booking forms, the footer and scripts; the article itself is a small part of it. The parser uses the structure of Vinmec's pages:
+The crawler does not store raw HTML, in which menus, advertisements, booking forms, footers and scripts outweigh the article. It uses the structure of Vinmec's pages:
 \begin{itemize}
-    \item \textbf{articles}: the body is the element with class \code{entry}; the title, publication date, author and summary come from the page's structured metadata (\code{application/ld+json}, the format search engines read);
-    \item \textbf{disease pages}: each section is an element with class \code{item\_detial\_sick} containing a heading and a body.
+    \item \textbf{articles}: the body is the element of class \code{entry}; title, date, author and summary come from the structured metadata (\code{application/ld+json}) that search engines read;
+    \item \textbf{disease pages}: each section is an element of class \code{item\_detial\_sick} holding a heading and a body.
 \end{itemize}
-The body is split into \textbf{sections}. For each section three things are saved: the \textbf{heading} it sits under, its \textbf{paragraphs} and its \textbf{bullet points} as separate items.
+The body is split into \textbf{sections}, and for each the crawler saves the \textbf{heading}, the \textbf{paragraphs} and the \textbf{bullet points} separately.
 
-Keeping the heading is the most important design decision of the whole project. The heading tells us what kind of information the text below it contains: the bullet ``Mệt mỏi'' (fatigue) means something completely different under \emph{Triệu chứng} (symptoms) than under \emph{Tác dụng phụ của thuốc} (side effects of a drug). Section~\ref{sec:extraction} builds the whole extraction on this.
+Keeping the heading is the most consequential design decision in the project. The heading says what kind of information the text below it holds: the bullet ``Mệt mỏi'' (fatigue) means one thing under \emph{Triệu chứng} and another under \emph{Tác dụng phụ của thuốc} (side effects). Section~\ref{sec:extraction} builds on this.
 
-The text at the end of articles that is not part of the article is cut off: the booking text (\emph{``Để đặt lịch khám tại viện, Quý khách vui lòng bấm số HOTLINE…''}), the app advertisement and the ``Xem thêm:'' (see also) links. If it were kept, every article would ``mention'' the same booking words, and the related-article links would bring in words from other topics. Figure~\ref{fig:page} shows the saved form of the type 2 disease page.
+Text at the end of an article that is not part of it is removed: the booking message (\emph{``Để đặt lịch khám tại viện, Quý khách vui lòng bấm số HOTLINE\ldots''}), the app advert and the ``Xem thêm:'' (see also) links. Left in, every article would ``mention'' the same booking phrases and the links would import words from unrelated topics. Figure~\ref{fig:page} shows the saved form of the type 2 disease page.
 
 \begin{figure}[H]
 \centering
@@ -383,7 +362,7 @@ url:   https://www.vinmec.com/vie/benh/tieu-duong-tuyp-2-3042     type: disease
 ## Các biện pháp chẩn đoán bệnh Tiểu đường tuýp 2  ...
 ## Các biện pháp điều trị bệnh Tiểu đường tuýp 2   ...
 \end{codeblock}
-\caption{The saved form of Vinmec's type 2 diabetes page: a list of sections, each with its heading, paragraphs and bullet points (abbreviated).}
+\caption{Vinmec's type 2 disease page as saved: sections, each with heading, paragraphs and bullets (abridged).}
 \label{fig:page}
 \end{figure}
 
@@ -406,11 +385,11 @@ Quantity & Value \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{corpus_stats.png}
-\caption{Left: words per kept page. Middle: how often each page mentions diabetes (clipped at 60). Right: publication year of the kept pages.}
+\caption{Left: words per kept page. Middle: diabetes mentions per page (clipped at 60). Right: publication year of kept pages.}
 \label{fig:corpus}
 \end{figure}
 
-Figure~\ref{fig:corpus} gives a picture of the corpus. A typical article has about a thousand words, long enough to cover several aspects of the disease under separate headings. Half of the kept pages mention diabetes 16 times or more, and only one in ten mentions it fewer than 6 times, which confirms that the filter kept pages about the disease rather than pages that mention it in passing. Almost all pages (1,083 of 1,092 with a date) carry a 2024 publication date. This is the date of Vinmec's re-publication of its archive rather than the date the article was written, so the real age of each article is unknown; this is discussed as a limitation in Section~\ref{sec:limitations}.
+Figure~\ref{fig:corpus} sketches the corpus. A typical page runs to about a thousand words, enough for several aspects of the disease under separate headings. Half of the kept pages mention diabetes 16 times or more and few mention it fewer than six times, which confirms the filter kept pages about the disease and not passing mentions. Nearly all dated pages (1,083 of 1,092) carry a 2024 date. That is when Vinmec republished its archive, not when each article was written, so true article age is unknown; Section~\ref{sec:limitations} returns to this.
 
 % =====================================================================
 \section{Knowledge Graph Design}
@@ -418,7 +397,7 @@ Figure~\ref{fig:corpus} gives a picture of the corpus. A typical article has abo
 
 \subsection{Facts, Entities and Relations}
 
-A Knowledge Graph is a set of \textbf{triples}. Each triple states one fact in a fixed three-part form: the thing the fact is about (the \textbf{subject}), the kind of relationship (the \textbf{relation}) and the other thing (the \textbf{object}). The paragraph of the type 2 disease page that lists the classic symptoms and the chronic complications becomes facts such as:
+A Knowledge Graph is a set of \textbf{triples}, each stating one fact in a fixed three-part form: what the fact is about (the \textbf{subject}), the kind of link (the \textbf{relation}) and the other thing (the \textbf{object}). The part of the type 2 disease page that lists classic symptoms and chronic complications becomes:
 
 \begin{center}
 \small
@@ -434,30 +413,30 @@ Bệnh võng mạc & AFFECTS\_ORGAN & Mắt \\
 \end{tabular}
 \end{center}
 
-Why is this better than the paragraph? Because every fact has the same predictable form. A program does not need to understand Vietnamese grammar to use it; it only looks for facts whose subject is ``type 2'' and whose relation is \code{HAS\_COMPLICATION}. The ambiguity of language is resolved once, when the fact is created, instead of every time a question is asked.
+This beats the paragraph because every fact has the same predictable form. A program need not parse Vietnamese grammar; it looks for facts whose subject is ``type 2'' and relation \code{HAS\_COMPLICATION}. The ambiguity of language is settled once, when the fact is made, not at every question.
 
-If every thing is drawn as a dot and every fact as an arrow, the facts form a network: a \textbf{graph}. The things are the \textbf{nodes} or \textbf{entities}, the facts are the \textbf{edges} or \textbf{relationships}, and each node also has a \textbf{type} (\code{Symptom}, \code{Drug}, …) so a program knows what kind of thing it is. Figure~\ref{fig:toy} shows seven hand-written facts as a graph. Questions become walks along the arrows: ``which organ does type 2 damage?'' starts at \emph{type 2}, follows \code{HAS\_COMPLICATION} to \emph{Bệnh thận đái tháo đường} and then \code{AFFECTS\_ORGAN} to \emph{Thận}. No single fact contains the answer; combining two facts through the node in the middle does. This is what the lecture calls a \textbf{two-hop} query, as opposed to a \textbf{one-hop} query that only reads the arrows directly attached to one node.
+Draw each thing as a dot and each fact as an arrow and the facts become a \textbf{graph}: the things are \textbf{nodes} or \textbf{entities}, the facts \textbf{edges} or \textbf{relationships}, and each node has a \textbf{type} (\code{Symptom}, \code{Drug}\ldots). Figure~\ref{fig:toy} draws seven hand-written facts. Questions become walks: ``which organ does type 2 damage?'' goes from \emph{type 2} along \code{HAS\_COMPLICATION} to \emph{Bệnh thận đái tháo đường}, then along \code{AFFECTS\_ORGAN} to \emph{Thận}. No single fact holds the answer; two facts joined at the middle node do. The lecture calls this a \textbf{two-hop} query, as opposed to a \textbf{one-hop} query that reads only the arrows touching one node.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.72\textwidth]{toy_graph.png}
-\caption{Seven hand-written diabetes facts drawn as a graph (from the notebook, Part 1). The organ \emph{Thận} is two hops from \emph{type 2}: no single fact connects them.}
+\caption{Seven hand-written diabetes facts as a graph (notebook, Part 1). The kidney (\emph{Thận}) is two hops from \emph{type 2}: no single fact joins them.}
 \label{fig:toy}
 \end{figure}
 
-The real graph has the same shape but is built automatically from 1,096 articles. The hard part of the project is not storing the graph---it is extracting \textbf{correct} facts from free Vietnamese text without a person reading every article. The rest of this section explains how that is done.
+The real graph has the same shape but is built automatically from 1,096 articles. The hard part of the project is not storing the graph but extracting \textbf{correct} facts from free Vietnamese text without anyone reading every article, and the rest of this section explains how.
 
 \subsection{Schema: Entity Types and Relation Types}
 \label{sec:schema}
 
-The schema says which kinds of entities exist and which kinds of facts may connect them. It was designed from the questions in Table~\ref{tab:questions} and from the way Vinmec articles are organised.
+The schema says which kinds of entities exist and which facts may link them. It was designed from the questions of Table~\ref{tab:questions} and from the layout of Vinmec's articles.
 
-\textbf{Entity types.} There are ten types (Table~\ref{tab:entity-types}). Five of them correspond to the standard sections of a disease article: symptoms, risk factors, complications, tests and treatments. Treatments are split into \code{Drug} and \code{Lifestyle} because the questions about them differ (``which drug class?'' only makes sense for drugs). \code{Food} is separate because diet is one of the most discussed topics. \code{DrugClass} and \code{Organ} are not extracted from text; they exist to group drugs and to locate complications in the body (Section~\ref{sec:curated}). The five \code{DiabetesType} nodes are the subjects of almost all extracted facts.
+\textbf{Entity types.} There are ten (Table~\ref{tab:entity-types}). Five mirror the standard sections of a disease article: symptoms, risk factors, complications, tests and treatments. Treatments split into \code{Drug} and \code{Lifestyle} since the questions differ (``which drug class?'' makes sense only for drugs). \code{Food} is separate because diet is among the most discussed topics. \code{DrugClass} and \code{Organ} are not extracted from text: they group drugs and place complications in the body (Section~\ref{sec:curated}). The five \code{DiabetesType} nodes are the subjects of almost every extracted fact.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Entity types: number of vocabulary entries, aliases (ways of writing them), entities that ended up in the graph, and examples.}
+\caption{Entity types: vocabulary entries, aliases (spellings), entities that reached the graph, and the best-connected examples.}
 \label{tab:entity-types}
 \begin{tabularx}{\textwidth}{l r r r X}
 \toprule
@@ -468,9 +447,9 @@ Type & Vocabulary & Aliases & In graph & Examples \\
 \end{tabularx}
 \end{table}
 
-Almost every vocabulary entry was found in the articles with enough support to enter the graph; the one risk factor and one complication that are missing are discussed in Section~\ref{sec:errors}.
+Nearly every vocabulary entry earned enough support to enter the graph; the one complication and one risk factor that did not are discussed in Section~\ref{sec:errors}.
 
-\textbf{Relation types.} Table~\ref{tab:relations} lists the twelve relation types with the entity types they connect and how many facts each one has in the graph. The \code{source} column separates facts extracted from articles (\code{vinmec}) from general classifications added by hand (\code{curated}).
+\textbf{Relation types.} Table~\ref{tab:relations} lists the twelve relations with the entity types they join and their fact counts. The \code{source} column separates facts extracted from articles (\code{vinmec}) from general classifications added by hand (\code{curated}).
 
 \begin{table}[H]
 \centering
@@ -486,35 +465,35 @@ Relation & From $\rightarrow$ to & Source & Facts \\
 \end{tabular}
 \end{table}
 
-The direction of every relation is a modelling choice: \code{HAS\_SYMPTOM} points from the disease to the symptom, but it could equally be written \code{SYMPTOM\_OF} in the other direction. The convention used here is that facts point \emph{away} from the diabetes types and then onward to classifications. Section~\ref{sec:pagerank} shows that this choice matters when computing graph measures. Figure~\ref{fig:schema} draws the schema: every arrow is a kind of question the graph can answer, and a missing arrow (for example from \code{Food} to \code{Complication}) is a question it cannot answer.
+The direction of each relation is a modelling choice: \code{HAS\_SYMPTOM} runs from disease to symptom but could be \code{SYMPTOM\_OF} the other way. The convention here is that facts point \emph{away} from the diabetes types and on to classifications. Section~\ref{sec:pagerank} shows this choice matters for graph measures. Figure~\ref{fig:schema} draws the schema: each arrow is a question the graph can answer, and a missing arrow (say \code{Food} to \code{Complication}) is a question it cannot.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth]{schema.png}
-\caption{The schema of the graph as stored in Neo4j: entity types (circles) and the relations between them, with the number of facts of each kind. Diabetes types on the left, what the articles say about them in the middle, hand-added classifications on the right.}
+\caption{The schema as stored in Neo4j: entity types (circles) and the relations between them with fact counts. Diabetes types on the left, what the articles say about them in the middle, hand-added classifications on the right.}
 \label{fig:schema}
 \end{figure}
 
 \subsection{Extraction Method}
 \label{sec:extraction}
 
-\subsubsection{Why not let each bullet point become a node}
+\subsubsection{Why a bullet point should not become a node}
 
-The simplest approach would be to make every bullet under \emph{Triệu chứng} a Symptom node. On the type 2 page that gives nodes such as ``Ăn nhiều'' and ``Uống nhiều (hay khát nước)'', which looks acceptable. But a bullet under \emph{Điều trị} on the type 1 page reads:
+The simplest scheme would make every bullet under \emph{Triệu chứng} a Symptom node. On the type 2 page that gives acceptable nodes such as ``Ăn nhiều''. But a bullet under \emph{Điều trị} on the type 1 page reads:
 
 \begin{quote}\small
-\emph{``Kiểm soát đường huyết: đối với tuýp 1 thì kiểm soát bằng insulin ngoại sinh là chủ yếu. Dùng theo phác đồ, tuân thủ giờ tiêm và liều lượng tránh bị tụt đường huyết. Các loại insulin gồm có…''}
+\emph{``Kiểm soát đường huyết: đối với tuýp 1 thì kiểm soát bằng insulin ngoại sinh là chủ yếu. Dùng theo phác đồ, tuân thủ giờ tiêm và liều lượng tránh bị tụt đường huyết. Các loại insulin gồm có\ldots''}
 \end{quote}
 
-That is sixty words. As a node it is useless: no other article will ever write the same sixty words, so it never connects to anything and no question ever matches it. Even short bullets differ: one article writes \emph{uống nhiều}, another \emph{khát nước}, another \emph{hay khát}. As separate nodes, the single fact ``diabetes causes thirst'' would be split into weak pieces that never meet.
+Sixty words make a useless node: no other article repeats them, so it links to nothing and matches no question. Even short bullets differ between articles (\emph{uống nhiều}, \emph{khát nước}, \emph{hay khát}), so a single fact ``diabetes causes thirst'' would shatter into weak pieces that never meet.
 
-So instead of copying text into the graph, the project decides \textbf{in advance} which concepts the graph may contain, gives each one a clean name, and searches the text for any of the ways it can be written. Extraction then answers three questions for every section of every page:
+The project therefore decides \textbf{in advance} which concepts the graph may contain, names each cleanly, and searches the text for every way of writing it. For every section of every page, extraction then answers three questions:
 \begin{enumerate}
-    \item \textbf{Which diabetes is the page about?} This is the subject of the facts.
-    \item \textbf{What kind of information may this section contain?} This is decided by the section heading.
-    \item \textbf{Which known concepts does the section mention?} These are the objects of the facts.
+    \item \textbf{Which diabetes is the page about?} That is the subject.
+    \item \textbf{What may this section contain?} The heading decides.
+    \item \textbf{Which known concepts does it mention?} Those are the objects.
 \end{enumerate}
-Each fact found on a page is one \textbf{vote} from that page; the votes of all pages are counted and a fact enters the graph only when enough different pages agree. Figure~\ref{fig:pipeline} shows the process on a real section.
+Each fact found on a page is one \textbf{vote} from that page; votes are tallied, and a fact enters the graph only when enough different pages agree. Figure~\ref{fig:pipeline} traces a real section.
 
 \begin{figure}[H]
 \centering
@@ -523,23 +502,23 @@ Each fact found on a page is one \textbf{vote} from that page; the votes of all 
     lab/.style={font=\small\bfseries, align=center},
     arr/.style={-{Stealth[length=2mm]}, thick},
     node distance=0.35cm]
-\node[st] (a) {\textbf{Page title}\\ ``Tiểu đường tuýp 2: Nguyên nhân, triệu chứng…''\\[3pt] $\Rightarrow$ subject:\\ \textbf{Đái tháo đường type 2}};
+\node[st] (a) {\textbf{Page title}\\ ``Tiểu đường tuýp 2: Nguyên nhân, triệu chứng\ldots''\\[3pt] $\Rightarrow$ subject:\\ \textbf{Đái tháo đường type 2}};
 \node[st, right=of a] (b) {\textbf{Section heading}\\ ``Triệu chứng bệnh Tiểu đường tuýp 2''\\[3pt] contains \emph{triệu chứng}, names the disease\\ $\Rightarrow$ allowed: \textbf{Symptom}};
-\node[st, right=of b] (c) {\textbf{Bullets}\\ ``Ăn nhiều'', ``Uống nhiều (hay khát nước)'', ``Tiểu nhiều …'', ``Gầy nhiều (gầy sút cân)''\\[3pt] aliases matched $\Rightarrow$ Ăn nhiều, Khát nhiều, Tiểu nhiều, Sụt cân};
-\node[st, right=of c] (d) {\textbf{Votes of this page}\\ (type 2, HAS\_SYMPTOM, Khát nhiều) …\\[3pt] counted over all 1,096 pages; kept if $\geq$ 2 pages (or a disease page)};
+\node[st, right=of b] (c) {\textbf{Bullets}\\ ``Ăn nhiều'', ``Uống nhiều (hay khát nước)'', ``Tiểu nhiều \ldots'', ``Gầy nhiều (gầy sút cân)''\\[3pt] aliases matched $\Rightarrow$ Ăn nhiều, Khát nhiều, Tiểu nhiều, Sụt cân};
+\node[st, right=of c] (d) {\textbf{This page's votes}\\ (type 2, HAS\_SYMPTOM, Khát nhiều) \ldots\\[3pt] tallied over all 1,096 pages; kept if $\geq$ 2 pages (or a disease page)};
 \draw[arr] (a) -- (b); \draw[arr] (b) -- (c); \draw[arr] (c) -- (d);
 \node[lab, above=0.15cm of a] {1. subject};
 \node[lab, above=0.15cm of b] {2. allowed types};
 \node[lab, above=0.15cm of c] {3. objects};
 \node[lab, above=0.15cm of d] {4. support};
 \end{tikzpicture}
-\caption{Extraction of symptom facts from the symptom section of Vinmec's type 2 disease page.}
+\caption{Extracting symptom facts from the symptom section of Vinmec's type 2 disease page.}
 \label{fig:pipeline}
 \end{figure}
 
 \subsubsection{The vocabulary and entity normalisation}
 
-The vocabulary (\code{kg/vocab.py}) lists 106 concepts. Each has a clean \textbf{canonical name} that becomes the node, a \textbf{type}, and a list of \textbf{aliases}: the different ways the articles write it (320 aliases in total). A few entries:
+The vocabulary (\code{kg/vocab.py}) lists 106 concepts, each with a clean \textbf{canonical name} that becomes the node, a \textbf{type}, and \textbf{aliases}, the spellings found in articles (320 in all). A sample:
 
 \begin{codeblock}
 VOCAB = {
@@ -555,41 +534,41 @@ VOCAB = {
 }
 \end{codeblock}
 
-Mapping many surface forms to one node is called \textbf{entity normalisation}. It is what makes evidence add up: when one article says \emph{uống nhiều} and another \emph{khát nước}, both vote for the same fact \emph{(diabetes, HAS\_SYMPTOM, Khát nhiều)}, and the graph knows that two articles agree. Brand names are included as aliases (\emph{Glucophage}, \emph{Diamicron}, \emph{Januvia}, \emph{Jardiance}, \emph{Lantus}) because Vietnamese articles often name drugs by brand.
+Mapping many spellings to one node is \textbf{entity normalisation}, and it is what lets evidence accumulate: an article saying \emph{uống nhiều} and another saying \emph{khát nước} both vote for \emph{(diabetes, HAS\_SYMPTOM, Khát nhiều)}. Brand names (\emph{Glucophage}, \emph{Diamicron}, \emph{Januvia}, \emph{Jardiance}, \emph{Lantus}) are aliases because Vietnamese articles often name drugs by brand.
 
-The vocabulary was written by hand from the topics that appear in the articles: the classic symptoms, the risk factors listed on Vinmec's pages, the acute and chronic complications, the standard tests, the drugs used in Vietnam, and the foods and lifestyle measures that diet articles discuss. Writing it by hand has an obvious cost---a concept that is not in the list can never be found---and an obvious benefit: every node in the graph is clean, meaningful and correctly typed. The cost is analysed in Section~\ref{sec:limitations}.
+The list was written by hand from the topics the articles cover: classic symptoms, risk factors on Vinmec's pages, acute and chronic complications, standard tests, drugs used in Vietnam, and the foods and lifestyle measures of diet articles. The price is plain, a concept missing from the list can never be found, and so is the benefit, every node is clean, meaningful and correctly typed. Section~\ref{sec:limitations} weighs the price.
 
-\subsubsection{Finding an alias in the text}
+\subsubsection{Matching aliases in text}
 
-All aliases of an entity are combined into one regular expression. For \emph{Tiểu nhiều}:
+All aliases of an entity are compiled into one regular expression. For \emph{Tiểu nhiều}:
 \begin{codeblock}
 (?<!\w)(đi tiểu thường xuyên|tiểu thường xuyên|đi tiểu nhiều|tiểu nhiều|tiểu đêm)(?!\w)
 \end{codeblock}
-Three details of this pattern matter.
+Three details matter.
 
-\textbf{The alias must be a whole word.} Vietnamese writes syllables separated by spaces, and many aliases are one short syllable that also appears inside other words. Without protection, the fruit alias \emph{lê} (pear) would match inside \emph{lên} (as in \emph{lên cân}, gaining weight) and the alias \emph{bia} (beer) inside \emph{biên}. The parts \code{(?<!\textbackslash w)} and \code{(?!\textbackslash w)} require that the characters before and after the alias are not letters: ``bệnh nhân lên cân'' contains no food, ``ăn quả lê'' does.
+\textbf{Whole words only.} Vietnamese separates syllables with spaces, and many aliases are one short syllable that also occurs inside longer words: the fruit \emph{lê} (pear) would match inside \emph{lên} (as in \emph{lên cân}, gaining weight) and \emph{bia} (beer) inside \emph{biên}. The lookarounds \code{(?<!\textbackslash w)} and \code{(?!\textbackslash w)} demand non-letters on both sides, so ``bệnh nhân lên cân'' contains no food while ``ăn quả lê'' does.
 
-\textbf{Longer aliases are tried first.} If ``tiểu thường xuyên'' were tried before ``đi tiểu thường xuyên'', the shorter alias would match first and the more precise wording would never be used.
+\textbf{Longest alias first.} Were ``tiểu thường xuyên'' tried before ``đi tiểu thường xuyên'', the short form would win and the more specific wording never be used.
 
-\textbf{Accents are kept.} Text is lower-cased so that ``HbA1C'' and ``hba1c'' match, but accents are never removed: removing them would bring back exactly the collisions seen in the URLs (\emph{tiểu đường} and \emph{tiểu dương}).
+\textbf{Accents stay.} Text is lower-cased so ``HbA1C'' equals ``hba1c'', but accents are never stripped, which would revive the URL problem (\emph{tiểu đường} equals \emph{tiểu dương}).
 
-What word boundaries cannot prevent is an alias that is itself a whole word with a second meaning: the fruit alias \emph{táo} (apple) matches \emph{táo bón} (constipation). The section rule below is what keeps such errors rare, because a food alias only counts inside diet sections.
+Word boundaries cannot stop an alias that is a whole word with a second meaning: the fruit \emph{táo} (apple) matches \emph{táo bón} (constipation). The section rule below keeps such errors rare, because a food alias counts only inside diet sections.
 
-\subsubsection{The section rule: the heading decides what may be extracted}
+\subsubsection{The section rule: the heading decides}
 \label{sec:section-rule}
 
-Finding a vocabulary word somewhere in an article does not mean that the article states a fact about it. Real examples from the corpus:
+Finding a vocabulary word in an article does not mean the article asserts something about it. Real cases from the corpus:
 \begin{itemize}
-    \item \emph{mệt mỏi} (fatigue) appears in a diet article: ``ăn sáng đầy đủ giúp bạn đỡ mệt mỏi''. This is not a statement that fatigue is a symptom of diabetes.
-    \item \emph{tăng huyết áp} (high blood pressure) appears in drug paragraphs as a condition the drug should not be combined with.
-    \item almost every article mentions \emph{insulin} while explaining how blood sugar works, not because insulin is the treatment being discussed.
+    \item \emph{mệt mỏi} appears in a diet article (``ăn sáng đầy đủ giúp bạn đỡ mệt mỏi''), which does not say fatigue is a symptom of diabetes;
+    \item \emph{tăng huyết áp} appears in drug paragraphs as a condition the drug should not be combined with;
+    \item nearly every article says \emph{insulin} while explaining blood sugar, not because insulin is the treatment under discussion.
 \end{itemize}
-If every match counted, the graph would claim that diabetes has dozens of ``symptoms'' that are merely words that happened to appear. So a match only counts when the \textbf{section heading} says that this section is about that kind of information. This works because health articles---especially on a hospital website---are organised by exactly these headings. Table~\ref{tab:section-rule} gives the rule.
+If every match counted, diabetes would acquire dozens of ``symptoms'' that are just words that happened to occur. A match therefore counts only when the \textbf{section heading} says the section is about that kind of information, which works because hospital articles are organised under exactly such headings (Table~\ref{tab:section-rule}).
 
 \begin{table}[H]
 \centering
 \small
-\caption{The section rule: keywords in a heading and the entity types that may be extracted below it.}
+\caption{The section rule: heading keywords and the entity types extractable below them.}
 \label{tab:section-rule}
 \begin{tabularx}{\textwidth}{X l l}
 \toprule
@@ -606,15 +585,15 @@ phòng ngừa, phòng tránh, ngăn ngừa, lối sống, lưu ý & Lifestyle & 
 \end{tabularx}
 \end{table}
 
-A section whose heading contains none of these keywords---for example \emph{Tổng quan} (overview)---produces no facts. This is intentional: an overview mentions everything briefly, and the project prefers to miss a fact rather than invent one.
+A section whose heading has none of these keywords, such as \emph{Tổng quan} (overview), yields no facts. This is intended: an overview mentions everything in passing, and missing a fact is preferable to inventing one.
 
-\paragraph{An extra check for symptoms and risk factors.} The first version of the rule had a weakness that the quality check in Section~\ref{sec:precision} revealed. A heading can contain \emph{nguyên nhân} or \emph{nguy cơ} and still not be about diabetes itself:
+\paragraph{A second check for symptoms and risk factors.} The quality audit in Section~\ref{sec:precision} exposed a gap in the first version. A heading may contain \emph{nguyên nhân} or \emph{nguy cơ} without being about diabetes:
 \begin{itemize}
-    \item \emph{``Một số nguyên nhân gây ngứa bàn tay và bàn chân''} lists the causes of \textbf{itching};
-    \item \emph{``Yếu tố nguy cơ gây tai biến mạch máu não ở người tiểu đường''} lists the risk factors for a \textbf{stroke} in people who already have diabetes;
-    \item \emph{``Làm gì để giảm thiểu nguy cơ tim mạch…''} is advice on \textbf{reducing} heart risk.
+    \item \emph{``Một số nguyên nhân gây ngứa bàn tay và bàn chân''} lists causes of \textbf{itching};
+    \item \emph{``Yếu tố nguy cơ gây tai biến mạch máu não ở người tiểu đường''} lists risks of \textbf{stroke} in people who already have diabetes;
+    \item \emph{``Làm gì để giảm thiểu nguy cơ tim mạch\ldots''} gives advice on \textbf{lowering} a risk.
 \end{itemize}
-Reading the bullets under these headings as risk factors \emph{of diabetes} produced wrong facts. The reason is that a symptom or a risk factor always belongs to \emph{something}, and the heading names what that something is. So, for these two types only, the heading must also pass the function \code{about\_disease()}:
+Reading these bullets as risk factors \emph{of diabetes} produced false facts. A symptom or risk factor always belongs to \emph{something}, and the heading names it. For these two types only, the heading must therefore also pass \code{about\_disease()}:
 
 \begin{codeblock}
 DISEASE_TERMS = ["tiểu đường", "đái tháo đường", "đtđ", "tuýp", "type", "típ", "bệnh"]
@@ -641,7 +620,7 @@ def allowed_labels(heading):
     return labels
 \end{codeblock}
 
-A heading must therefore either name diabetes or be short and generic (``Triệu chứng'', ``Ai dễ bị?''---there is nothing else it could be about), must not name another topic, and must not be about reducing a risk. Table~\ref{tab:headings} shows the rule applied to real headings from the corpus.
+So the heading must name diabetes or be short and generic (``Triệu chứng'', ``Ai dễ bị?'', which can only refer to the disease), must name no other topic, and must not be about reducing a risk. Table~\ref{tab:headings} applies the rule to real headings.
 
 \begin{table}[H]
 \centering
@@ -667,24 +646,24 @@ Biến chứng mạn tính & yes & Complication \\
 
 \subsubsection{Which diabetes is the subject?}
 
-Diabetes is not one disease. Type 1 is an autoimmune disease in which the body destroys its own insulin-producing cells, usually starting young. Type 2 develops slowly in adults and is linked to weight and lifestyle. Gestational diabetes appears during pregnancy. Prediabetes is the stage before type 2. Their symptoms, causes and treatments overlap but are not identical: ``autoimmune destruction of beta cells'' is a cause of type 1 only, ``pre-eclampsia'' a complication of gestational diabetes only. Attaching every fact to one ``diabetes'' node would lose these differences.
+Diabetes is several diseases. Type 1 is autoimmune loss of insulin-producing cells, usually beginning young. Type 2 develops slowly in adults with weight and lifestyle. Gestational diabetes arises in pregnancy. Prediabetes precedes type 2. Their symptoms, causes and treatments overlap but differ: ``autoimmune destruction of beta cells'' is a type 1 cause only, ``pre-eclampsia'' a gestational complication only. One shared ``diabetes'' node would erase these differences.
 
-Each page is therefore assigned a subject from its \textbf{title}, because the title is the author's own short statement of what the article is about; counting words in the body is less reliable, since an article about type 2 often mentions type 1 for comparison. The title is checked for the words of each type in turn (\emph{tuýp 1 / type 1 / típ 1}, \emph{tuýp 2 / type 2}, \emph{thai kỳ / mang thai / mẹ bầu}, \emph{tiền đái tháo đường / tiền tiểu đường}); if none is found, the subject is diabetes in general.
+Each page therefore gets its subject from the \textbf{title}, the author's own short statement of the topic and more reliable than counting words in the body (a type 2 article often mentions type 1 for comparison). The title is tested in turn for \emph{tuýp 1 / type 1 / típ 1}, \emph{tuýp 2 / type 2}, \emph{thai kỳ / mang thai / mẹ bầu} and \emph{tiền đái tháo đường / tiền tiểu đường}; if none is found, the subject is diabetes in general.
 
-This is a simplification with a visible consequence (Figure~\ref{fig:subjects}): most articles do not name a type in the title, so the general node receives most of the facts, even though many of those articles are in fact about type 2. It was accepted deliberately: placing a type 2 fact on the general node makes the graph less specific, while placing it on the type 1 node would make it false.
+This simplification has a visible effect (Figure~\ref{fig:subjects}): most titles name no type, so the general node collects most facts even though many of those articles concern type 2. It is accepted on purpose, because a type 2 fact on the general node is merely less specific, whereas on the type 1 node it would be false.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.6\textwidth]{pages_per_subject.png}
-\caption{Number of pages assigned to each subject. Most article titles do not name a specific type.}
+\caption{Pages assigned to each subject. Most titles name no specific type.}
 \label{fig:subjects}
 \end{figure}
 
 \subsubsection{Counting evidence: why one page is not enough}
 
-Every rule above can still go wrong on a single page: an unusual heading, a symptom mentioned in passing, a bullet that lists something for comparison. If every page were trusted, every one of these mistakes would become a fact. The defence is to require \textbf{agreement between independent pages}. For every fact the extractor keeps the \emph{set} of pages that voted for it---a set, so a page that repeats ``khát nhiều'' five times counts once. The size of the set is the fact's \textbf{support}.
+Every rule above can still fail on one page: an odd heading, a passing mention, a list written for comparison. Trusting each page would turn each slip into a fact. The defence is \textbf{agreement between independent pages}. For every fact the extractor keeps the \emph{set} of pages that voted for it (a set, so a page repeating ``khát nhiều'' five times counts once), and the size of that set is the fact's \textbf{support}.
 
-A small example with three pages about type 2:
+Example, with three pages about type 2:
 
 \begin{center}
 \small
@@ -699,10 +678,10 @@ C & type 2 HAS\_SYMPTOM Khát nhiều; type 2 HAS\_SYMPTOM Run tay \\
 \end{tabular}
 \end{center}
 
-\emph{Khát nhiều} is stated by three pages (support 3) and is kept; \emph{Mệt mỏi} and \emph{Run tay} are stated by one page each and are dropped. The idea is the same as checking a claim against a second source. The rule has two exceptions, each with a reason:
+\emph{Khát nhiều} has support 3 and is kept; \emph{Mệt mỏi} and \emph{Run tay} have support 1 and are dropped, the same logic as checking a claim against a second source. There are two exceptions, each with a reason:
 \begin{itemize}
-    \item a fact from an official Vinmec \textbf{disease page} is accepted with support 1: these are short, structured summaries reviewed by the hospital, with exactly the standard headings, so extraction from them is the most reliable;
-    \item a \textbf{side effect} needs support 3, because that extraction works on single sentences and is noisier (below).
+    \item a fact from an official Vinmec \textbf{disease page} is accepted at support 1, since these are short, hospital-reviewed summaries with exactly the standard headings and so the most reliable input;
+    \item a \textbf{side effect} needs support 3, because it is read from single sentences and is noisier (below).
 \end{itemize}
 
 \begin{codeblock}
@@ -712,40 +691,40 @@ for (h, rel, t), urls in support.items():                 # urls = set of pages 
         triples.append((h, rel, t, len(urls), "vinmec", " ".join(sorted(urls)[:5])))
 \end{codeblock}
 
-The support number is not thrown away after this filter. It is stored on the fact in Neo4j, so queries can rank facts by how well documented they are, and the website lets the reader hide facts below a chosen level of evidence.
+The support number survives the filter and is stored on the fact in Neo4j, so queries can rank by documentation, and the website lets the reader hide facts below a chosen level.
 
-\subsubsection{Foods: recommended or to avoid}
+\subsubsection{Foods: recommended or avoided}
 
-For foods the graph has two relations, \code{RECOMMENDS\_FOOD} and \code{AVOIDS\_FOOD}. The first version decided between them from the words in the sentence or heading: \emph{nên ăn} (should eat) meant recommended; \emph{kiêng}, \emph{tránh}, \emph{hạn chế}, \emph{không nên} meant avoid. It failed, and the reason is instructive: diet articles mix both kinds of advice in the same place. A heading such as \emph{``Thực phẩm mẹ bầu cần tránh và nên ăn''} contains both, and a single sentence often says ``hạn chế đồ ngọt, thay vào đó nên ăn rau xanh''. The output contained nonsense such as \emph{gestational diabetes AVOIDS green vegetables}.
+The graph distinguishes \code{RECOMMENDS\_FOOD} from \code{AVOIDS\_FOOD}. The first attempt decided from cue words in the sentence or heading (\emph{nên ăn} for recommended; \emph{kiêng}, \emph{tránh}, \emph{hạn chế}, \emph{không nên} for avoid) and failed, instructively: diet articles mix both kinds of advice together. The heading \emph{``Thực phẩm mẹ bầu cần tránh và nên ăn''} has both cues, and one sentence may say ``hạn chế đồ ngọt, thay vào đó nên ăn rau xanh''. The output included absurdities like \emph{gestational diabetes AVOIDS green vegetables}.
 
-The final rule treats whether a food is good or bad for diabetes as a \textbf{property of the food}, written once in the vocabulary: sweets, soft drinks, white rice and refined starch, very sweet fruit (durian, ripe mango, longan, jackfruit), alcohol, fried food and processed meat are marked ``avoid''; the other foods are ``recommended''. The text then only tells us that the food is discussed in a diet section for that type of diabetes. This matches standard nutrition advice and what the articles say in almost all cases; the cost is that nuanced advice (``fruit is fine in moderate amounts'') cannot be represented.
+The final rule makes good-or-bad a \textbf{property of the food}, recorded once in the vocabulary: sweets, soft drinks, white rice and refined starch, very sweet fruit (durian, ripe mango, longan, jackfruit), alcohol, fried food and processed meat are ``avoid'', the rest ``recommended''. The text then only shows that the food is discussed in a diet section for that type. This matches standard nutrition advice in nearly all cases; it cannot express nuance such as ``fruit is fine in moderation''.
 
 \subsubsection{Drug side effects}
 
-Side effects are scattered across drug sections, complication sections and general articles, so the section rule cannot find them. They are extracted \textbf{inside one sentence} instead: a sentence produces a side-effect fact only if it contains a drug, a symptom or complication, and a word that signals cause---\emph{tác dụng phụ} (side effect), \emph{tác dụng không mong muốn} (unwanted effect) or \emph{gây} (causes):
+Side effects are scattered across drug sections, complication sections and general articles, so the section rule cannot find them. They are read \textbf{within one sentence}: the sentence must contain a drug, a symptom or complication, and a causal cue, \emph{tác dụng phụ} (side effect), \emph{tác dụng không mong muốn} or \emph{gây} (causes):
 
 \begin{quote}\small
 ``Insulin có thể \textbf{gây hạ đường huyết} nếu tiêm quá liều'' $\Rightarrow$ (Insulin, HAS\_SIDE\_EFFECT, Hạ đường huyết)
 \end{quote}
 
-Sentences containing \emph{thiếu} (lack of) or \emph{không đủ} (not enough) are skipped. The sentence ``\emph{thiếu} insulin gây nhiễm toan ceton'' has a drug, a complication and the word \emph{gây}, but it says that a \emph{lack} of insulin causes ketoacidosis---the opposite of a side effect of taking insulin. Without the exception the graph would warn that insulin causes the very condition it treats. Section~\ref{sec:errors} shows that this filter catches most but not all such sentences.
+Sentences containing \emph{thiếu} (lack of) or \emph{không đủ} are skipped. ``\emph{thiếu} insulin gây nhiễm toan ceton'' has a drug, a complication and \emph{gây}, yet says that a \emph{lack} of insulin causes ketoacidosis, the reverse of a side effect. Without the exception the graph would accuse insulin of causing the condition it treats. Section~\ref{sec:errors} shows the filter catches most but not all such sentences.
 
 \subsubsection{Background facts added by hand}
 \label{sec:curated}
 
-Some knowledge is not something articles state under a heading, but general medical classification that articles take for granted: Metformin belongs to the biguanide class; diabetic retinopathy affects the eye; the diagnostic threshold of HbA1c is 6.5\%. These facts are added by hand and labelled \code{source = curated}, so they can always be told apart from extracted facts:
+Some knowledge is not stated under any heading but is general medical classification that articles assume: Metformin is a biguanide, diabetic retinopathy affects the eye, the diagnostic threshold of HbA1c is 6.5\%. These are added by hand and labelled \code{source = curated}, so they can always be separated from extracted facts:
 \begin{itemize}
-    \item each drug and its \textbf{drug class} (22 facts: Metformin $\rightarrow$ Biguanide, Empagliflozin $\rightarrow$ Ức chế SGLT2, …);
+    \item each drug and its \textbf{class} (22 facts, e.g.\ Metformin $\rightarrow$ Biguanide, Empagliflozin $\rightarrow$ Ức chế SGLT2);
     \item each complication and the \textbf{organ} it affects (12 facts);
-    \item each type of diabetes as a \textbf{subtype} of diabetes in general (4 facts);
-    \item the diagnostic \textbf{thresholds} stored as a property of four test nodes, from the Vietnamese Ministry of Health 2020 guideline and the American Diabetes Association criteria that Vinmec's pages also quote: HbA1c $\geq$ 6.5\%; fasting plasma glucose $\geq$ 7.0~mmol/L; 2-hour glucose in the tolerance test $\geq$ 11.1~mmol/L; random glucose $\geq$ 11.1~mmol/L with symptoms.
+    \item each form of diabetes as a \textbf{subtype} of diabetes in general (4 facts);
+    \item diagnostic \textbf{thresholds} stored on four test nodes, from the Vietnamese Ministry of Health 2020 guideline and the American Diabetes Association criteria that Vinmec also quotes: HbA1c $\geq$ 6.5\%; fasting plasma glucose $\geq$ 7.0~mmol/L; 2-hour glucose in the tolerance test $\geq$ 11.1~mmol/L; random glucose $\geq$ 11.1~mmol/L with symptoms.
 \end{itemize}
-These few facts make the most interesting questions possible. Without ``retinopathy affects the eye'', the graph could say that type 2 causes retinopathy but could not answer ``which organs does type 2 damage?''.
+These few facts enable the most interesting questions. Without ``retinopathy affects the eye'' the graph can say type 2 causes retinopathy but cannot say which organs type 2 damages.
 
 \subsection{Output Files}
 \label{sec:outputs}
 
-The extractor writes four CSV files, each with a clear purpose:
+The extractor writes four CSV files:
 
 \begin{table}[H]
 \centering
@@ -753,17 +732,17 @@ The extractor writes four CSV files, each with a clear purpose:
 \caption{Files produced by the extractor (\code{dataset/processed/}).}
 \begin{tabularx}{\textwidth}{l X X}
 \toprule
-File & One row is & Why it exists \\
+File & One row is & Purpose \\
 \midrule
 \code{entities.csv} & an entity: name, type, threshold & becomes the nodes \\
 \code{triples.csv} & a fact: subject, relation, object, support, source, up to five example URLs & becomes the relationships \\
-\code{articles.csv} & a crawled page: URL, title, page type, date, subject & every fact can be traced back to its articles \\
-\code{mentions.csv} & a pair (page, entity) for every entity mentioned anywhere on the page & a looser signal of what each article talks about \\
+\code{articles.csv} & a crawled page: URL, title, page type, date, subject & traces facts back to articles \\
+\code{mentions.csv} & a (page, entity) pair for every entity mentioned anywhere on the page & a looser signal of what each article discusses \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The facts file uses the \code{subject, relation, object} form of the lecture's Exercise 1, with three additional columns:
+The facts file uses the lecture Exercise 1 form \code{subject, relation, object} with three extra columns:
 
 \begin{codeblock}
 subject,relation,object,support,source,example_urls
@@ -773,7 +752,7 @@ Metformin,BELONGS_TO_CLASS,Biguanide,0,curated,
 Bệnh võng mạc,AFFECTS_ORGAN,Mắt,0,curated,
 \end{codeblock}
 
-Table~\ref{tab:example-triples} shows the best-supported extracted fact of each relation type.
+Table~\ref{tab:example-triples} shows the best-supported extracted fact of each extracted relation.
 
 \begin{table}[H]
 \centering
@@ -797,7 +776,7 @@ Subject & Relation & Object & Support \\
 \small
 \caption{Lecture requirements (Mini Project 3, Exercise 1) and what the graph achieves.}
 \label{tab:checklist}
-\begin{tabularx}{\textwidth}{l X l}
+\begin{tabularx}{\textwidth}{l X X}
 \toprule
 Requirement & Lecture minimum & This project \\
 \midrule
@@ -812,7 +791,7 @@ Requirement & Lecture minimum & This project \\
 
 \subsection{Project Structure}
 
-The system is written in Python (crawler, extractor, loader, API, notebook) and JavaScript (website). Table~\ref{tab:files} lists every part and its role. Every stage reads its input from files or from the database and can be re-run on its own.
+The system is written in Python (crawler, extractor, loader, API, notebook) and JavaScript (website). Table~\ref{tab:files} lists each part. Every stage reads files or the database and can be rerun alone.
 
 \begin{table}[H]
 \centering
@@ -824,15 +803,15 @@ The system is written in Python (crawler, extractor, loader, API, notebook) and 
 Path & Role \\
 \midrule
 \code{kg/crawl.py} & sitemap $\rightarrow$ candidate URLs $\rightarrow$ download $\rightarrow$ relevance filter $\rightarrow$ \code{dataset/raw/pages/*.json} and \code{index.csv}; resumable \\
-\code{kg/vocab.py} & vocabulary (106 entities, 320 aliases), section rules, food polarity, curated classes, organs and thresholds \\
+\code{kg/vocab.py} & vocabulary (106 entities, 320 aliases), section rules, food polarity, curated classes, organs, thresholds \\
 \code{kg/extract.py} & pages $\rightarrow$ votes $\rightarrow$ support filter $\rightarrow$ \code{dataset/processed/*.csv} \\
 \code{kg/load.py} & CSV files $\rightarrow$ Neo4j (wipes and reloads; idempotent) \\
 \code{kg/retriever.py} & \code{graph\_facts(entity, hops)}: bounded graph retrieval \\
-\code{kg/visualize.py} & NetworkX drawings of the graph \\
-\code{kg/evaluate.py} & draws the random sample of facts for the quality check \\
-\code{kg/queries.cypher} & the 15 example queries, ready for Neo4j Browser \\
+\code{kg/visualize.py} & NetworkX drawings \\
+\code{kg/evaluate.py} & draws the random sample for the quality check \\
+\code{kg/queries.cypher} & the 15 example queries for Neo4j Browser \\
 \code{notebook/01\_diabetes\_kg.ipynb} & explains and runs every stage, with all figures \\
-\code{api/} & FastAPI service: read-only Cypher queries behind a small REST interface \\
+\code{api/} & FastAPI service: read-only Cypher behind a small REST interface \\
 \code{web/} & React website for exploring the graph \\
 \code{evaluation/manual\_audit.csv} & the 50 sampled facts with the manual judgement \\
 \code{report/} & this report and its plan \\
@@ -845,9 +824,9 @@ Path & Role \\
 
 \subsubsection{Why a graph database}
 
-The NetworkX graph of the lecture's first examples lives in the memory of a Python program: when the program ends it is gone, and every program that needs it must rebuild it. A real system needs the knowledge stored permanently, shared by several programs (the notebook, the website, Cypher queries) and answered quickly.
+A NetworkX graph, as in the lecture's first examples, lives in a Python process's memory: it disappears when the program ends and every program must rebuild it. A real system needs permanent storage shared by the notebook, the website and ad hoc Cypher queries, with quick answers.
 
-One could store the triples in an ordinary relational database as a table with three columns. But questions about a graph are questions about \emph{paths}: start here, follow these arrows, then those. In a table database every step of a path is a join of the table with itself; the queries become long and hard to read and get slower as the table grows. A \textbf{graph database} stores each node with direct references to its neighbours, so following an arrow is a direct jump rather than a search. \textbf{Neo4j} is the most widely used graph database, and its query language \textbf{Cypher} describes paths with an ASCII-art syntax that looks like a drawing of the path. Neo4j 5 runs locally in a Docker container, with its data stored in the project folder.
+Triples could go into a relational table with three columns, but graph questions are about \emph{paths}, and in SQL each step of a path is another self-join: queries grow long and slow as the table grows. A \textbf{graph database} keeps direct references from each node to its neighbours, so following an arrow is a jump and not a search. \textbf{Neo4j} is the most widely used, and its language \textbf{Cypher} writes a path as ASCII art that resembles the drawing. Neo4j 5 runs locally in a Docker container with its data in the project folder.
 
 \subsubsection{Data model}
 
@@ -859,13 +838,13 @@ One could store the triples in an ordinary relational database as a table with t
 (:Article)-[:MENTIONS]->(:Entity)
 \end{codeblock}
 
-Three decisions in this model deserve an explanation.
+Three decisions deserve explanation.
 
-\textbf{Every entity has two labels.} The type label (\code{Symptom}) lets a query ask for ``all symptoms''. The shared \code{Entity} label lets one rule cover all entities---every entity name must be unique, so there can never be two different ``Metformin'' nodes---and lets a query such as ``everything connected to Metformin'' be written without knowing in advance the type of each neighbour.
+\textbf{Two labels per entity.} The type label (\code{Symptom}) allows asking for ``all symptoms''. The shared \code{Entity} label carries one rule for all, that names are unique, so there is never a second ``Metformin'' node, and permits ``everything connected to Metformin'' without knowing neighbour types.
 
-\textbf{The evidence is stored on the relationships.} \code{support}, \code{source} and \code{example\_urls} are properties of each fact. One query can therefore return the answer, how well documented it is and which articles state it. If the evidence were stored elsewhere, every answer would need a second lookup.
+\textbf{Evidence on the relationships.} \code{support}, \code{source} and \code{example\_urls} are relationship properties, so one query returns the answer, its documentation and its articles. Stored elsewhere, each answer would need a second lookup.
 
-\textbf{The articles are nodes too.} Each of the 1,096 articles is an \code{Article} node, connected by \code{ABOUT} to its diabetes type and by \code{MENTIONS} to every entity it mentions anywhere (10,083 links). This keeps the connection between the clean structured facts and the original text, and answers ``where does this come from?''. Because article nodes and \code{MENTIONS} links are not facts about diabetes, all queries about the knowledge itself restrict themselves to \code{Entity} nodes.
+\textbf{Articles are nodes too.} Each of the 1,096 articles is an \code{Article} node linked by \code{ABOUT} to its diabetes type and by \code{MENTIONS} to every entity it mentions anywhere (10,083 links). That preserves the path from clean facts back to the original text and answers ``where does this come from?''. Since article nodes and \code{MENTIONS} links are not facts about diabetes, queries about the knowledge restrict themselves to \code{Entity} nodes.
 
 \subsubsection{Loading}
 
@@ -882,13 +861,13 @@ SET x.support = r.support, x.source = r.source, x.example_urls = r.example_urls;
 \end{codeblock}
 
 \begin{itemize}
-    \item \textbf{\code{MERGE} instead of \code{CREATE}.} \code{CREATE} always adds a new node or relationship, even when an identical one exists. \code{MERGE} first looks for it and creates it only if it is missing. The loader can therefore be run any number of times without duplicating anything.
-    \item \textbf{\code{UNWIND} sends a whole batch.} Each request to the database has a fixed cost. Sending the 10,083 mention links one by one would mean 10,083 round trips; \code{UNWIND} sends a list of rows in one request and lets the database loop over it. The whole graph loads in a few seconds.
-    \item \textbf{The uniqueness constraint is also an index.} To enforce unique names, Neo4j builds an index on \code{name}, so every query that starts from ``the node called Metformin'' jumps directly to it instead of checking all nodes.
-    \item \textbf{Relation types are written into the query text.} Cypher does not allow the type of a relationship (or a label) to be a parameter, so the loader groups the facts by relation and builds one query per type from the fixed list of twelve.
+    \item \textbf{\code{MERGE}, not \code{CREATE}.} \code{CREATE} always adds, even if an identical node exists; \code{MERGE} looks first and creates only if missing. The loader can run repeatedly without duplicating anything.
+    \item \textbf{\code{UNWIND} sends a batch.} Each request has a fixed cost: the 10,083 mention links one by one would be 10,083 round trips, whereas \code{UNWIND} ships one list and lets the database loop. The graph loads in seconds.
+    \item \textbf{The uniqueness constraint is an index} on \code{name}, so every query that begins at ``the node called Metformin'' jumps straight to it.
+    \item \textbf{Relation types are in the query text.} Cypher cannot take a relationship type or label as a parameter, so the loader groups facts by relation and builds one query per type from the fixed list of twelve.
 \end{itemize}
 
-After loading, the database contains 1,223 nodes (127 entities and 1,096 articles) and 11,518 relationships (339 facts, 10,083 mentions and 1,096 \code{ABOUT} links).
+After loading, the database holds 1,223 nodes (127 entities and 1,096 articles) and 11,518 relationships (339 facts, 10,083 mentions and 1,096 \code{ABOUT} links).
 
 \subsection{Querying with Cypher}
 
@@ -899,12 +878,12 @@ MATCH (t:DiabetesType {name: 'Đái tháo đường type 2'})-[r:HAS_SYMPTOM]->(
 RETURN s.name, r.support
 \end{codeblock}
 
-Read from left to right: find a \code{DiabetesType} node called ``type 2'', follow an outgoing \code{HAS\_SYMPTOM} arrow to a \code{Symptom} node, return the symptom's name and the arrow's support. Neo4j uses the name index to jump to the ``type 2'' node and then looks only at the arrows attached to it; it never scans the rest of the database. The work grows with the number of arrows followed, not with the size of the database. The fifteen example queries of \code{kg/queries.cypher} and their results are presented in Section~\ref{sec:queries}.
+Read left to right: find a \code{DiabetesType} called ``type 2'', follow outgoing \code{HAS\_SYMPTOM} arrows to \code{Symptom} nodes, return each name and the arrow's support. Neo4j uses the name index to land on the type 2 node and then examines only that node's arrows, never scanning the rest. Work grows with the number of arrows followed, not with database size. The fifteen queries of \code{kg/queries.cypher} are presented in Section~\ref{sec:queries}.
 
 \subsection{Graph Retrieval}
 \label{sec:retrieval}
 
-In a complete question-answering system (the lecture's Knowledge Graph + RAG architecture), the graph's job is to hand a language model a small set of relevant, reliable facts. \code{kg/retriever.py} implements the lecture's \code{graph\_facts} on Neo4j:
+In a complete question-answering system (the lecture's Knowledge Graph + RAG design) the graph's role is to give a language model a small set of relevant, reliable facts. \code{kg/retriever.py} implements the lecture's \code{graph\_facts} on Neo4j:
 
 \begin{codeblock}
 ONE_HOP = """
@@ -928,7 +907,7 @@ def graph_facts(driver, entity, hops=1, limit=30):
     return facts[:limit]
 \end{codeblock}
 
-It starts at the entity named in the question, collects the facts within one (or two) steps, turns each back into a short sentence, sorts by support and returns at most 30.
+It starts at the entity named in the question, gathers facts within one or two steps, writes each as a short sentence, ranks by support and returns at most 30.
 
 \begin{codeblock}
 $ python kg/retriever.py "Hạ đường huyết"
@@ -939,17 +918,17 @@ Metformin HAS_SIDE_EFFECT Hạ đường huyết.
 Đái tháo đường type 2 HAS_COMPLICATION Hạ đường huyết.
 \end{codeblock}
 
-Why limit the number of hops and facts? In a graph almost everything is connected to everything within a few steps, especially through hub nodes. One step from \emph{Hạ đường huyết} (hypoglycaemia) gives the 5 precise facts above; two steps give \textbf{230}, because one first-step neighbour is the general diabetes node, which is connected to almost the whole graph. Giving 230 facts to a language model for a question about hypoglycaemia would bury the relevant ones in noise. This is the problem the lecture calls ``graph retrieval too broad'' (§23.4), and the solution used here is the one it recommends: start from the entity in the question, stay within one or two hops, and rank and cut the list.
+The bound on hops and facts matters because within a few steps almost everything connects to everything, especially through hubs. One step from \emph{Hạ đường huyết} (hypoglycaemia) yields the 5 precise facts above; two steps yield \textbf{230}, since one neighbour is the general diabetes node, itself linked to most of the graph. Feeding 230 facts to a language model for a question about hypoglycaemia would bury the relevant ones. The lecture calls this ``graph retrieval too broad'' (§23.4), and the remedy used here is its recommendation: start at the entity in the question, stay within one or two hops, rank and truncate.
 
 \subsection{The Website}
 \label{sec:website}
 
 \subsubsection{Architecture}
 
-Cypher is powerful but not something a typical reader can use. The website makes the graph usable by anyone. It has two parts:
+Cypher is powerful but not for the typical reader, so a website makes the graph usable by anyone. It has two parts:
 \begin{itemize}
-    \item an \textbf{API} (\code{api/}, Python, FastAPI) that receives simple HTTP requests, runs fixed Cypher queries against Neo4j and returns JSON;
-    \item a \textbf{web client} (\code{web/}, React 18 and Vite, hand-written CSS, the same stack as the course's earlier web applications) that the user sees in the browser.
+    \item an \textbf{API} (\code{api/}, Python, FastAPI) that accepts simple HTTP requests, runs fixed Cypher against Neo4j and returns JSON;
+    \item a \textbf{web client} (\code{web/}, React 18 with Vite and hand-written CSS, the stack of the course's earlier web applications) shown in the browser.
 \end{itemize}
 
 \begin{center}
@@ -962,7 +941,7 @@ Cypher is powerful but not something a typical reader can use. The website makes
 \end{tikzpicture}
 \end{center}
 
-\textbf{Why an API in between} rather than letting the browser talk to Neo4j directly? Three reasons. Security: the database password never leaves the server, and the browser can only run the eight fixed, read-only queries the API offers---it cannot send arbitrary Cypher. Stability: the website depends on a small documented interface, not on the database schema, so the schema can change without breaking it. Simplicity: every request is a plain URL such as \code{/entities/Metformin}, which can be tested in a browser and is documented automatically by FastAPI at \code{/docs}.
+\textbf{Why an API in the middle}, instead of the browser talking to Neo4j directly? Security: the database password stays on the server and the browser can run only the fixed read-only queries the API offers, never arbitrary Cypher. Stability: the site depends on a small documented interface and not on the schema, which can change without breaking it. Simplicity: every request is a plain URL such as \code{/entities/Metformin}, testable in a browser and documented automatically by FastAPI at \code{/docs}.
 
 \subsubsection{API}
 
@@ -980,7 +959,7 @@ Endpoint & Returns \\
 \end{tabularx}
 \end{table}
 
-Every query is parameterised: user input is passed as a parameter (\code{\$name}), never pasted into the query text, so a search for an unusual string cannot change the query. Every response has a declared shape (a Pydantic model), which both validates the output and documents it. Errors are translated into plain messages: an unknown entity gives \code{404 No entity named …}, a stopped database gives \code{503 The Neo4j database is not reachable}, which the website shows as a banner telling the user what to start. The entity endpoint, for example:
+All queries are parameterised: user input is passed as a parameter (\code{\$name}) and never concatenated into the query, so an odd search string cannot alter it. Each response has a declared shape (a Pydantic model) that validates and documents it. Errors become plain messages: an unknown entity returns \code{404 No entity named \ldots}, a stopped database \code{503 The Neo4j database is not reachable}, which the site shows as a banner saying what to start. The entity endpoint, for instance:
 
 \begin{codeblock}
 @app.get("/entities/{name}", response_model=EntityDetail)
@@ -1002,64 +981,66 @@ def entity(name: str, min_support: int = Query(0, ge=0)):
     return {**rows[0], "facts": facts}
 \end{codeblock}
 
-The path finder uses Neo4j's built-in \code{allShortestPaths} over entity nodes only (articles are excluded, otherwise every pair of entities would be connected through some article that mentions both), limited to four steps. For each step it also returns whether the fact points forward or backward along the path, so the website can phrase it correctly (``\emph{is a risk factor for}'' rather than ``\emph{has the risk factor}'').
+The path finder uses Neo4j's \code{allShortestPaths} over entity nodes only (articles are excluded, or any two entities would connect through some article mentioning both), with at most four steps. For each step it also reports whether the fact runs forward or backward along the path, so the site can word it correctly (``\emph{is a risk factor for}'' and not ``\emph{has the risk factor}'').
 
 \subsubsection{Web client}
 
-The client has five pages, each with its own address so that any view can be bookmarked or shared (for example \code{\#/entity/Metformin} or \code{\#/paths?from=…\&to=…}):
+The client has five pages, each with its own address so any view can be bookmarked or shared (for example \code{\#/entity/Metformin} or \code{\#/paths?from=\ldots\&to=\ldots}):
 \begin{enumerate}
-    \item \textbf{Home}: a search box with suggestions as one types, the size of the graph, entry points for each diabetes type, and a short ``how this graph was built'' section;
-    \item \textbf{Entity}: all facts about one entity, grouped under plain-language headings, each with its support and a \emph{Sources} button that lists the articles stating it; a drawing of the entity's neighbourhood; the latest articles that mention it;
-    \item \textbf{Diabetes types}: the same page for each type, in tabs, to compare them;
-    \item \textbf{Symptom checker}: choose symptoms and see which types of diabetes the articles associate with them;
-    \item \textbf{Connections}: choose two entities and see the shortest chains of facts between them.
+    \item \textbf{Home}: a search box with suggestions as one types, the graph's size, an entry point for each diabetes type, and a short note on how the graph was built;
+    \item \textbf{Entity}: all facts about one entity under plain-language headings, each with its support and a \emph{Sources} button listing the articles; a drawing of its neighbourhood; the latest articles mentioning it;
+    \item \textbf{Diabetes types}: the same page for each type, in tabs, for comparison;
+    \item \textbf{Symptom checker}: pick symptoms and see which types the articles associate with them;
+    \item \textbf{Connections}: pick two entities and see the shortest chains of facts between them.
 \end{enumerate}
 
-Several design decisions follow from the evaluation of the graph rather than from appearance:
+Several design decisions follow from the evaluation of the graph rather than from looks:
 \begin{itemize}
-    \item \textbf{Evidence is always visible.} Each fact shows how many articles state it, and its sources are one click away. Hand-added facts are marked ``reference''.
-    \item \textbf{The reader chooses the level of evidence.} A selector hides facts stated by fewer than 2, 3, 5 or 10 articles (default 2). This exposes the precision/recall trade-off of Section~\ref{sec:tradeoff} to the user instead of fixing it for them.
-    \item \textbf{Relations are written in plain words.} \code{HAS\_COMPLICATION} seen from the disease is shown as ``Complications'', seen from the complication as ``Complication of''; \code{TREATED\_BY} seen from a drug becomes ``Used to treat''.
-    \item \textbf{The medical disclaimer is explicit} where it matters, on the symptom checker: the result shows what the articles say and is not a diagnosis.
-    \item \textbf{Every state is handled}: loading indicators, empty results, an unknown entity, and a stopped API or database (a banner with the command to start it). The search box is a standard accessible combobox (arrow keys, Enter, Escape), and the layout adapts to phone screens.
+    \item \textbf{Evidence is always visible.} Each fact shows how many articles state it and its sources are one click away; hand-added facts are marked ``reference''.
+    \item \textbf{The reader sets the evidence level.} A selector hides facts stated by fewer than 2, 3, 5 or 10 articles (default 2), which hands the precision/recall trade-off of Section~\ref{sec:tradeoff} to the user instead of fixing it for them.
+    \item \textbf{Relations use plain words.} \code{HAS\_COMPLICATION} reads ``Complications'' from the disease and ``Complication of'' from the complication; \code{TREATED\_BY} seen from a drug reads ``Used to treat''.
+    \item \textbf{The medical disclaimer appears where it matters}, on the symptom checker: the result reports what the articles say and is not a diagnosis.
+    \item \textbf{A recognisable visual identity.} A deep-navy header and hero panel give every page the same frame; a single accent colour marks actions; and each entity type keeps one colour across the whole site (dots, pills, chart segments, group borders, path nodes), so a reader learns the colour code once.
+    \item \textbf{Light and dark themes.} All colours are design tokens defined once, with a dark variant selected by the system setting (\code{prefers-color-scheme}); the entity-type colours are brightened in dark mode so the dots and chart bars stay legible.
+    \item \textbf{Every state is handled}: loading, empty results, unknown entity, stopped API or database (a banner with the command to start it). The search box is a standard accessible combobox (arrows, Enter, Escape) and the layout adapts to phones.
 \end{itemize}
-Section~\ref{sec:demo} walks through the website with screenshots.
+Section~\ref{sec:demo} walks through the site with screenshots.
 
 % =====================================================================
 \section{Visualisation}
 \label{sec:visualisation}
 
-A graph of 127 entities and 339 facts cannot be understood from tables alone. This section shows it from several angles, from the whole network down to single neighbourhoods, and explains what each picture shows. All drawings are made with NetworkX from the same CSV files that were loaded into Neo4j, so they show exactly the same facts.
+A graph of 127 entities and 339 facts is hard to grasp from tables. This section views it from several angles, from the whole network to single neighbourhoods, and explains each picture. All drawings are made with NetworkX from the CSV files loaded into Neo4j, so they show the same facts.
 
 \subsection{Size of the Graph}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{graph_counts.png}
-\caption{Left: entities per type. Middle: facts per relation type. Right: support of the extracted facts (how many articles state each fact), on a logarithmic scale.}
+\caption{Left: entities per type. Middle: facts per relation type. Right: support of extracted facts (articles per fact), logarithmic scale.}
 \label{fig:counts}
 \end{figure}
 
-The left chart of Figure~\ref{fig:counts} shows that drugs, complications, risk factors, symptoms and foods each have between 16 and 22 entities---roughly the size of the vocabulary for each type, which means almost every concept in the vocabulary was found with enough support.
+In Figure~\ref{fig:counts}, drugs, complications, risk factors, symptoms and foods each have 16 to 22 entities, about the vocabulary size per type, so nearly every concept found enough support.
 
-The right chart is the most informative. Most facts are stated by a handful of articles (the median fact has support 5), but a few are repeated by dozens: ``diabetes is treated with insulin'' by 143 articles, ``managed by regular exercise'' by 114, ``can cause cardiovascular disease'' by 56. This long-tailed shape is typical of a health website. The core message (exercise, diet, insulin, the main complications) is repeated in almost every article, while specific facts---which drug class a newer medicine belongs to, which complications are specific to pregnancy---are written in only a few. Support is therefore not only a filter against noise but also a measure of how central a fact is to the way Vinmec writes about diabetes.
+The right-hand chart says the most. Most facts rest on a handful of articles (the median support is 5), while a few are repeated by dozens: ``diabetes is treated with insulin'' by 143 articles, ``managed by regular exercise'' by 114, ``can cause cardiovascular disease'' by 56. This long tail is typical of health sites: the core message (exercise, diet, insulin, the main complications) is in nearly every article, while specific facts, such as a newer drug's class or complications peculiar to pregnancy, appear in a few. Support is thus both a noise filter and a measure of how central a fact is to Vinmec's way of writing about diabetes.
 
 \subsection{The Whole Graph}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{kg_full_nb.png}
-\caption{The whole Knowledge Graph: all 339 entity-to-entity facts. Colour = entity type; size = number of facts the entity takes part in.}
+\caption{The whole Knowledge Graph: all 339 entity-to-entity facts. Colour is entity type; size is the number of facts the entity is in.}
 \label{fig:kg-full}
 \end{figure}
 
-Figure~\ref{fig:kg-full} shows the overall structure. The five diabetes-type nodes are the large hubs near the centre, because almost every extracted fact starts at one of them. Symptoms, complications, drugs, foods and tests are arranged around them, many connected to several types at once (thirst is a symptom of all of them). The hand-added facts form small chains at the edge: drug $\rightarrow$ drug class, complication $\rightarrow$ organ.
+Figure~\ref{fig:kg-full} shows the overall structure. The five diabetes types are the big hubs near the middle because almost every extracted fact starts at one; symptoms, complications, drugs, foods and tests surround them, many linked to several types (thirst is a symptom of all). The hand-added facts form short chains at the rim: drug $\rightarrow$ class, complication $\rightarrow$ organ.
 
-The graph is \textbf{sparse}. Of all the arrows that could exist between 127 entities, only about 2\% are present: each entity is connected to a few others, not to everything. This is typical of real knowledge, and it is what makes graph queries fast---following the arrows of one node touches a small part of the graph.
+The graph is \textbf{sparse}: of all arrows possible among 127 entities only about 2\% exist. Each entity links to a few others, typical of real knowledge and the reason graph queries are fast, since following one node's arrows touches a small part of the graph.
 
 \subsection{Focused Views}
 
-The whole picture shows the structure but is too dense to read in detail. Three smaller views are easier to read.
+The whole picture shows structure but is too dense for detail, so three smaller views follow.
 
 \begin{figure}[H]
 \centering
@@ -1068,7 +1049,7 @@ The whole picture shows the structure but is too dense to read in detail. Three 
 \label{fig:kg-type2}
 \end{figure}
 
-Figure~\ref{fig:kg-type2} is everything the graph knows directly about type 2 diabetes: 17 drugs, 12 complications, 8 risk factors, 8 symptoms, 7 tests, 12 foods and 3 lifestyle measures. It is the visual form of a one-hop query.
+Figure~\ref{fig:kg-type2} is all the graph knows directly about type 2: 17 drugs, 12 foods, 12 complications, 8 risk factors, 8 symptoms, 7 tests and 3 lifestyle measures. It is the picture of a one-hop query.
 
 \begin{figure}[H]
 \centering
@@ -1077,20 +1058,20 @@ Figure~\ref{fig:kg-type2} is everything the graph knows directly about type 2 di
 \label{fig:kg-gestational}
 \end{figure}
 
-Figure~\ref{fig:kg-gestational} shows gestational diabetes. Compared with type 2 it has a single drug, insulin (most oral drugs are avoided during pregnancy, so insulin is the standard treatment) and its own complications: pre-eclampsia, premature birth and a very large baby. The graph has captured this difference from the articles without being told.
+Figure~\ref{fig:kg-gestational} shows gestational diabetes. Unlike type 2 it has a single drug, insulin (most oral drugs are avoided in pregnancy), and complications of its own: pre-eclampsia, premature birth and an oversized baby. The graph picked up this difference from the articles unaided.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{kg_drugs.png}
-\caption{Type 2 treatment: the drugs used for type 2, their classes (hand-added) and their extracted side effects.}
+\caption{Type 2 treatment: the drugs used, their classes (hand-added) and extracted side effects.}
 \label{fig:kg-drugs}
 \end{figure}
 
-Figure~\ref{fig:kg-drugs} combines extracted and hand-added facts. The class arrows make the drug families appear as clusters---three DPP-4 inhibitors around their class, three SGLT2 inhibitors around theirs, the insulin family---which is how doctors think of these drugs. The side-effect arrows show the most discussed risk of treatment, hypoglycaemia, linked to insulin and Metformin.
+Figure~\ref{fig:kg-drugs} mixes extracted and hand-added facts. The class arrows make drug families cluster: DPP-4 inhibitors around theirs, SGLT2 inhibitors around theirs, the insulin family together, as clinicians group them. The side-effect arrows show the most discussed treatment risk, hypoglycaemia, tied to insulin and Metformin.
 
 \subsection{Comparing the Diabetes Types}
 
-If assigning a separate subject to each type (Section~\ref{sec:extraction}) works, the types should show different facts. The heatmaps in Figure~\ref{fig:heat} show, for each complication and each symptom, how many articles support the fact for each type (darker = more articles; empty = no fact).
+If giving each type its own subject (Section~\ref{sec:extraction}) works, the types should show different facts. The heatmaps of Figure~\ref{fig:heat} give, per complication and symptom, the number of supporting articles for each type (darker is more, blank is none).
 
 \begin{figure}[H]
 \centering
@@ -1100,36 +1081,36 @@ If assigning a separate subject to each type (Section~\ref{sec:extraction}) work
 \label{fig:heat}
 \end{figure}
 
-Two things are visible. First, the general diabetes column is by far the darkest: most articles do not name a type in their title, so their facts go to the general node. Second, gestational diabetes has its own clear pattern. Its strongest complications are hypoglycaemia (of the mother on treatment and of the newborn), pre-eclampsia, premature birth and a large baby---pregnancy complications that the other types do not have---while type 1 and type 2 share the classic long-term complications of the eyes, kidneys, nerves and heart. This is medically correct and confirms that the subject rule captures real differences.
+Two things stand out. The general diabetes column is far darker, because most titles name no type. And gestational diabetes has a pattern of its own: hypoglycaemia (of the mother on treatment and of the newborn), pre-eclampsia, premature birth and a large baby, pregnancy complications the other types lack, while types 1 and 2 share the classic long-term complications of eyes, kidneys, nerves and heart. That is medically right and shows the subject rule captures real differences.
 
-\subsection{Which Entities Are the Most Important?}
+\subsection{Which Entities Matter Most?}
 \label{sec:pagerank}
 
-``Important'' can mean different things for a node in a graph, and two common measures give very different answers here. Understanding why is a good way to understand the graph itself.
+``Important'' can mean several things for a node, and two standard measures disagree here, which teaches something about the graph.
 
-\textbf{Degree} is the number of facts an entity takes part in. It answers ``how many facts involve this entity?'' and looks only at the node's own arrows.
+\textbf{Degree} is the number of facts an entity is in. It looks only at the node's own arrows.
 
-\textbf{PageRank}, the method Google originally used to rank web pages, says that a node is important if \emph{important} nodes point to it. It is easiest to understand as a walk: a person starts on a random node and, at each step, either follows one of the outgoing arrows of the current node at random or, occasionally (15\% of the time), jumps to a completely random node. After a very long walk, a node's PageRank is the share of time spent on it. Nodes that many paths lead into are visited often.
+\textbf{PageRank}, the method Google first used to rank web pages, holds that a node is important if \emph{important} nodes point to it. Picture a walker who at each step follows a random outgoing arrow of the current node or, 15\% of the time, jumps to a random node; after a very long walk, PageRank is the share of time spent on each node.
 
-\textbf{What happens in this graph.} All arrows point away from the diabetes types: type $\rightarrow$ drug $\rightarrow$ drug class, type $\rightarrow$ complication $\rightarrow$ organ. A walker following the arrows drifts down these chains and arrives at their ends---drug classes and organs---which have no outgoing arrows, so the walker stays there until the next random jump. Directed PageRank therefore ranks \emph{Nhóm Insulin}, \emph{Ức chế DPP-4} and \emph{Mắt} (eye) highest. They are not what the articles are mainly about; they are simply where many paths end.
+\textbf{What happens here.} All arrows point away from the diabetes types: type $\rightarrow$ drug $\rightarrow$ class, type $\rightarrow$ complication $\rightarrow$ organ. The walker drifts down these chains and ends at their ends, drug classes and organs, which have no outgoing arrows, and waits for the next jump. Directed PageRank therefore ranks \emph{Nhóm Insulin}, \emph{Ức chế DPP-4} and \emph{Mắt} (eye) first. They are not what the articles are mainly about; they are where paths end.
 
-The direction of the arrows is our own modelling choice (``type 2 HAS\_SYMPTOM thirst'' could be written ``thirst SYMPTOM\_OF type 2''), and a measure whose answer flips when a relation is renamed does not measure what we want. PageRank is therefore also computed \textbf{ignoring direction}, as if every arrow could be walked both ways. Then an entity is important if it is well connected to other well-connected entities. This ranking makes sense: the diabetes types first, then insulin, cardiovascular disease, stroke, diabetic kidney disease, retinopathy and Metformin---the treatments and complications that tie the whole graph together (Figure~\ref{fig:pagerank}). The lesson is that every graph measure answers a specific question, and one must check that it is the question one wants to ask.
+The arrow direction is our own choice (``type 2 HAS\_SYMPTOM thirst'' could read ``thirst SYMPTOM\_OF type 2''), and a score that changes when a relation is renamed does not measure what we want. PageRank is therefore also computed \textbf{ignoring direction}, so each arrow can be walked both ways. Then an entity is important if well connected to other well-connected entities, and the ranking is sensible: diabetes types, then insulin, cardiovascular disease, stroke, diabetic kidney disease, retinopathy and Metformin, the treatments and complications that hold the graph together (Figure~\ref{fig:pagerank}). A graph measure answers one specific question, and one must check it is the intended one.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{pagerank.png}
-\caption{The 15 most central entities by undirected PageRank (diabetes types excluded). Colour = entity type.}
+\caption{The 15 most central entities by undirected PageRank (diabetes types excluded). Colour is entity type.}
 \label{fig:pagerank}
 \end{figure}
 
 \subsection{What Vinmec Writes About Most}
 
-A third view of importance does not use the facts at all. It counts in how many of the 1,096 articles each entity is mentioned anywhere (the \code{MENTIONS} links). This measures what the website \emph{talks about}, which differs from how connected an entity is among the facts: an entity can be mentioned in many articles in passing---for example while explaining how blood sugar works---while appearing in few facts under a proper heading.
+A third view ignores the facts and counts, per entity, the articles that mention it anywhere (\code{MENTIONS}). This is what the site \emph{talks about}, which differs from connectivity among facts: an entity can be mentioned in many articles in passing, for example when blood sugar is explained, yet appear in few facts under a proper heading.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{mentions.png}
-\caption{Entities mentioned in the largest number of articles.}
+\caption{Entities mentioned in the most articles.}
 \label{fig:mentions}
 \end{figure}
 
@@ -1137,12 +1118,12 @@ A third view of importance does not use the facts at all. It counts in how many 
 \section{Experimental Evaluation}
 \label{sec:evaluation}
 
-The lecture insists that an intelligent system must be evaluated systematically, not judged by whether it ``gives an answer''. This section evaluates the graph in two ways. First, \textbf{what it can answer}: the example questions of Table~\ref{tab:questions} are run as Cypher queries and their results are checked for sense. Second, \textbf{how correct its facts are}: a random sample of extracted facts is checked by hand against the source articles.
+The lecture insists that an intelligent system be evaluated systematically and not judged by whether it ``gives an answer''. Two evaluations follow. First, \textbf{what the graph can answer}: the example questions of Table~\ref{tab:questions} are run as Cypher and the results checked for sense. Second, \textbf{how correct its facts are}: a random sample of extracted facts is checked by hand against the source articles.
 
 \subsection{Query Results}
 \label{sec:queries}
 
-The queries below are taken from \code{kg/queries.cypher}, which contains fifteen queries in total (the lecture requires at least five). Each is shown with its result, produced directly from the database, and a short interpretation.
+The queries come from \code{kg/queries.cypher}, which holds fifteen (the lecture requires five). Each is shown with its result, taken directly from the database, and a short reading.
 
 \subsubsection{One-hop: everything about Metformin}
 
@@ -1167,7 +1148,7 @@ Subject & Relation & Object & Support & Source \\
 \end{tabular}
 \end{table}
 
-The pattern \code{-[r]-} has no arrowhead and matches relationships in both directions, so the result contains facts that point \emph{to} Metformin (diabetes \emph{is treated with} Metformin) and the fact that points \emph{from} it (Metformin \emph{belongs to} the biguanide class). For ``what do we know about X'' both directions are needed. The support column shows how solid each fact is: 37 articles say that diabetes is treated with Metformin, 11 name type 2 specifically, 8 mention it for prediabetes (where it is used to delay the onset of type 2), and 5 mention hypoglycaemia as a risk. The drug class has support 0 because it was added by hand.
+The pattern \code{-[r]-} has no arrowhead and matches both directions, so the result holds facts pointing \emph{to} Metformin (diabetes \emph{is treated with} it) and the one pointing \emph{from} it (it \emph{belongs to} the biguanide class). For ``what do we know about X'' both are needed. The support column shows solidity: 37 articles say diabetes is treated with Metformin, 11 name type 2, 8 mention it for prediabetes (where it delays onset of type 2), and 5 cite hypoglycaemia as a risk. The class has support 0 because it was added by hand.
 
 \subsubsection{Two-hop: which organs can type 2 diabetes damage?}
 
@@ -1192,7 +1173,7 @@ Organ & Via complications & Evidence (articles) \\
 \end{tabularx}
 \end{table}
 
-No article states ``type 2 diabetes damages the nerves'' as a fact in this form. The answer exists only because two kinds of facts meet at the complication nodes: an extracted one (type 2 \emph{can cause} peripheral neuropathy) and a hand-added one (peripheral neuropathy \emph{affects} the nerves). \code{collect()} groups the complications leading to the same organ, so each organ appears once with its reasons. The result reproduces the textbook list of organs damaged by diabetes: nerves, eyes, heart and blood vessels, brain (stroke), kidneys, feet and stomach.
+No article states ``type 2 diabetes damages the nerves'' in this form. The answer exists only because two kinds of facts meet at the complication node: an extracted one (type 2 \emph{can cause} peripheral neuropathy) and a hand-added one (neuropathy \emph{affects} the nerves). \code{collect()} groups complications leading to the same organ so each organ appears once with its reasons. The list matches the textbook set of organs harmed by diabetes: nerves, eyes, heart and vessels, brain (stroke), kidneys, feet and stomach.
 
 \subsubsection{Comparing type 1 and type 2 symptoms}
 
@@ -1207,7 +1188,7 @@ RETURN s.name, a.support AS type1, b.support AS type2
 \begin{table}[H]
 \centering
 \small
-\caption{Symptoms of type 1 and type 2 diabetes, with the number of supporting articles for each type.}
+\caption{Symptoms of type 1 and type 2 with supporting articles for each.}
 \label{tab:q-t1t2}
 \begin{tabular}{l r r l}
 \toprule
@@ -1218,7 +1199,7 @@ Symptom & Type 1 & Type 2 & Found in \\
 \end{tabular}
 \end{table}
 
-The six symptoms shared by both types---thirst, frequent urination, eating a lot, weight loss, fatigue and blurred vision---are the classic signs of high blood sugar itself, whatever its cause, so they should be shared. Most of the type-1-only symptoms---nausea, abdominal pain, fruity-smelling breath---are the signs of \textbf{ketoacidosis}, the dangerous acid build-up that happens when the body has almost no insulin, which is typical of type 1 at the time it is discovered. The type-2-only symptoms---slow-healing wounds and numb hands and feet---appear after years of moderately high blood sugar, which matches the slow, often unnoticed course of type 2. The graph reproduces a real medical difference without having been told about it. (Recurrent infections appear only for type 1 here; they are a general sign of high blood sugar that the type 2 articles simply did not list under a symptom heading.)
+Six symptoms are shared (thirst, frequent urination, hunger, weight loss, fatigue, blurred vision): they come from high blood sugar itself, whatever the cause, so they should be. Most type 1-only symptoms (nausea, abdominal pain, fruity breath) are signs of \textbf{ketoacidosis}, the acid build-up when insulin is nearly absent, typical when type 1 is first found. The type 2-only ones (slow-healing wounds, numb hands and feet) arise after years of moderately raised sugar, matching type 2's slow, often unnoticed course. The graph reproduces a real clinical difference without being told. (Recurrent infections appear only for type 1 here; they are a general sign of high sugar that the type 2 articles did not list under a symptom heading.)
 
 \subsubsection{A symptom checker}
 
@@ -1233,7 +1214,7 @@ ORDER BY matched DESC, evidence DESC
 \begin{table}[H]
 \centering
 \small
-\caption{Diabetes types ranked for the symptoms \{thirst, frequent urination, weight loss, blurred vision\}.}
+\caption{Diabetes types ranked for \{thirst, frequent urination, weight loss, blurred vision\}.}
 \label{tab:q-symptoms}
 \begin{tabularx}{\textwidth}{l r X r}
 \toprule
@@ -1244,7 +1225,7 @@ Type & Matched & Symptoms & Evidence \\
 \end{tabularx}
 \end{table}
 
-The types are ranked by how many of the given symptoms they have; ties are broken by the total number of articles supporting the matching facts, that is, by how strongly the articles associate the type with these symptoms. General diabetes, type 1 and type 2 match all four; general diabetes comes first only because most articles are general (Section~\ref{sec:extraction}). The result shows both the use and the limit of the graph: it tells which types the articles associate with these symptoms and how strongly, but the classic symptoms are shared by all types, so it cannot distinguish them. A diagnosis requires blood tests---which is exactly what the next query shows.
+Types are ranked by how many of the given symptoms they have, ties broken by total supporting articles, i.e.\ how strongly the articles tie the type to these symptoms. General diabetes, type 1 and type 2 match all four, with general diabetes first only because most articles are general. The result shows use and limit together: it says which types the articles associate with the symptoms, but classic symptoms are shared by all types, so it cannot tell them apart. Diagnosis needs blood tests, which the next query shows.
 
 \subsubsection{Diagnosis: tests and thresholds}
 
@@ -1257,7 +1238,7 @@ ORDER BY evidence DESC
 \begin{table}[H]
 \centering
 \small
-\caption{Diagnostic tests, their thresholds (hand-added node property) and the number of supporting articles (extracted).}
+\caption{Diagnostic tests, their thresholds (hand-added node property) and supporting articles (extracted).}
 \label{tab:q-tests}
 \begin{tabularx}{\textwidth}{l X r}
 \toprule
@@ -1268,7 +1249,7 @@ Test & Threshold & Evidence \\
 \end{tabularx}
 \end{table}
 
-The answer combines the two kinds of knowledge in the graph. The link ``diabetes is diagnosed with HbA1c'' was extracted from the articles; the threshold ``6.5\% or more'' is a property of the test node, added from the official guideline. The three tests with the most evidence---HbA1c, the glucose tolerance test and fasting glucose---are exactly the three standard diagnostic criteria. Tests with little evidence are specialised: the islet antibody test and C-peptide are used to tell type 1 from type 2. The graph links the antibody test to type 1 (from the type 1 disease page) and C-peptide only to diabetes in general, because the two articles that mention it do not name a type in their title.
+The answer joins the two kinds of knowledge. ``Diabetes is diagnosed with HbA1c'' was extracted; ``6.5\% or more'' is a node property added from the official guideline. The three best-evidenced tests, HbA1c, the glucose tolerance test and fasting glucose, are exactly the three standard criteria. Tests with little evidence are specialised: islet antibodies and C-peptide help tell type 1 from type 2.
 
 \subsubsection{Diet for gestational diabetes}
 
@@ -1286,7 +1267,7 @@ Advice & Food & Articles \\
 \end{tabular}
 \end{table}
 
-Sweets are the most discussed food to avoid and green vegetables, eggs and whole grains the most recommended, consistent with the usual advice for pregnant women with diabetes. Remember that the split between ``recommended'' and ``avoid'' comes from the fixed food list (Section~\ref{sec:extraction}); what the articles contribute is \emph{which} foods are discussed for this type and how often.
+Sweets are the food to avoid that is discussed most; green vegetables, eggs and whole grains lead the recommended foods, consistent with usual advice for pregnant women with diabetes. Remember that the avoid/recommend split comes from the fixed food list (Section~\ref{sec:extraction}); what the articles contribute is \emph{which} foods are discussed for this type and how often.
 
 \subsubsection{Provenance: where does a fact come from?}
 
@@ -1312,14 +1293,14 @@ Article title \\
 \end{tabularx}
 \end{table}
 
-Every fact stores up to five example article URLs; joining them with the article nodes returns the titles of real Vinmec articles that state the fact, which anyone can open and read. This is the property that makes a Knowledge Graph trustworthy for a health topic: a language model can say something fluent and wrong with no way to check it, while here every answer can be traced to its source.
+Each fact stores up to five example URLs; joining them with the article nodes returns real Vinmec titles that anyone can open and read. This is what makes a graph trustworthy on health topics: a language model can answer fluently and wrongly with no way to check, while here every answer leads to its source.
 
 \subsubsection{Co-occurrence through articles}
 
 \begin{table}[H]
 \centering
 \small
-\caption{Pairs of complications mentioned in the largest number of the same articles.}
+\caption{Pairs of complications mentioned together in the most articles.}
 \label{tab:q-cooccur}
 \begin{tabular}{l l r}
 \toprule
@@ -1330,26 +1311,26 @@ Complication & Complication & Articles \\
 \end{tabular}
 \end{table}
 
-The \code{MENTIONS} links give a looser kind of information: which topics appear in the same articles. Appearing together is not a fact about diabetes, but it shows how Vinmec writes about the disease. Cardiovascular disease and hypoglycaemia come first simply because each is mentioned in a very large share of all articles. This is a known weakness of raw co-occurrence counts: pairs of common topics always rank high, whether or not they are related. Finding pairs that are \emph{unusually} often together would require comparing each count with what is expected from how common each topic is on its own.
+The \code{MENTIONS} links give a looser signal: which topics share articles. Co-appearance is not a fact about diabetes, but it shows how Vinmec writes about it. Cardiovascular disease and hypoglycaemia lead simply because each is mentioned in a large share of all articles, the known weakness of raw co-occurrence: pairs of common topics always rank high. Finding \emph{unusually} frequent pairs would require comparing each count with what each topic's own frequency predicts.
 
 \subsection{Correctness of the Facts}
 \label{sec:precision}
 
 \subsubsection{What was measured and how}
 
-The measure is \textbf{precision}: of the facts the graph contains, what share are correct. Precision was chosen because it is what a user of the graph experiences---every wrong fact is something the system will state with confidence. The procedure (\code{kg/evaluate.py}):
+The measure is \textbf{precision}: of the facts in the graph, what share is correct. It was chosen because it is what a user experiences: every wrong fact is something the system states with confidence. The procedure (\code{kg/evaluate.py}):
 \begin{enumerate}
-    \item draw 50 of the extracted facts at random, with a fixed random seed (42) so that the same sample can be drawn again;
-    \item for each fact, show the article title and an evidence sentence from a section that the extractor actually used;
+    \item draw 50 extracted facts at random with a fixed seed (42), so the sample can be redrawn;
+    \item for each, show the article title and an evidence sentence from a section the extractor actually used;
     \item judge the fact by reading \textbf{all} its supporting articles, not only the sentence shown, and record \code{correct} and an \code{error\_type} in \code{evaluation/manual\_audit.csv}.
 \end{enumerate}
 
-A fact counts as correct when the Vinmec articles state it for that type of diabetes. This is a check against the source, not against clinical guidelines; a medical review would be a different and much more expensive evaluation. Why random facts and why fifty? Random, because choosing the facts by hand would unconsciously favour easy ones and make the result look better than it is. Fifty, because each fact requires reading several articles; fifty is enough to estimate precision with useful accuracy and to reveal the main kinds of error.
+A fact counts as correct when the Vinmec articles state it for that form of diabetes. This checks against the source, not against clinical guidelines, which would be a different and costlier medical review. Random, because hand-picked facts would unconsciously be easy ones and flatter the result; fifty, because each needs several articles read, and fifty suffices to estimate precision usefully and reveal the main error kinds.
 
 \begin{table}[H]
 \centering
 \small
-\caption{The first 12 of the 50 sampled facts with their judgement. Support is the value at the time of the audit, before the stricter heading rule of Section~\ref{sec:errors}.}
+\caption{The first 12 of the 50 sampled facts with their judgement. Support is the value at audit time, before the stricter heading rule of Section~\ref{sec:errors}.}
 \label{tab:audit}
 \begin{tabular}{r l l l r l}
 \toprule
@@ -1367,7 +1348,7 @@ A fact counts as correct when the Vinmec articles state it for that type of diab
 \small
 \caption{Precision on the 50 sampled facts, by relation type.}
 \label{tab:precision}
-\begin{tabular}{l r l}
+\begin{tabular}{l r r}
 \toprule
 Relation & Sampled & Correct \\
 \midrule
@@ -1376,16 +1357,16 @@ Relation & Sampled & Correct \\
 \end{tabular}
 \end{table}
 
-\textbf{48 of the 50 facts are correct, a precision of 0.96.} Both errors are in symptoms and risk factors, the two relation types that depend most on the section heading; the facts about complications, tests, drugs and foods were all correct.
+\textbf{48 of 50 facts are correct: precision 0.96.} Both errors fall in symptoms and risk factors, the two relation types most dependent on the heading; every sampled complication, test, drug and food fact was correct.
 
-How precise is ``0.96''? With 50 facts, the true precision of the whole graph could be somewhat higher or lower: another random sample of 50 might have contained one error or four. The standard calculation for a proportion measured on a small sample (the Wilson interval) gives a likely range of \textbf{0.87 to 0.99} for the precision of the whole graph. In plain terms: roughly nine facts out of ten or better are correct, and ``96\%'' should not be read as an exact figure. The two errors and what was done about them are analysed in Section~\ref{sec:errors}.
+How precise is ``0.96''? On 50 facts the true figure for the whole graph may be higher or lower: another sample might hold one error or four. The Wilson interval for a proportion on a small sample gives a likely range of \textbf{0.87 to 0.99}. In plain terms, roughly nine facts in ten or better are right, and ``96\%'' is not an exact figure. Section~\ref{sec:errors} analyses the two errors and the response.
 
 \subsection{How Much Evidence the Facts Have}
 
 \begin{table}[H]
 \centering
 \small
-\caption{Number of extracted facts that remain when a minimum number of supporting articles is required.}
+\caption{Extracted facts remaining when a minimum number of supporting articles is required.}
 \label{tab:support}
 \begin{tabular}{l r r}
 \toprule
@@ -1396,106 +1377,92 @@ Minimum support & Facts & Share \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:support} shows how the graph shrinks as more evidence is required. The six facts with support 1 come from Vinmec's disease pages (Section~\ref{sec:extraction}). Requiring three articles keeps 84\% of the facts; requiring ten keeps 23\%, the core facts that Vinmec repeats across many articles. Because support is stored on every fact, this choice does not have to be made once for everybody: a query, or the user of the website, can choose the level of evidence appropriate for the purpose.
+Table~\ref{tab:support} shows the graph shrinking as more evidence is demanded. The six facts at support 1 come from Vinmec's disease pages (Section~\ref{sec:extraction}). Requiring three articles keeps 84\% of facts, requiring ten keeps 23\%, the core facts Vinmec repeats across many articles. Because support is stored on every fact, the choice need not be made once for everyone: a query, or the website's user, picks the level that suits the purpose.
 
 % =====================================================================
 \section{Demo}
 \label{sec:demo}
 
-This section walks through the website as a user would, with screenshots of the running system. Each scenario corresponds to one of the questions of Table~\ref{tab:questions}. All screenshots were taken from the live website connected to the Neo4j database described above.
+This section follows the website as a user would, with screenshots of the running system. Each scenario matches a question of Table~\ref{tab:questions}, and all screenshots were taken from the live site connected to the database described above.
 
 \subsection{Scenario 1: Finding an Entity}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{web_home.png}
-\caption{Home page: a search box, quick links to common entities, the size of the graph, and an entry point for each diabetes type.}
+\caption{Home page: search box and quick links in the header panel, the four size figures, an entry card for each diabetes type, and a bar showing what the graph is made of.}
 \label{fig:web-home}
 \end{figure}
 
-The home page (Figure~\ref{fig:web-home}) tells the visitor in one sentence what the site is---what Vinmec articles say about diabetes, as a graph built from 1,096 articles---and offers three ways in: searching for an entity, clicking one of the example entities, or starting from a type of diabetes. The four tiles summarise the graph: 339 facts, 127 entities, 1,096 source articles and 12 kinds of relation. A collapsible section explains in four steps how the graph was built and states its measured precision and that it is not medical advice.
+The home page (Figure~\ref{fig:web-home}) opens with a navy hero panel that says in one sentence what the site is, what Vinmec articles say about diabetes as a graph built from 1,096 articles, and offers three ways in: search, an example entity, or a diabetes type. A single strip summarises the graph: 339 facts, 127 entities, 1,096 source articles and 12 kinds of relation. Below it, one card per diabetes type (each with a one-line explanation and an \emph{Explore} cue) leads into the type pages, and a stacked bar with a legend shows what the 127 entities are made of (22 drugs, 18 complications, 16 symptoms, 16 risk factors, 16 foods, 10 tests, 9 drug classes, 9 organs, 6 lifestyle measures and 5 diabetes types), so a newcomer sees the scope at a glance. A collapsible note explains in four steps how the graph was built and states its measured precision and that it is not medical advice.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{web_search.png}
-\caption{Searching ``insu'': suggestions appear while typing, each with its type.}
+\caption{Typing ``insu'': suggestions appear as one types, each with its type.}
 \label{fig:web-search}
 \end{figure}
 
-Typing ``insu'' (Figure~\ref{fig:web-search}) immediately lists every entity whose name contains these letters: the five insulin drugs, the insulin drug class, and two risk factors (insulin resistance and insulin deficiency). Each suggestion shows its type with a coloured dot, so \emph{Kháng insulin} is not mistaken for a drug. Names that \emph{start} with the typed letters come first, then the most connected entities. The list can be used with the keyboard (arrow keys and Enter), as in any standard search field. Each keystroke cancels the previous request, so fast typing never shows outdated results.
+Typing ``insu'' (Figure~\ref{fig:web-search}) at once lists entities whose names contain those letters: the insulin drugs, the insulin drug class, and risk factors such as insulin resistance. A coloured dot shows each type, so \emph{Kháng insulin} is not mistaken for a drug. Names that \emph{begin} with the typed letters come first, then the most connected. The list works with the keyboard (arrows, Enter), as a standard search field should, and each keystroke cancels the previous request so fast typing never shows stale results.
 
-\subsection{Scenario 2: Everything About One Entity, With Its Sources}
+\subsection{Scenario 2: Everything About One Entity, With Sources}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{web_entity.png}
-\caption{The Metformin page: facts grouped by relation, each with its number of supporting articles; the sources of the first fact are open. On the right, the neighbourhood drawing and the latest articles mentioning Metformin.}
+\caption{The Metformin page: facts grouped by relation with their supporting-article counts, sources of the first fact open; on the right the neighbourhood drawing and the latest articles mentioning Metformin.}
 \label{fig:web-entity}
 \end{figure}
 
-Selecting \emph{Metformin} opens its page (Figure~\ref{fig:web-entity}). The header shows its type, the number of articles that mention it (87) and the number of facts shown. The facts are grouped under plain-language headings derived from the relation and its direction: \emph{Used to treat} (diabetes, type 2, prediabetes), \emph{Side effects} (hypoglycaemia), \emph{Drug class} (biguanide). Each fact has a bar and a number giving how many different articles state it; the bar uses a logarithmic scale so that a fact with 5 articles is still visible next to one with 37, but the number is always shown because the bar is only decoration.
+Selecting \emph{Metformin} opens its page (Figure~\ref{fig:web-entity}). A header card, topped by a border in the colour of the entity's type and carrying an initial-letter avatar, shows the name, the type, the number of articles mentioning it (87) and the number of facts shown. Facts sit under plain-language headings derived from relation and direction: \emph{Used to treat} (diabetes, type 2, prediabetes), \emph{Side effects} (hypoglycaemia), \emph{Drug class} (biguanide). Each group has a left border and bars in the colour of the entity type it lists (red for diabetes types, purple for complications), which makes the groups easy to tell apart. Each fact has a bar and a number giving how many different articles state it; the bar is logarithmic so that 5 articles stay visible next to 37, but the number is always shown because the bar is decoration.
 
-Clicking \emph{Sources} opens the evidence for one fact: the sentence ``Đái tháo đường is treated with Metformin is stated in these Vinmec articles'' followed by links to the five example articles. This is the provenance query of Section~\ref{sec:queries} made available to any reader. The drug class is labelled ``reference'' instead of having a bar, because it was added by hand.
+\emph{Sources} opens the evidence for one fact, with links to up to five articles. This is the provenance query of Section~\ref{sec:queries} offered to any reader. The drug class is labelled ``reference'' and has no bar because it was added by hand.
 
-The drawing on the right is the entity's one-hop neighbourhood (up to its twelve strongest neighbours), coloured by type; every dot is a link to that entity's page, so the graph can be explored by clicking from entity to entity. Below it, the latest articles that mention Metformin are listed with their dates.
+The drawing on the right is the entity's one-hop neighbourhood (up to its twelve strongest neighbours), coloured by type; every dot links to that entity's page, so one can explore by clicking from entity to entity. Beneath it, the latest articles mentioning Metformin are listed with dates. The selector \emph{Show facts stated in} (default 2+ articles) lets the reader decide how much evidence a fact needs, the precision/recall trade-off of Section~\ref{sec:tradeoff} handed to the user.
 
-The selector \emph{Show facts stated in} (default: 2+ articles) lets the reader decide how much evidence a fact needs before it is shown, which is the precision/recall trade-off of Section~\ref{sec:tradeoff} handed to the user.
-
-\subsection{Scenario 3: Comparing the Types of Diabetes}
+\subsection{Scenario 3: Comparing the Forms of Diabetes}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{web_types.png}
-\caption{The \emph{Diabetes types} page with the gestational tab open.}
+\caption{The top of the \emph{Diabetes types} page with the gestational tab open (the page continues with the foods, risk factors and tests of that type).}
 \label{fig:web-types}
 \end{figure}
 
-The \emph{Diabetes types} page (Figure~\ref{fig:web-types}) puts the five types in tabs, each with a one-line plain explanation (``High blood sugar that appears during pregnancy''). Switching tabs shows how the facts differ. For gestational diabetes the complications list starts with hypoglycaemia (15 articles), pre-eclampsia (14), premature birth (13) and a large baby (12)---the pregnancy-specific pattern seen in the heatmap of Figure~\ref{fig:heat}---and the neighbourhood drawing shows its foods, tests and risk factors at a glance.
+The \emph{Diabetes types} page (Figure~\ref{fig:web-types}) puts the five types in a segmented control, each with a one-line plain explanation (``High blood sugar that appears during pregnancy''). Switching tabs shows how facts differ. For gestational diabetes the complications start with hypoglycaemia (15 articles), pre-eclampsia (14), premature birth (13) and a large baby (12), the pregnancy-specific pattern of the heatmap in Figure~\ref{fig:heat}, and the neighbourhood drawing shows its foods, tests and risk factors at a glance.
 
 \subsection{Scenario 4: Checking Symptoms}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{web_symptoms.png}
-\caption{The symptom checker with four symptoms selected and the ranked result.}
+\caption{The symptom checker with four symptoms chosen and the ranked result.}
 \label{fig:web-symptoms}
 \end{figure}
 
-On the symptom checker (Figure~\ref{fig:web-symptoms}) the user selects symptoms from the list of all 16 symptom entities and presses \emph{Check}. The result ranks the diabetes types by how many of the selected symptoms the articles link to them (``4 of 4 symptoms''), with a bar for the share of matched symptoms, the list of matches and the number of supporting articles. A notice above the list states that this shows what the articles say and is not a diagnosis, because diabetes is confirmed by blood tests such as HbA1c. The result is the same as the Cypher query of Table~\ref{tab:q-symptoms}, presented so that it can be understood without any knowledge of the graph.
+On the symptom checker (Figure~\ref{fig:web-symptoms}) the user picks from all 16 symptom entities and presses \emph{Check}. The result opens with a plain-language verdict (``Most strongly linked to: Đái tháo đường''), followed by a note on how to read the numbers: ``backed by'' counts the Vinmec articles that state each link, so a larger value means the link is repeated more often, not that it is more likely for the user. Below it the types are ranked by how many chosen symptoms the articles tie to them (``4 of 4 symptoms''), with a bar for the share matched, the matches, and the supporting-article count. A \emph{Try an example} button fills in the four symptoms of the figure and runs the check in one click. A notice states that this shows what the articles say and is not a diagnosis, since diabetes is confirmed by blood tests such as HbA1c. It reproduces the Cypher query of Table~\ref{tab:q-symptoms}, in a form usable without knowing the graph.
 
 \subsection{Scenario 5: How Are Two Things Connected?}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{web_paths.png}
-\caption{The \emph{Connections} page: the shortest chains of facts from obesity (\emph{Thừa cân, béo phì}) to the kidney (\emph{Thận}).}
+\caption{The \emph{Connections} page: shortest chains of facts from obesity (\emph{Thừa cân, béo phì}) to the kidney (\emph{Thận}).}
 \label{fig:web-paths}
 \end{figure}
 
-The \emph{Connections} page (Figure~\ref{fig:web-paths}) asks for two entities and shows the shortest chains of facts between them. From obesity to the kidney there are four chains of three steps, one through each diabetes type that lists obesity as a risk factor, for example:
+The \emph{Connections} page (Figure~\ref{fig:web-paths}) takes two entities and shows the shortest chains of facts between them. From obesity to the kidney there are four chains of three steps, one through each diabetes type that lists obesity as a risk factor, for example:
 
 \begin{quote}
 \emph{Thừa cân, béo phì} --- is a risk factor for $\rightarrow$ \emph{Đái tháo đường type 2} --- can cause $\rightarrow$ \emph{Bệnh thận đái tháo đường} --- affects $\rightarrow$ \emph{Thận}.
 \end{quote}
 
-Each step is one fact, phrased in the right direction: the stored fact is ``type 2 HAS\_RISK\_FACTOR obesity'', and because the path walks it backwards the website writes ``is a risk factor for''. A chain like this is the kind of explanation a graph offers and a list of documents does not: each step comes from a different set of articles, and the graph connects them because they share a node.
+Each node of a chain is drawn as a card with a border in its type colour (brown for the risk factor, red for the diabetes type, purple for the complication, pink for the organ), so the kind of each step is visible without reading it. Each step is one fact, worded in the right direction: the stored fact is ``type 2 HAS\_RISK\_FACTOR obesity'', and since the path walks it backwards the site writes ``is a risk factor for''. A chain like this is the kind of explanation a graph offers and a document list does not: each step comes from different articles, joined because they share a node.
 
-\subsection{On a Phone}
-
-\begin{figure}[H]
-\centering
-\includegraphics[width=0.38\textwidth]{web_mobile.png}
-\caption{The HbA1c page on a phone-sized screen: the layout becomes a single column, the menu scrolls sideways.}
-\label{fig:web-mobile}
-\end{figure}
-
-The layout adapts to small screens (Figure~\ref{fig:web-mobile}): the two-column entity page becomes one column, the search box moves under the logo and the menu can be scrolled sideways. The HbA1c page also shows the diagnostic threshold ($\geq$ 6.5\%) in the header, the one place where a node property is displayed.
-
-% =====================================================================
 \section{Error Analysis}
 \label{sec:errors}
 
-The quality check of Section~\ref{sec:precision} found two wrong facts out of fifty. This section explains why they were wrong, what was changed, what the change cost, and which other errors are known to remain.
+The quality check of Section~\ref{sec:precision} found two wrong facts in fifty. This section explains why, what was changed, what the change cost, and which other errors are known.
 
 \subsection{The Two Errors in the Sample}
 
@@ -1515,13 +1482,13 @@ Wrong fact & What the supporting articles said \\
 \end{tabularx}
 \end{table}
 
-Both errors have the same cause: a fact that belongs to a \textbf{complication} was attached to the disease itself. The section rule allowed it because the headings contained an allowed keyword (\emph{nguy cơ}, \emph{nguyên nhân}) or because complication sections were, in the first version, also allowed to produce symptoms. The rule looked at \emph{what kind} of information a heading announces, but not \emph{whose} symptoms or risk factors they are.
+Both errors share one cause: a fact belonging to a \textbf{complication} was attached to the disease itself. The rule allowed it because the headings held an allowed keyword (\emph{nguy cơ}, \emph{nguyên nhân}) or because, in the first version, complication sections could also yield symptoms. The rule looked at \emph{what kind} of information a heading announces but not \emph{whose} symptoms or risk factors they are.
 
-Two observations made the diagnosis clear. First, both wrong facts had high support (16 and 18), so the support filter could not catch them: many articles discuss the complications of diabetes, and each one contributed a wrong vote. A filter based on agreement only removes errors that are random; it cannot remove an error that the rules make systematically. Second, both errors were in the two relation types (symptoms and risk factors) where the owner of the information matters---a complication always belongs to diabetes, but a symptom may belong to diabetes or to one of its complications.
+Two observations sharpened the diagnosis. First, both wrong facts had high support (16 and 18), so the support filter could not catch them: many articles discuss diabetic complications and each contributed a wrong vote. Agreement removes random errors; it cannot remove one the rules make systematically. Second, both errors were in the two relation types where ownership matters: a complication always belongs to diabetes, but a symptom may belong to diabetes or to one of its complications.
 
 \subsection{The Fix}
 
-The fix is the \code{about\_disease()} check of Section~\ref{sec:section-rule}: for symptoms and risk factors, the heading must name diabetes or be short and generic, must not name another topic (a complication, an organ, itching, stroke, coma, …), and must not be about reducing a risk; and complication sections no longer produce symptoms. Re-running the extraction changed the graph from 345 to 339 facts.
+The fix is \code{about\_disease()} of Section~\ref{sec:section-rule}: for symptoms and risk factors the heading must name diabetes or be short and generic, must name no other topic (a complication, an organ, itching, stroke, coma\ldots), and must not be about reducing a risk; and complication sections no longer yield symptoms. Rerunning extraction took the graph from 345 to 339 facts.
 
 \subsection{What the Fix Cost: Precision Versus Recall}
 \label{sec:tradeoff}
@@ -1535,7 +1502,7 @@ The fix is the \code{about\_disease()} check of Section~\ref{sec:section-rule}: 
 \toprule
 Removed fact & Was the removal right? \\
 \midrule
-type 1 HAS\_SYMPTOM Tê bì tay chân & yes: numbness is the nerve-damage complication, not a symptom of type 1 \\
+type 1 HAS\_SYMPTOM Tê bì tay chân & yes: numbness is the nerve-damage complication, not a type 1 symptom \\
 type 2 HAS\_SYMPTOM Vã mồ hôi & yes: sweating is a symptom of low blood sugar \\
 Tiền đái tháo đường HAS\_RISK\_FACTOR Tuổi cao & no: a true fact (sample \#5) was lost \\
 Tiền đái tháo đường HAS\_RISK\_FACTOR Tăng huyết áp & no: a true fact (sample \#15) was lost \\
@@ -1545,53 +1512,53 @@ type 2 HAS\_RISK\_FACTOR Hút thuốc lá & no: a true fact was lost \\
 \end{tabularx}
 \end{table}
 
-Two of the six removals were real errors that the sample had not happened to contain. The other four were true facts. Each had exactly one good supporting article and one weak one (for example, the age and blood-pressure facts for prediabetes came partly from the article ``Chăm sóc các vấn đề tim mạch ở người bệnh tiểu đường và tiền tiểu đường'', whose risk-factor bullets sit under a heading about heart risk). The stricter rule removed the weak vote, the support fell to 1, and the minimum of two articles removed the fact. One consequence is visible in Table~\ref{tab:entity-types}: the risk factor \emph{Dùng corticoid kéo dài} lost its only fact and no longer appears in the graph.
+Two of the six removals were genuine errors the sample had not happened to contain. The other four were true facts. Each had exactly one good supporting article and one weak one (the age and blood-pressure facts for prediabetes came partly from ``Chăm sóc các vấn đề tim mạch ở người bệnh tiểu đường và tiền tiểu đường'', whose risk-factor bullets sit under a heading about heart risk). The stricter rule removed the weak vote, support fell to 1, and the two-article minimum removed the fact. One visible consequence in Table~\ref{tab:entity-types}: the risk factor \emph{Dùng corticoid kéo dài} lost its only fact and left the graph.
 
-And the two original errors? They stayed in the graph, but with far less support: 16 $\rightarrow$ 3 articles for high cholesterol and 18 $\rightarrow$ 6 for abdominal pain. Reading the remaining articles showed that they \emph{do} state these facts under genuine diabetes headings: ``Nguyên nhân và yếu tố nguy cơ gây bệnh tiểu đường: … Rối loạn mỡ máu'', and abdominal pain in symptom lists for diabetes in children (where it is the sign of ketoacidosis at onset). By the definition used here---the articles state it---they are now properly supported. The problem had been the weak supporting articles, not the facts.
+The two original errors stayed in the graph with far less support: 16 $\rightarrow$ 3 articles for high cholesterol, 18 $\rightarrow$ 6 for abdominal pain. The remaining articles do state them under genuine diabetes headings (``Nguyên nhân và yếu tố nguy cơ gây bệnh tiểu đường: \ldots Rối loạn mỡ máu''; abdominal pain in symptom lists for diabetes in children, where it is the sign of ketoacidosis at onset). By the definition used here, that the articles state it, they are now properly supported. The weakness lay in the supporting articles, not in the facts.
 
-This is the \textbf{precision/recall trade-off} that every extraction system faces. Strict rules produce fewer wrong facts but miss more true ones; loose rules find more true facts but let in more wrong ones. No setting is best for every use. This is why the support count is kept on every fact instead of being used only once as a filter: a careful application can require three or five articles, while someone exploring the data can see everything. The website exposes exactly this choice to its users.
+This is the \textbf{precision/recall trade-off} every extraction system faces: strict rules give fewer wrong facts but miss more true ones, loose rules find more true facts and admit more wrong ones, and no setting suits every use. Hence support stays on every fact and is not used only once as a filter: a careful application may demand three or five articles, someone exploring may see everything, and the website exposes exactly that choice.
 
 \subsection{Other Known Errors}
 
-The sample of fifty facts cannot find every error. Inspecting the queries and the graph revealed four more.
+Fifty facts cannot expose every error. Inspecting the queries and the graph revealed four more.
 
-\paragraph{A wrong side effect.} The graph contains \emph{Insulin HAS\_SIDE\_EFFECT Nhiễm toan ceton} (ketoacidosis), supported by five articles. It is wrong: ketoacidosis is caused by a \emph{lack} of insulin and is \emph{treated} with insulin. The filter of Section~\ref{sec:extraction} skips sentences with \emph{thiếu} or \emph{không đủ}, but the articles connect insulin and ketoacidosis in other ways that the rule ``drug + complication + \emph{gây} in one sentence'' cannot tell apart:
+\paragraph{A wrong side effect.} The graph contains \emph{Insulin HAS\_SIDE\_EFFECT Nhiễm toan ceton} (ketoacidosis), supported by five articles. It is wrong: ketoacidosis results from a \emph{lack} of insulin and is \emph{treated} with insulin. The filter of Section~\ref{sec:extraction} skips sentences with \emph{thiếu} or \emph{không đủ}, but articles link insulin and ketoacidosis in other ways that the rule ``drug + complication + \emph{gây} in one sentence'' cannot separate:
 \begin{itemize}
-    \item insulin as the \textbf{treatment}: ``nhiễm toan ceton … có thể \emph{gây} nguy hiểm đến tính mạng nếu như không được xử trí kịp thời bằng insulin'';
+    \item insulin as the \textbf{treatment}: ``nhiễm toan ceton \ldots có thể \emph{gây} nguy hiểm đến tính mạng nếu như không được xử trí kịp thời bằng insulin'';
     \item another drug causing it \textbf{together with} insulin: ``Danazol: dùng cùng với Insulin do có thể \emph{gây} tăng glucose máu và nhiễm toan ceton'';
-    \item hormones that \textbf{work against} insulin: ``Những hormone này … có tác dụng ngược lại với insulin … sẽ \emph{gây} ra toan ceton''.
+    \item hormones that \textbf{oppose} insulin: ``Những hormone này \ldots có tác dụng ngược lại với insulin \ldots sẽ \emph{gây} ra toan ceton''.
 \end{itemize}
-In each sentence the word \emph{gây} belongs to something other than insulin. Deciding \emph{what} causes \emph{what} requires understanding the grammar of the sentence, which cue words cannot do. Sentence-level relation extraction is the weakest part of the method; Section~\ref{sec:conclusion} proposes a language model for it.
+In each sentence \emph{gây} belongs to something other than insulin. Deciding \emph{what} causes \emph{what} needs the sentence's grammar, which cue words cannot supply. Sentence-level relation extraction is the weakest part of the method, and Section~\ref{sec:conclusion} proposes a language model for it.
 
-\paragraph{An alias with a second meaning.} The fruit alias \emph{táo} (apple) also matches \emph{táo bón} (constipation). Word boundaries cannot prevent this because \emph{táo} is a whole word in both. The section rule limits the damage---a food only counts in diet sections---but a diet section that mentions constipation would produce a false vote for ``low-sugar fruit''.
+\paragraph{An alias with a second meaning.} The fruit alias \emph{táo} (apple) also matches \emph{táo bón} (constipation). Word boundaries cannot help since \emph{táo} is a whole word in both. The section rule limits harm (a food counts only in diet sections), but a diet section mentioning constipation would cast a false vote for low-sugar fruit.
 
-\paragraph{A concept hidden by a longer one.} The vocabulary contains \emph{Hạ đường huyết sơ sinh} (hypoglycaemia of the newborn) separately from \emph{Hạ đường huyết} (hypoglycaemia). Articles rarely use the full phrase; they say ``trẻ sinh ra có thể bị hạ đường huyết'', which matches the general entity. The newborn-specific entity therefore never reached two articles and is absent from the graph, while its facts are counted under the general hypoglycaemia (which is why hypoglycaemia is the top complication of gestational diabetes).
+\paragraph{A concept hidden by a longer one.} The vocabulary has \emph{Hạ đường huyết sơ sinh} (newborn hypoglycaemia) apart from \emph{Hạ đường huyết}. Articles rarely use the full phrase; they write ``trẻ sinh ra có thể bị hạ đường huyết'', which matches the general entity. The newborn entity never reached two articles and is absent from the graph, while its facts are counted under general hypoglycaemia (which is why hypoglycaemia tops the gestational complications).
 
-\paragraph{Dominance of the general node.} Because the subject comes from the title only, the general diabetes node collects most facts (Figure~\ref{fig:subjects}). This is not an error in a single fact, but it makes type-specific questions less complete than they could be.
+\paragraph{Dominance of the general node.} Since the subject comes from the title alone, the general diabetes node collects most facts (Figure~\ref{fig:subjects}). No single fact is wrong, but type-specific questions are less complete than they could be.
 
 % =====================================================================
 \section{Limitations}
 \label{sec:limitations}
 
-The lecture lists four ways in which a Knowledge Graph can fail: missing entities, incorrect relationships, duplicate entities and outdated information. Each applies to this project in a specific way, and a few further limitations come from the design choices.
+The lecture names four ways a Knowledge Graph can fail: missing entities, incorrect relationships, duplicate entities and outdated information. Each applies here in a specific way, and a few more limits come from design choices.
 
-\paragraph{Missing entities (unknown recall).} The vocabulary is fixed: 106 concepts written in 320 ways. Anything not in it can never be found, however often the articles discuss it---a newer drug or insulin brand, a rarer complication, a traditional remedy, a specific test. The evaluation measured how many extracted facts are correct (precision) but not how many true facts in the articles were missed (recall). Measuring recall would require annotating a set of articles by hand with every fact they contain, which was outside the scope of this project.
+\paragraph{Missing entities (unknown recall).} The vocabulary is fixed at 106 concepts written 320 ways. Anything outside it can never be found, however often articles discuss it: a newer drug or insulin brand, a rarer complication, a traditional remedy, a specific test. The evaluation measured how many extracted facts are correct (precision) but not how many true facts were missed (recall). Measuring recall would mean annotating a set of articles by hand with every fact they contain, which was beyond this project's scope.
 
-\paragraph{Incorrect relationships.} About 4\% of the sampled facts were wrong (likely range 1--13\%), mostly facts about a complication attached to the disease. Section headings are a strong signal of meaning but not a perfect one, and the side-effect extraction from cue words in single sentences is weaker still (Section~\ref{sec:errors}).
+\paragraph{Incorrect relationships.} About 4\% of sampled facts were wrong (likely range 1--13\%), mostly complication facts attached to the disease. Headings are a strong but imperfect signal of meaning, and cue-word side-effect extraction from single sentences is weaker still (Section~\ref{sec:errors}).
 
-\paragraph{Duplicates and granularity.} Aliases deliberately merge near-synonyms---\emph{tê bì}, \emph{dị cảm} and \emph{kiến bò} all become \emph{Tê bì tay chân}---and sometimes merge things a doctor would keep apart, such as hypoglycaemia of the mother and of the newborn. Conversely, a concept written in a way the vocabulary does not know is simply missed rather than duplicated, so true duplicates are rare.
+\paragraph{Duplicates and granularity.} Aliases merge near-synonyms on purpose (\emph{tê bì}, \emph{dị cảm}, \emph{kiến bò} all become \emph{Tê bì tay chân}) and sometimes merge what a doctor would separate, such as hypoglycaemia of mother and newborn. A concept spelled in a way the vocabulary does not know is missed and not duplicated, so true duplicates are rare.
 
-\paragraph{Outdated information.} All articles carry a 2024 publication date that reflects Vinmec's re-publication of its archive, not when each article was written, and an old article counts the same as a new one. Medical advice changes (new drug classes, revised targets), and the graph has no notion of time. A real system would re-crawl regularly and record the date of each fact.
+\paragraph{Outdated information.} All articles carry a 2024 date reflecting Vinmec's republication of its archive, not when each was written, and an old article counts the same as a new one. Medical advice changes (new drug classes, revised targets) and the graph has no notion of time. A real system would recrawl regularly and date each fact.
 
-\paragraph{Coarse subjects.} The type of diabetes is taken only from the article title, so many facts that are really about type 2 are attached to the general diabetes node.
+\paragraph{Coarse subjects.} The form of diabetes comes only from the title, so many facts that really concern type 2 sit on the general node.
 
-\paragraph{Fixed food advice.} Whether a food is recommended or to be avoided is decided by the food, not read from the article, so conditional advice (``in moderate amounts'', ``choose low-sugar varieties'') cannot be represented.
+\paragraph{Fixed food advice.} Whether a food is recommended or avoided is decided by the food, not read from the article, so conditional advice (``in moderate amounts'', ``choose low-sugar varieties'') cannot be represented.
 
-\paragraph{One source.} All facts come from one hospital's website. This makes the graph consistent, but it inherits that source's emphases and gaps, and ``correct'' in this report means ``stated by Vinmec'', not ``checked against current clinical guidelines''.
+\paragraph{One source.} Everything comes from one hospital's website. That keeps the graph consistent but inherits its emphases and gaps, and ``correct'' here means ``stated by Vinmec'', not ``checked against current clinical guidelines''.
 
-\paragraph{Hand-added facts.} Drug classes, affected organs and diagnostic thresholds were added by hand. They are clearly labelled \code{curated} and are standard medical knowledge, but they were not learned from the articles.
+\paragraph{Hand-added facts.} Drug classes, affected organs and diagnostic thresholds were added by hand. They are labelled \code{curated} and are standard medical knowledge, but were not learned from the articles.
 
-\paragraph{Not medical advice.} The graph summarises public health articles. The symptom checker shows which types of diabetes the articles associate with a set of symptoms; it does not diagnose anyone. The website states this where it matters.
+\paragraph{Not medical advice.} The graph summarises public health articles. The symptom checker shows which forms of diabetes the articles associate with symptoms; it diagnoses no one, and the website says so where it matters.
 
 % =====================================================================
 \section{Conclusion and Future Work}
@@ -1599,27 +1566,27 @@ The lecture lists four ways in which a Knowledge Graph can fail: missing entitie
 
 \subsection{What Was Achieved}
 
-This project built a Knowledge Graph of diabetes knowledge from Vietnamese health articles, stored it in Neo4j and made it explorable through a website.
+The project built a Knowledge Graph of diabetes knowledge from Vietnamese health articles, stored it in Neo4j and made it explorable through a website.
 
 \begin{itemize}
-    \item \textbf{Data (R1).} 1,197 candidate pages were found through Vinmec's sitemap; a relevance filter that works on the accented text removed accent collisions and off-topic pages, leaving 1,096 diabetes articles (1.13 million words), saved section by section.
-    \item \textbf{Knowledge Graph (R2, R3).} An extractor that combines a hand-written vocabulary, the section headings of the articles and agreement between articles produced 127 entities of 10 types and 339 facts of 12 relation types, stored as \code{subject, relation, object} CSV with support and sources---well above the lecture's minimums of 50 entities, 100 relationships, 5 relation types and 3 entity types.
-    \item \textbf{Neo4j and queries (R4, R6).} The graph is stored in Neo4j with its evidence on every relationship and its source articles as nodes. Fifteen Cypher queries, including one-hop, two-hop, aggregation, path and provenance queries, answer the questions the system was designed for; \code{graph\_facts} retrieves the facts around an entity within one or two hops, and the evaluation showed why this bound is necessary (5 facts at one hop, 230 at two).
-    \item \textbf{Visualisation (R5).} The graph was shown as a whole, by neighbourhood, by drug family and by diabetes type, and analysed with degree, directed and undirected PageRank, and article mentions.
-    \item \textbf{Website (R7).} A small API and a React client let anyone search the graph, read the facts about an entity with their sources, compare diabetes types, check symptoms and find the chains of facts that connect two entities.
-    \item \textbf{Evaluation (R8, R9).} 48 of 50 randomly sampled facts were correct (0.96; likely range 0.87--0.99). The two errors shared one cause, which was fixed; the fix's cost in lost true facts was measured and explained as a precision/recall trade-off.
+    \item \textbf{Data (R1).} 1,197 candidate pages were found through Vinmec's sitemap; a relevance filter on accented text removed accent collisions and off-topic pages, leaving 1,096 diabetes articles (1.13 million words) saved section by section.
+    \item \textbf{Knowledge Graph (R2, R3).} An extractor combining a hand-written vocabulary, the articles' section headings and agreement between articles produced 127 entities of 10 types and 339 facts of 12 relation types, stored as \code{subject, relation, object} CSV with support and sources, well above the lecture's minimums of 50 entities, 100 relationships, 5 relation types and 3 entity types.
+    \item \textbf{Neo4j and queries (R4, R6).} The graph sits in Neo4j with evidence on every relationship and source articles as nodes. Fifteen Cypher queries, covering one-hop, two-hop, aggregation, path and provenance, answer the questions the system was designed for; \code{graph\_facts} retrieves facts around an entity within one or two hops, and the evaluation showed why the bound is needed (5 facts at one hop, 230 at two).
+    \item \textbf{Visualisation (R5).} The graph was shown whole, by neighbourhood, by drug family and by diabetes type, and analysed with degree, directed and undirected PageRank and article mentions.
+    \item \textbf{Website (R7).} A small API and a React client let anyone search the graph, read an entity's facts with sources, compare diabetes types, check symptoms and find the chains of facts joining two entities.
+    \item \textbf{Evaluation (R8, R9).} 48 of 50 randomly sampled facts were correct (0.96; likely range 0.87--0.99). The two errors had one cause, which was fixed, and the fix's cost in lost true facts was measured and explained as a precision/recall trade-off.
 \end{itemize}
 
-The main lesson of the project is that \textbf{structure already present in the text can do most of the work}. Health articles are organised under standard headings, and using those headings to decide what kind of fact a sentence can contain, together with requiring independent articles to agree, produced a reliable graph without any trained model. The quality check also showed the limit of agreement: it removes random noise, but not an error the rules make systematically---only looking at the errors revealed that.
+The main lesson is that \textbf{structure already in the text can do most of the work}. Health articles are organised under standard headings, and using them to decide what kind of fact a sentence may hold, together with requiring independent articles to agree, produced a reliable graph without any trained model. The audit also showed the limit of agreement: it removes random noise but not an error the rules make systematically, and only looking at the errors revealed that.
 
 \subsection{Future Work}
 
 \begin{enumerate}
-    \item \textbf{Measure recall.} Annotate a sample of articles by hand with every fact they state, and measure how many the extractor finds. This would quantify the main unknown of the project.
-    \item \textbf{Grow the vocabulary semi-automatically.} Frequent noun phrases that appear under symptom or treatment headings but match no vocabulary entry are candidates for new entities; a person would only need to approve them.
-    \item \textbf{Better relation extraction.} Use a language model to extract relations sentence by sentence (``does this sentence say that X causes Y, and is X taken or lacking?''), checked against the section rule. This would address the side-effect errors and allow new relations such as \emph{food prevents complication}.
-    \item \textbf{Knowledge Graph + RAG.} Connect the graph to the retrieval-augmented chat system of Assignment 08: the graph supplies the facts and their paths, the article chunks supply detailed explanations, and the answer cites both.
-    \item \textbf{Freshness.} Re-crawl on a schedule, store the date of each article on its facts, and prefer recent evidence when articles disagree.
+    \item \textbf{Measure recall.} Annotate a sample of articles with every fact they state and measure how many the extractor finds, which would quantify the project's main unknown.
+    \item \textbf{Grow the vocabulary semi-automatically.} Frequent noun phrases under symptom or treatment headings that match no entry are candidates for new entities, needing only a person's approval.
+    \item \textbf{Better relation extraction.} Use a language model to extract relations sentence by sentence (``does this sentence say X causes Y, and is X taken or lacking?''), checked against the section rule. This would address the side-effect errors and allow relations such as \emph{food prevents complication}.
+    \item \textbf{Knowledge Graph + RAG.} Connect the graph to the retrieval-augmented chat system of Assignment 08: the graph supplies facts and their paths, article chunks supply detailed explanation, and the answer cites both.
+    \item \textbf{Freshness.} Recrawl on a schedule, store each article's date on its facts, and prefer recent evidence when articles disagree.
 \end{enumerate}
 
 \appendix
@@ -1627,14 +1594,14 @@ The main lesson of the project is that \textbf{structure already present in the 
 \section{Reproduction}
 \label{app:reproduction}
 
-All commands are run from the \code{graph\_01/} folder.
+All commands run from the \code{graph\_01/} folder. On Windows, set \code{PYTHONUTF8=1} first so Python reads and writes the Vietnamese text as UTF-8.
 
 \begin{codeblock}
 # environment
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate        # Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt
 
-# 1. crawl (about 20 minutes, resumable)  -> dataset/raw/pages/*.json, dataset/raw/index.csv
+# 1. crawl (about 25 minutes, resumable)  -> dataset/raw/pages/*.json, dataset/raw/index.csv
 python kg/crawl.py
 
 # 2. extract                              -> dataset/processed/{entities,triples,articles,mentions}.csv
@@ -1650,18 +1617,21 @@ python kg/retriever.py "Metformin" --hops 1
 python kg/visualize.py
 python kg/evaluate.py          # draws a new sample; overwrites evaluation/manual_audit.csv
 
-# 5. notebook (kernel "Python (graph_01)")
+# 5. notebook (run from notebook/ or the project root)
 jupyter nbconvert --to notebook --execute --inplace notebook/01_diabetes_kg.ipynb
 
 # 6. website
 uvicorn api.main:app --reload --port 8000      # API, docs at http://localhost:8000/docs
 cd web && npm install && npm run dev           # http://localhost:5173
 
+# 6b. or everything at once with Docker (Neo4j + loader + API + website, no Python or Node needed)
+docker compose up --build                      # website http://localhost:8080, API docs :8000/docs
+
 # 7. report
+python report/extract_figures.py && python report/make_tables.py
 cd report && xelatex Graph_01.tex && xelatex Graph_01.tex
 \end{codeblock}
 
 The Cypher queries of Section~\ref{sec:queries} are in \code{kg/queries.cypher} and can be pasted into Neo4j Browser at \url{http://localhost:7474} (user \code{neo4j}, password \code{diabetes123}).
-
 
 \end{document}

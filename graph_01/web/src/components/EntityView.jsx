@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../lib/api.js'
 import { href } from '../lib/route.js'
-import { articles, relHeading } from '../lib/labels.js'
+import { articles, relHeading, typeClass } from '../lib/labels.js'
 import { useAsync } from '../lib/useAsync.js'
 import { Empty, ErrorNote, Spinner } from './Feedback.jsx'
 import FactGroup from './FactGroup.jsx'
@@ -29,7 +29,8 @@ export default function EntityView({ name, compactHeader = false }) {
   const groups = groupFacts(data.facts, name)
   return (
     <div className="stack">
-      <header className={`entity-head ${compactHeader ? 'entity-head--compact' : ''}`}>
+      <header className={`entity-head ${typeClass(data.type)} ${compactHeader ? 'entity-head--compact' : ''}`}>
+        {!compactHeader && <span className="entity-head__avatar" aria-hidden="true">{data.name.charAt(0)}</span>}
         <div className="entity-head__title">
           {!compactHeader && <h1>{data.name}</h1>}
           <TypePill type={data.type} />

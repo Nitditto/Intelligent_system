@@ -1,7 +1,7 @@
 # Graph 01 — Report Plan
 
 **Output:** `report/Graph_01.tex` → `Graph_01.pdf` (XeLaTeX, English, same layout as the earlier reports).
-**Author:** Lưu Anh Dũng (B23DCDK036) · Intelligent System Development · Lecturer: Assoc. Prof. Dinh Que Tran, Ph.D. (class code: ask before adding).
+**Author:** Nguyễn Văn Trường (B23DCCE095) · Intelligent System Development · Lecturer: Assoc. Prof. Dinh Que Tran, Ph.D. (class code: ask before adding).
 
 This file plans the report: where its structure comes from, what goes in each section, which file produces each table and figure, and what each result has to explain.
 

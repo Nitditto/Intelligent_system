@@ -1,0 +1,40 @@
+# Whole demo in one command:  docker compose up --build
+#   website  http://localhost:8080     API docs  http://localhost:8000/docs     Neo4j Browser  http://localhost:7474
+# Stop: docker compose down   (add -v to also delete the database volume)
+services:
+  neo4j:
+    image: neo4j:5
+    environment:
+      NEO4J_AUTH: neo4j/diabetes123
+    ports: ["7474:7474", "7687:7687"]
+    volumes: [neo4j_data:/data]
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p diabetes123 'RETURN 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  loader:            # runs once: CSV -> Neo4j (wipes and reloads), then exits
+    build: .
+    command: python kg/load.py
+    depends_on:
+      neo4j: {condition: service_healthy}
+    restart: "no"
+
+  api:
+    build: .
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      CORS_ORIGINS: http://localhost:8080
+    ports: ["8000:8000"]
+    depends_on:
+      loader: {condition: service_completed_successfully}
+
+  web:
+    build: ./web
+    ports: ["8080:80"]
+    depends_on: [api]
+
+volumes:
+  neo4j_data:

@@ -64,6 +64,14 @@ cd web && npm install && npm run dev              # site at http://localhost:517
 | Symptom checker | `#/symptoms` |
 | Connections (shortest chains between two entities) | `#/paths?from=…&to=…` |
 
+## Run everything with Docker
+
+```bash
+docker compose up --build        # Neo4j + loader (CSV -> Neo4j) + API + website
+```
+
+Website http://localhost:8080 · API docs http://localhost:8000/docs · Neo4j Browser http://localhost:7474 (`neo4j` / `diabetes123`). Stop with `docker compose down` (`-v` also deletes the database). If a container named `neo4j-diabetes` from the manual setup is running, stop it first: both use ports 7474 and 7687.
+
 ## Report
 
-`report/Graph_01.pdf` (50 pages), built from `report/Graph_01.tex` with XeLaTeX; plan in `report/PLAN.md`.
+`report/Graph_01.pdf` (48 pages), built from `report/Graph_01.tex` with XeLaTeX; plan in `report/PLAN.md`.

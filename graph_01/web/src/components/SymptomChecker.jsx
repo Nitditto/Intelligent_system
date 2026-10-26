@@ -5,6 +5,8 @@ import { articles } from '../lib/labels.js'
 import { useAsync } from '../lib/useAsync.js'
 import { Empty, ErrorNote, Spinner } from './Feedback.jsx'
 
+const EXAMPLE = ['Khát nhiều', 'Tiểu nhiều', 'Sụt cân', 'Nhìn mờ']
+
 // Pick symptoms -> which diabetes types the articles associate with them.
 export default function SymptomChecker() {
   const symptoms = useAsync(() => api.search('', 'Symptom', 50), [])
@@ -12,9 +14,9 @@ export default function SymptomChecker() {
   const [result, setResult] = useState({ loading: false, data: null, error: null })
 
   const toggle = (name) => setPicked((p) => (p.includes(name) ? p.filter((x) => x !== name) : [...p, name]))
-  const check = () => {
+  const check = (list = picked) => {
     setResult((r) => ({ ...r, loading: true, error: null }))
-    api.symptomCheck(picked, 2)
+    api.symptomCheck(list, 2)
       .then((data) => setResult({ loading: false, data, error: null }))
       .catch((error) => setResult({ loading: false, data: null, error }))
   }
@@ -43,11 +45,12 @@ export default function SymptomChecker() {
           ))}
         </div>
         <div className="actions">
-          <button type="button" className="btn btn--primary" disabled={!picked.length || result.loading} onClick={check}
+          <button type="button" className="btn btn--primary" disabled={!picked.length || result.loading} onClick={() => check()}
             title={picked.length ? undefined : 'Choose at least one symptom'}>
             {result.loading && <span className="spinner spinner--ink" aria-hidden="true" />}
             Check {picked.length ? `${picked.length} symptom${picked.length > 1 ? 's' : ''}` : ''}
           </button>
+          <button type="button" className="btn btn--ghost" onClick={() => { setPicked(EXAMPLE); check(EXAMPLE) }}>Try an example</button>
           {picked.length > 0 && <button type="button" className="btn btn--ghost" onClick={() => { setPicked([]); setResult({ loading: false, data: null, error: null }) }}>Clear</button>}
         </div>
       </section>
@@ -57,6 +60,15 @@ export default function SymptomChecker() {
         <section className="card" aria-live="polite">
           <h2>Diabetes types linked to these symptoms</h2>
           {result.data.length === 0 && <Empty>No diabetes type is linked to these symptoms by at least two articles.</Empty>}
+          {result.data.length > 0 && (
+            <div className="verdict">
+              <p className="verdict__title">Most strongly linked to: {result.data[0].type}</p>
+              <p className="verdict__note">
+                It matches {result.data[0].matched.length} of your {picked.length} symptoms. “Backed by” counts the Vinmec articles that state each link,
+                so a bigger number means the link is repeated more often, not that it is more likely for you.
+              </p>
+            </div>
+          )}
           <ol className="rank">
             {result.data.map((r) => {
               const share = r.matched.length / picked.length

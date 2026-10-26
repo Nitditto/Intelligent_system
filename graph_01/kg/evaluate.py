@@ -2,6 +2,8 @@
 
   python kg/evaluate.py   -> evaluation/manual_audit.csv (fill in the `correct` column)
 """
+
+
 import csv
 import json
 import random
@@ -12,14 +14,14 @@ from extract import LABEL, PATTERNS, allowed_labels
 
 ROOT = Path(__file__).resolve().parents[1]
 N, SEED = 50, 42
-
+# Lấy mẫu ngẫu nhiên 50 bộ ba tri thức (với SEED = 42 để kết quả luôn tái lập) và tự động trích xuất câu văn bằng chứng gốc tương ứng trong bài báo của Vinmec để chuẩn bị cho việc thẩm định tính đúng/sai.
 
 def evidence(urls, subj_ent, obj):
     """First sentence mentioning the object, searched only in sections the extractor used."""
     pat = PATTERNS[obj] if obj in PATTERNS else PATTERNS.get(subj_ent)
     for url in urls:
         doc = json.loads((ROOT / "dataset" / "raw" / "pages" /
-                          (url.rstrip("/").rsplit("/", 1)[-1][:150] + ".json")).read_text())
+                          (url.rstrip("/").rsplit("/", 1)[-1][:150] + ".json")).read_text(encoding="utf-8"))
         for sec in doc["sections"]:
             labels = allowed_labels(sec["heading"])
             if subj_ent is None and LABEL[obj] not in labels:

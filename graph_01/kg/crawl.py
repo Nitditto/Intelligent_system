@@ -24,7 +24,7 @@ from bs4 import BeautifulSoup
 
 BASE = "https://www.vinmec.com"
 SITEMAP = f"{BASE}/sitemap.xml"
-HEADERS = {"User-Agent": "Mozilla/5.0 (student research crawler; B23DCDK036 knowledge-graph assignment)"}
+HEADERS = {"User-Agent": "Mozilla/5.0 (student research crawler; B23DCCE095 knowledge-graph assignment)"}
 DELAY = 1.0
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -66,7 +66,7 @@ def get(session, url, retries=3):
         time.sleep(2 * (i + 1))
     return None
 
-
+# lấy tất cả url từ bài viết
 def collect_urls(session):
     xml = get(session, SITEMAP)
     maps = re.findall(r"<loc>([^<]+)</loc>", xml)
@@ -87,6 +87,7 @@ def collect_urls(session):
     return keep
 
 
+# loại khoảng trắng dư
 def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
@@ -118,7 +119,7 @@ def parse_blocks(container):
                                "level": el.name, "text": t})
     return cut_boilerplate(blocks)
 
-
+# tạo section 
 def group_sections(blocks, first_title):
     sections, cur = [], {"heading": first_title, "paragraphs": [], "bullets": []}
     for b in blocks:
@@ -134,7 +135,7 @@ def group_sections(blocks, first_title):
         sections.append(cur)
     return sections
 
-
+# phân tích bài blog
 def parse_article(html, url):
     s = BeautifulSoup(html, "html.parser")
     meta = {}
@@ -224,7 +225,7 @@ def main():
         slug = url.rstrip("/").rsplit("/", 1)[-1]
         out = PAGES_DIR / f"{slug[:150]}.json"
         if out.exists():  # resume
-            doc = json.loads(out.read_text())
+            doc = json.loads(out.read_text(encoding="utf-8"))
         else:
             html = get(session, url)
             time.sleep(DELAY)
@@ -245,7 +246,7 @@ def main():
                       "related_mentions": related, "slug_match": strength, "relevant": keep})
         if keep:
             seen_titles.add(key)
-            out.write_text(json.dumps(doc, ensure_ascii=False, indent=1))
+            out.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
         elif out.exists():
             out.unlink()
         if i % 25 == 0:
