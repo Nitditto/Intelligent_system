@@ -1,0 +1,21 @@
+configuration,seed,train_mean_reward_per_step,train_last500_mean_reward_per_step,eval_mean_reward_per_step,eval_discount_rate,never_discount_policy,policy_flips_during_training
+RL vs Aggressive,11,29.10203,28.8162,29.5709,0.2626,0,637
+RL vs Aggressive,22,29.09923,28.999399999999998,30.135,0.0,1,673
+RL vs Aggressive,33,28.966,29.598700000000004,27.739,0.2327,0,674
+RL vs Aggressive,44,29.002669999999995,28.784599999999998,29.5753,0.2641,0,707
+RL vs Aggressive,55,29.14068,29.0295,29.3357,0.2741,0,632
+RL vs Aggressive,66,29.057519999999997,29.1615,27.1279,0.7346,0,631
+RL vs Aggressive,77,29.09536,28.829300000000003,29.5716,0.2323,0,606
+RL vs Aggressive,88,29.08264,28.8385,27.2224,0.7408,0,683
+RL vs Aggressive,99,29.13539,28.9415,27.5544,0.4794,0,600
+RL vs Aggressive,110,29.10595,28.966,29.7585,0.0,1,612
+Rule-based,11,nan,nan,27.8678,0.23,0,0
+Rule-based,22,nan,nan,28.1322,0.2402,0,0
+Rule-based,33,nan,nan,27.739,0.2327,0,0
+Rule-based,44,nan,nan,27.8817,0.2403,0,0
+Rule-based,55,nan,nan,27.5697,0.2319,0,0
+Rule-based,66,nan,nan,27.84,0.2369,0,0
+Rule-based,77,nan,nan,27.8069,0.2386,0,0
+Rule-based,88,nan,nan,27.9781,0.2439,0,0
+Rule-based,99,nan,nan,27.9034,0.2416,0,0
+Rule-based,110,nan,nan,27.699,0.2327,0,0

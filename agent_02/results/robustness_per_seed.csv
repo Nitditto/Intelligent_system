@@ -1,0 +1,201 @@
+agent,seed,opponent,eval_mean_reward_per_step,discount_rate
+Rule-based,11,rule,34.4085,0.0
+Rule-based,11,aggressive,27.5909,0.2292
+Rule-based,11,tit_for_tat,34.4085,0.0
+Rule-based,11,always_discount,22.8631,0.4628
+Rule-based,11,random,28.228,0.2281
+Rule-based,22,rule,34.7785,0.0
+Rule-based,22,aggressive,27.718,0.2326
+Rule-based,22,tit_for_tat,34.7785,0.0
+Rule-based,22,always_discount,23.0825,0.4697
+Rule-based,22,random,28.4112,0.2366
+Rule-based,33,rule,34.9575,0.0
+Rule-based,33,aggressive,28.0241,0.2362
+Rule-based,33,tit_for_tat,34.9575,0.0
+Rule-based,33,always_discount,23.2574,0.4757
+Rule-based,33,random,28.8218,0.2349
+Rule-based,44,rule,34.971,0.0
+Rule-based,44,aggressive,27.9441,0.2327
+Rule-based,44,tit_for_tat,34.971,0.0
+Rule-based,44,always_discount,23.27,0.4736
+Rule-based,44,random,28.5942,0.2364
+Rule-based,55,rule,35.218,0.0
+Rule-based,55,aggressive,27.8787,0.24
+Rule-based,55,tit_for_tat,35.218,0.0
+Rule-based,55,always_discount,23.3728,0.4754
+Rule-based,55,random,28.7717,0.2388
+Rule-based,66,rule,34.7665,0.0
+Rule-based,66,aggressive,27.8566,0.232
+Rule-based,66,tit_for_tat,34.7665,0.0
+Rule-based,66,always_discount,23.1108,0.4665
+Rule-based,66,random,28.3419,0.2368
+Rule-based,77,rule,35.134,0.0
+Rule-based,77,aggressive,27.9347,0.2361
+Rule-based,77,tit_for_tat,35.134,0.0
+Rule-based,77,always_discount,23.3159,0.474
+Rule-based,77,random,28.7312,0.2357
+Rule-based,88,rule,35.076,0.0
+Rule-based,88,aggressive,27.9814,0.24
+Rule-based,88,tit_for_tat,35.076,0.0
+Rule-based,88,always_discount,23.2811,0.4787
+Rule-based,88,random,28.6562,0.2408
+Rule-based,99,rule,35.2865,0.0
+Rule-based,99,aggressive,27.9336,0.2399
+Rule-based,99,tit_for_tat,35.2865,0.0
+Rule-based,99,always_discount,23.3814,0.4802
+Rule-based,99,random,28.7983,0.2345
+Rule-based,110,rule,35.241,0.0
+Rule-based,110,aggressive,28.0134,0.2449
+Rule-based,110,tit_for_tat,35.241,0.0
+Rule-based,110,always_discount,23.3611,0.4783
+Rule-based,110,random,28.7741,0.2409
+RL baseline (trained vs rule),11,rule,34.4085,0.0
+RL baseline (trained vs rule),11,aggressive,29.6365,0.0
+RL baseline (trained vs rule),11,tit_for_tat,34.4085,0.0
+RL baseline (trained vs rule),11,always_discount,27.089,0.0
+RL baseline (trained vs rule),11,random,30.769,0.0
+RL baseline (trained vs rule),22,rule,34.7785,0.0
+RL baseline (trained vs rule),22,aggressive,29.8075,0.0
+RL baseline (trained vs rule),22,tit_for_tat,34.7785,0.0
+RL baseline (trained vs rule),22,always_discount,27.302,0.0
+RL baseline (trained vs rule),22,random,30.977,0.0
+RL baseline (trained vs rule),33,rule,34.9575,0.0
+RL baseline (trained vs rule),33,aggressive,29.8184,0.2402
+RL baseline (trained vs rule),33,tit_for_tat,34.9575,0.0
+RL baseline (trained vs rule),33,always_discount,27.9132,0.4743
+RL baseline (trained vs rule),33,random,31.3687,0.2367
+RL baseline (trained vs rule),44,rule,34.971,0.0
+RL baseline (trained vs rule),44,aggressive,30.108,0.0
+RL baseline (trained vs rule),44,tit_for_tat,34.971,0.0
+RL baseline (trained vs rule),44,always_discount,27.6135,0.0
+RL baseline (trained vs rule),44,random,31.1455,0.0
+RL baseline (trained vs rule),55,rule,35.218,0.0
+RL baseline (trained vs rule),55,aggressive,29.946,0.0
+RL baseline (trained vs rule),55,tit_for_tat,35.218,0.0
+RL baseline (trained vs rule),55,always_discount,27.443,0.0
+RL baseline (trained vs rule),55,random,31.255,0.0
+RL baseline (trained vs rule),66,rule,31.7097,0.5067
+RL baseline (trained vs rule),66,aggressive,29.1287,0.5067
+RL baseline (trained vs rule),66,tit_for_tat,30.9726,0.5067
+RL baseline (trained vs rule),66,always_discount,27.6113,0.5067
+RL baseline (trained vs rule),66,random,30.6587,0.5067
+RL baseline (trained vs rule),77,rule,32.5327,0.4076
+RL baseline (trained vs rule),77,aggressive,29.599,0.2612
+RL baseline (trained vs rule),77,tit_for_tat,32.3867,0.3438
+RL baseline (trained vs rule),77,always_discount,27.5126,0.024
+RL baseline (trained vs rule),77,random,31.2888,0.2659
+RL baseline (trained vs rule),88,rule,35.076,0.0
+RL baseline (trained vs rule),88,aggressive,27.9814,0.24
+RL baseline (trained vs rule),88,tit_for_tat,35.076,0.0
+RL baseline (trained vs rule),88,always_discount,23.2811,0.4787
+RL baseline (trained vs rule),88,random,28.6562,0.2408
+RL baseline (trained vs rule),99,rule,35.2865,0.0
+RL baseline (trained vs rule),99,aggressive,29.5564,0.2388
+RL baseline (trained vs rule),99,tit_for_tat,35.2865,0.0
+RL baseline (trained vs rule),99,always_discount,27.6718,0.4698
+RL baseline (trained vs rule),99,random,31.3376,0.2386
+RL baseline (trained vs rule),110,rule,35.241,0.0
+RL baseline (trained vs rule),110,aggressive,27.6245,0.4764
+RL baseline (trained vs rule),110,tit_for_tat,35.241,0.0
+RL baseline (trained vs rule),110,always_discount,23.573,0.95
+RL baseline (trained vs rule),110,random,28.6322,0.4773
+RL + opponent pool + α=1/N,11,rule,34.4085,0.0
+RL + opponent pool + α=1/N,11,aggressive,29.6365,0.0
+RL + opponent pool + α=1/N,11,tit_for_tat,34.4085,0.0
+RL + opponent pool + α=1/N,11,always_discount,27.089,0.0
+RL + opponent pool + α=1/N,11,random,30.769,0.0
+RL + opponent pool + α=1/N,22,rule,34.7785,0.0
+RL + opponent pool + α=1/N,22,aggressive,29.8075,0.0
+RL + opponent pool + α=1/N,22,tit_for_tat,34.7785,0.0
+RL + opponent pool + α=1/N,22,always_discount,27.302,0.0
+RL + opponent pool + α=1/N,22,random,30.977,0.0
+RL + opponent pool + α=1/N,33,rule,34.9575,0.0
+RL + opponent pool + α=1/N,33,aggressive,30.1685,0.0
+RL + opponent pool + α=1/N,33,tit_for_tat,34.9575,0.0
+RL + opponent pool + α=1/N,33,always_discount,27.681,0.0
+RL + opponent pool + α=1/N,33,random,31.4975,0.0
+RL + opponent pool + α=1/N,44,rule,34.971,0.0
+RL + opponent pool + α=1/N,44,aggressive,30.108,0.0
+RL + opponent pool + α=1/N,44,tit_for_tat,34.971,0.0
+RL + opponent pool + α=1/N,44,always_discount,27.6135,0.0
+RL + opponent pool + α=1/N,44,random,31.1455,0.0
+RL + opponent pool + α=1/N,55,rule,35.218,0.0
+RL + opponent pool + α=1/N,55,aggressive,29.5946,0.236
+RL + opponent pool + α=1/N,55,tit_for_tat,35.218,0.0
+RL + opponent pool + α=1/N,55,always_discount,27.6612,0.4746
+RL + opponent pool + α=1/N,55,random,31.1288,0.2376
+RL + opponent pool + α=1/N,66,rule,34.7665,0.0
+RL + opponent pool + α=1/N,66,aggressive,29.9425,0.0
+RL + opponent pool + α=1/N,66,tit_for_tat,34.7665,0.0
+RL + opponent pool + α=1/N,66,always_discount,27.3885,0.0
+RL + opponent pool + α=1/N,66,random,30.935,0.0
+RL + opponent pool + α=1/N,77,rule,35.134,0.0
+RL + opponent pool + α=1/N,77,aggressive,29.6548,0.2388
+RL + opponent pool + α=1/N,77,tit_for_tat,35.134,0.0
+RL + opponent pool + α=1/N,77,always_discount,27.7248,0.476
+RL + opponent pool + α=1/N,77,random,31.2823,0.2341
+RL + opponent pool + α=1/N,88,rule,35.076,0.0
+RL + opponent pool + α=1/N,88,aggressive,30.091,0.0
+RL + opponent pool + α=1/N,88,tit_for_tat,35.076,0.0
+RL + opponent pool + α=1/N,88,always_discount,27.601,0.0
+RL + opponent pool + α=1/N,88,random,31.3375,0.0
+RL + opponent pool + α=1/N,99,rule,32.6575,0.4012
+RL + opponent pool + α=1/N,99,aggressive,29.5256,0.257
+RL + opponent pool + α=1/N,99,tit_for_tat,32.4693,0.3414
+RL + opponent pool + α=1/N,99,always_discount,27.4473,0.026
+RL + opponent pool + α=1/N,99,random,31.3348,0.2572
+RL + opponent pool + α=1/N,110,rule,35.241,0.0
+RL + opponent pool + α=1/N,110,aggressive,29.7311,0.2315
+RL + opponent pool + α=1/N,110,tit_for_tat,35.241,0.0
+RL + opponent pool + α=1/N,110,always_discount,27.7989,0.4717
+RL + opponent pool + α=1/N,110,random,31.2806,0.2364
+Improved RL (+ own previous action in state),11,rule,34.4085,0.0
+Improved RL (+ own previous action in state),11,aggressive,29.6365,0.0
+Improved RL (+ own previous action in state),11,tit_for_tat,34.4085,0.0
+Improved RL (+ own previous action in state),11,always_discount,27.089,0.0
+Improved RL (+ own previous action in state),11,random,30.769,0.0
+Improved RL (+ own previous action in state),22,rule,34.7785,0.0
+Improved RL (+ own previous action in state),22,aggressive,29.8075,0.0
+Improved RL (+ own previous action in state),22,tit_for_tat,34.7785,0.0
+Improved RL (+ own previous action in state),22,always_discount,27.302,0.0
+Improved RL (+ own previous action in state),22,random,30.977,0.0
+Improved RL (+ own previous action in state),33,rule,34.9575,0.0
+Improved RL (+ own previous action in state),33,aggressive,30.1685,0.0
+Improved RL (+ own previous action in state),33,tit_for_tat,34.9575,0.0
+Improved RL (+ own previous action in state),33,always_discount,27.681,0.0
+Improved RL (+ own previous action in state),33,random,31.4975,0.0
+Improved RL (+ own previous action in state),44,rule,32.3851,0.408
+Improved RL (+ own previous action in state),44,aggressive,29.7155,0.2604
+Improved RL (+ own previous action in state),44,tit_for_tat,32.1453,0.3483
+Improved RL (+ own previous action in state),44,always_discount,27.6315,0.0242
+Improved RL (+ own previous action in state),44,random,31.0143,0.2633
+Improved RL (+ own previous action in state),55,rule,35.218,0.0
+Improved RL (+ own previous action in state),55,aggressive,28.6413,0.3505
+Improved RL (+ own previous action in state),55,tit_for_tat,35.218,0.0
+Improved RL (+ own previous action in state),55,always_discount,27.6612,0.4746
+Improved RL (+ own previous action in state),55,random,30.3925,0.3066
+Improved RL (+ own previous action in state),66,rule,31.7097,0.5067
+Improved RL (+ own previous action in state),66,aggressive,29.1287,0.5067
+Improved RL (+ own previous action in state),66,tit_for_tat,30.9726,0.5067
+Improved RL (+ own previous action in state),66,always_discount,27.6113,0.5067
+Improved RL (+ own previous action in state),66,random,30.6587,0.5067
+Improved RL (+ own previous action in state),77,rule,35.134,0.0
+Improved RL (+ own previous action in state),77,aggressive,29.6548,0.2388
+Improved RL (+ own previous action in state),77,tit_for_tat,35.134,0.0
+Improved RL (+ own previous action in state),77,always_discount,27.7248,0.476
+Improved RL (+ own previous action in state),77,random,31.2823,0.2341
+Improved RL (+ own previous action in state),88,rule,35.076,0.0
+Improved RL (+ own previous action in state),88,aggressive,30.091,0.0
+Improved RL (+ own previous action in state),88,tit_for_tat,35.076,0.0
+Improved RL (+ own previous action in state),88,always_discount,27.601,0.0
+Improved RL (+ own previous action in state),88,random,31.3375,0.0
+Improved RL (+ own previous action in state),99,rule,33.4342,0.2901
+Improved RL (+ own previous action in state),99,aggressive,29.6592,0.1745
+Improved RL (+ own previous action in state),99,tit_for_tat,32.981,0.2586
+Improved RL (+ own previous action in state),99,always_discount,27.4578,0.0497
+Improved RL (+ own previous action in state),99,random,31.3305,0.2593
+Improved RL (+ own previous action in state),110,rule,33.121,0.3363
+Improved RL (+ own previous action in state),110,aggressive,29.563,0.3363
+Improved RL (+ own previous action in state),110,tit_for_tat,32.2995,0.3363
+Improved RL (+ own previous action in state),110,always_discount,27.8076,0.4981
+Improved RL (+ own previous action in state),110,random,31.1853,0.4022

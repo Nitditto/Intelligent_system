@@ -1,0 +1,5 @@
+demand,competitor_current_action,E_profit_action_0,E_profit_action_1,myopic_best_action
+0,0,15.0,13.5,0
+0,1,9.999999999999998,10.5,1
+1,0,55.0,42.00000000000001,0
+1,1,45.00000000000001,36.00000000000001,0

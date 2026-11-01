@@ -1,0 +1,26 @@
+agent,opponent,mean,std
+Rule-based,rule,34.98375,0.2718011170363774
+Rule-based,aggressive,27.887549999999997,0.1368771651274721
+Rule-based,tit_for_tat,34.98375,0.2718011170363774
+Rule-based,always_discount,23.22961,0.16445896786466574
+Rule-based,random,28.612859999999994,0.21283969032531902
+RL baseline (trained vs rule),rule,34.41794,1.2525862110050547
+RL baseline (trained vs rule),aggressive,29.320640000000004,0.8456384060446746
+RL baseline (trained vs rule),tit_for_tat,34.329629999999995,1.4587046491474704
+RL baseline (trained vs rule),always_discount,26.70105,1.740826347999389
+RL baseline (trained vs rule),random,30.608870000000003,1.062488606004266
+RL + opponent pool + α=1/N,rule,34.72085,0.7669202497290352
+RL + opponent pool + α=1/N,aggressive,29.826010000000004,0.23546209154671913
+RL + opponent pool + α=1/N,tit_for_tat,34.70202999999999,0.8234090573139627
+RL + opponent pool + α=1/N,always_discount,27.530719999999995,0.22000083232165807
+RL + opponent pool + α=1/N,random,31.168799999999997,0.22182913344383903
+Improved RL (+ own previous action in state),rule,34.02225,1.2718399997641214
+Improved RL (+ own previous action in state),aggressive,29.606599999999997,0.44355539050319825
+Improved RL (+ own previous action in state),tit_for_tat,33.797090000000004,1.5542199246996335
+Improved RL (+ own previous action in state),always_discount,27.556719999999995,0.2164138104034341
+Improved RL (+ own previous action in state),random,31.044459999999994,0.35032392058398404
+Best response (model),rule,35.0,0.0
+Best response (model),aggressive,30.0,0.0
+Best response (model),tit_for_tat,35.0,0.0
+Best response (model),always_discount,27.750000000000004,0.0
+Best response (model),random,31.25,0.0

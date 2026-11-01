@@ -1,0 +1,11 @@
+configuration,seed,train_mean_reward_per_step,train_last500_mean_reward_per_step,eval_mean_reward_per_step,eval_discount_rate,never_discount_policy,policy_flips_during_training
+Rule-based,11,nan,nan,34.744,0.0,0,0
+Rule-based,22,nan,nan,35.325,0.0,0,0
+Rule-based,33,nan,nan,34.6725,0.0,0,0
+Rule-based,44,nan,nan,35.1165,0.0,0,0
+Rule-based,55,nan,nan,34.6015,0.0,0,0
+Rule-based,66,nan,nan,35.0365,0.0,0,0
+Rule-based,77,nan,nan,34.966,0.0,0,0
+Rule-based,88,nan,nan,35.1745,0.0,0,0
+Rule-based,99,nan,nan,35.2535,0.0,0,0
+Rule-based,110,nan,nan,34.8125,0.0,0,0

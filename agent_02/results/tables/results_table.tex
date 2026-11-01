@@ -1,0 +1,13 @@
+\begin{tabular}{lrrrc}
+\toprule
+Agent / configuration & Mean reward & Std.\ dev. & Discount rate & ``Never discount'' policy \\
+\midrule
+RL, baseline ($\alpha=0.10$, decaying $\varepsilon$) & 34.390 & 1.239 & 0.091 & 4/10 \\
+RL, low learning rate ($\alpha=0.01$) & 33.634 & 3.193 & 0.150 & 1/10 \\
+RL, high learning rate ($\alpha=0.50$) & 32.045 & 3.509 & 0.287 & 3/10 \\
+RL, fixed $\varepsilon=0.05$ & 34.122 & 1.346 & 0.132 & 4/10 \\
+RL, fixed $\varepsilon=0.30$ & 29.654 & 3.264 & 0.495 & 0/10 \\
+RL, greedy $\varepsilon=0$ & 31.029 & 3.099 & 0.436 & 3/10 \\
+Rule-based & 34.970 & 0.253 & 0.000 & -- \\
+\bottomrule
+\end{tabular}

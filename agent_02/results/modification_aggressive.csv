@@ -1,0 +1,4 @@
+agent,eval_mean,eval_std,discount_rate
+RL retrained against the aggressive competitor,28.75907,1.189018880375282,0.32206
+RL trained on the reference market (not retrained),29.314520000000005,0.9223910845671096,nan
+Rule-based,27.84178,0.15462921816756073,0.23687999999999998

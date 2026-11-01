@@ -1,0 +1,35 @@
+Baseline RL agent (seed 42), trained against the rule-based agent
+Q[demand, competitor_previous_action, action]; action 0 = no discount, 1 = discount
+  state=(0, 0) | Q0= 228.3024 | Q1= 178.8494 | visits=(33659, 12490) | greedy=NO DISCOUNT
+  state=(0, 1) | Q0= 177.9920 | Q1= 207.2051 | visits=(2501, 1522) | greedy=DISCOUNT
+  state=(1, 0) | Q0= 246.8799 | Q1= 235.2338 | visits=(42848, 3103) | greedy=NO DISCOUNT
+  state=(1, 1) | Q0= 211.4198 | Q1= 242.9629 | visits=(3468, 409) | greedy=DISCOUNT
+
+alpha=0.50, seed 11
+Q[demand, competitor_previous_action, action]; action 0 = no discount, 1 = discount
+  state=(0, 0) | Q0= 265.6074 | Q1= 119.5360 | visits=(27092, 15725) | greedy=NO DISCOUNT
+  state=(0, 1) | Q0= 235.0181 | Q1= 103.7008 | visits=(3460, 3641) | greedy=NO DISCOUNT
+  state=(1, 0) | Q0= 164.4647 | Q1= 147.9660 | visits=(33823, 9236) | greedy=NO DISCOUNT
+  state=(1, 1) | Q0= 275.2414 | Q1= 139.0914 | visits=(4346, 2677) | greedy=NO DISCOUNT
+
+RL vs RL, seat 0 (seed 11)
+Q[demand, competitor_previous_action, action]; action 0 = no discount, 1 = discount
+  state=(0, 0) | Q0= 231.5149 | Q1= 182.6967 | visits=(28313, 10721) | greedy=NO DISCOUNT
+  state=(0, 1) | Q0= 170.1675 | Q1= 188.6822 | visits=(3824, 7060) | greedy=DISCOUNT
+  state=(1, 0) | Q0= 235.9449 | Q1= 213.2316 | visits=(35882, 3302) | greedy=NO DISCOUNT
+  state=(1, 1) | Q0= 247.3514 | Q1= 205.4576 | visits=(9262, 1636) | greedy=NO DISCOUNT
+
+RL vs RL, seat 1 (seed 11)
+Q[demand, competitor_previous_action, action]; action 0 = no discount, 1 = discount
+  state=(0, 0) | Q0= 225.9137 | Q1= 183.2003 | visits=(26177, 12986) | greedy=NO DISCOUNT
+  state=(0, 1) | Q0= 169.4016 | Q1= 197.1308 | visits=(5857, 4898) | greedy=DISCOUNT
+  state=(1, 0) | Q0= 235.2451 | Q1= 219.6392 | visits=(35696, 3580) | greedy=NO DISCOUNT
+  state=(1, 1) | Q0= 241.0867 | Q1= 216.0675 | visits=(9355, 1451) | greedy=NO DISCOUNT
+
+RL trained against the aggressive competitor (seed 11)
+Q[demand, competitor_previous_action, action]; action 0 = no discount, 1 = discount
+  state=(0, 0) | Q0= 157.2825 | Q1= 182.4406 | visits=(16848, 9224) | greedy=DISCOUNT
+  state=(0, 1) | Q0= 197.2768 | Q1= 170.3103 | visits=(15695, 8151) | greedy=NO DISCOUNT
+  state=(1, 0) | Q0= 204.7240 | Q1= 190.5776 | visits=(22052, 4252) | greedy=NO DISCOUNT
+  state=(1, 1) | Q0= 211.1018 | Q1= 189.4147 | visits=(20548, 3230) | greedy=NO DISCOUNT
+
