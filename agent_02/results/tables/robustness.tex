@@ -1,0 +1,11 @@
+\begin{tabular}{lrrrrrrr}
+\toprule
+Agent & Rule & Aggressive & Tit-for-tat & Always disc. & Random & Average & Worst \\
+\midrule
+Rule-based & 34.98 $\pm$ 0.27 & 27.89 $\pm$ 0.14 & 34.98 $\pm$ 0.27 & 23.23 $\pm$ 0.16 & 28.61 $\pm$ 0.21 & 29.94 & 23.23 \\
+RL baseline (trained vs rule) & 34.42 $\pm$ 1.25 & 29.32 $\pm$ 0.85 & 34.33 $\pm$ 1.46 & 26.70 $\pm$ 1.74 & 30.61 $\pm$ 1.06 & 31.08 & 26.70 \\
+RL + opponent pool + $\alpha=1/N$ & 34.72 $\pm$ 0.77 & 29.83 $\pm$ 0.24 & 34.70 $\pm$ 0.82 & 27.53 $\pm$ 0.22 & 31.17 $\pm$ 0.22 & 31.59 & 27.53 \\
+Improved RL (+ own previous action in state) & 34.02 $\pm$ 1.27 & 29.61 $\pm$ 0.44 & 33.80 $\pm$ 1.55 & 27.56 $\pm$ 0.22 & 31.04 $\pm$ 0.35 & 31.21 & 27.56 \\
+Best response (from the model) & 35.00 & 30.00 & 35.00 & 27.75 & 31.25 & 31.80 & 27.75 \\
+\bottomrule
+\end{tabular}

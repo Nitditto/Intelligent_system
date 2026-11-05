@@ -1,0 +1,2 @@
+rl_total_training_reward,rule_total_training_reward,rl_training_discount_actions,rule_training_discount_actions,total_training_steps,rl_policy_flips
+3345548.0,3283930.0,17524,8323,100000,606

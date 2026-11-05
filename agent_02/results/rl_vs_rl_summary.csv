@@ -1,0 +1,9 @@
+metric,mean,std
+policy_flips_vs_rule,584.1,24.537726056014236
+policy_flips_vs_learning_rl,589.4,25.369272752682523
+rl_vs_rl_eval_reward_seat0,33.624660000000006,1.85838702236345
+rl_vs_rl_eval_reward_seat1,33.61606,2.0050272800582483
+rl_vs_rl_discount_rate_seat0,0.17124999999999999,0.23624850028918468
+rl_vs_rl_discount_rate_seat1,0.21172,0.29907690872638987
+late_flips_vs_rule,267.5,28.5238691469287
+late_flips_vs_learning_rl,272.6,28.690687610365067

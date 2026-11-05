@@ -1,0 +1,5 @@
+match,agent,seat,total_reward,mean_reward_per_step,episode_std_of_mean_reward,no_discount_actions,discount_actions,discount_action_rate
+RL vs Rule,RL,0,351275.0,35.1275,4.832916605511796,10000,0,0.0
+RL vs Rule,Rule-based,1,349685.0,34.9685,4.898635116234318,10000,0,0.0
+Rule vs Rule,Rule-based,0,351275.0,35.1275,4.832916605511796,10000,0,0.0
+Rule vs Rule,Rule-based,1,349685.0,34.9685,4.898635116234318,10000,0,0.0
