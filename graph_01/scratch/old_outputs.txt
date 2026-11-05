@@ -1,0 +1,348 @@
+=== cell 1
+project root: E:\CODING\IS_AI\intelligent_system_assignments\graph_01
+
+=== cell 3
+8 nodes, 7 edges
+
+<Figure size 990x605 with 1 Axes>
+[image]
+=== cell 5
+1-hop around Metformin:
+   Metformin BELONGS_TO_CLASS Biguanide.
+   Đái tháo đường type 2 TREATED_BY Metformin.
+
+2-hop: organs damaged by type 2
+   type 2 → Bệnh thận đái tháo đường → Thận
+
+=== cell 8
+candidates checked: 1191   kept: 1096   rejected: 95
+
+
+relevant    rejected  kept   All
+slug_match                      
+strong            10   934   944
+weak              85   162   247
+All               95  1096  1191
+
+Some rejected pages (accent collisions and off-topic):
+
+                                                                                         title slug_match  core_mentions  related_mentions
+26                                    Trẻ 19 tháng đi tiểu dương vật không cử động cần làm gì?     strong              0                 0
+108                     Vô tình hít phải Heroin nên đi thử nước tiểu dương tính có phải không?     strong              0                 0
+111  Kết quả xét nghiệm nước tiểu dương tính với Amphetamine và Methamphetamine có ý nghĩa gì?     strong              0                 0
+358                                               Thành phần dinh dưỡng trong cá ngừ đại dương     strong              2                 0
+451                                                 Dầu hoa anh thảo dưỡng ẩm da có tốt không?     strong              0                 0
+784                                                   Bài thuốc từ
+=== cell 9
+<Figure size 1650x396 with 3 Axes>
+[image]
+total words in corpus: 1,130,914   median page: 1044 words
+
+=== cell 11
+title: Tiểu đường tuýp 2: Nguyên nhân, triệu chứng, chẩn đoán và điều trị
+url:   https://www.vinmec.com/vie/benh/tieu-duong-tuyp-2-3042
+type:  disease 
+
+## Tổng quan bệnh Tiểu đường tuýp 2   (4 paragraphs, 0 bullets)
+## Nguyên nhân bệnh Tiểu đường tuýp 2   (1 paragraphs, 0 bullets)
+## Triệu chứng bệnh Tiểu đường tuýp 2   (3 paragraphs, 4 bullets)
+     • Ăn nhiều
+     • Uống nhiều (hay khát nước)
+     • Tiểu nhiều (do đường trong nước tiểu cao, gây lợi niệu thẩm thấu)
+     • Gầy nhiều (gầy sút cân): bệnh nhân tiểu đường tuýp 2 thường có thể trạng béo, nhưng khi có triệu chứng tăng đư
+## Biến chứng cấp tính   (1 paragraphs, 0 bullets)
+## Biến chứng mạn tính   (0 paragraphs, 6 bullets)
+     • Nhìn mờ (do biến chứng võng mạc, đục thủy tinh thể)
+     • Đau ngực thường không điển hình (do biến chứng mạch vành)
+     • Tê bì dị cảm ở bàn chân (biến chứng thần kinh)
+     • Loét, nhiễm trùng bàn c
+=== cell 13
+106 vocabulary entities, 320 aliases
+
+              entities  aliases
+type                           
+Drug                22       42
+Complication        19       52
+RiskFactor          17       52
+Food                16       66
+Symptom             16       56
+Test                10       35
+Lifestyle            6       17
+                    entity          type  n_aliases                                                             first aliases
+66          Insulin lispro          Drug          2                                                           lispro, humalog
+35   Tăng áp lực thẩm thấu  Complication          2                          tăng áp lực thẩm thấu, tăng áp lực thẩm thấu máu
+59      Máy đo đường huyết          Test          4  máy đo đường huyết, tự theo dõi đường huyết, đo đường huyết tại nhà, cgm
+77           Canagliflozin          Drug          1                                                             canagliflozin
+39            Tăng nhãn áp  Complication          3                                         tăng nhãn áp, glaucoma, cườm nước
+56    Xét nghiệm nước tiểu          Test          4    xét nghiệm nước tiểu, tổng phân tích nước tiểu, đường niệu, ceton niệu
+55  Đường huyết ng
+=== cell 15
+Đường huyết lúc đói (nhịn ăn >8-14h) >7 mmol trong 2 buổi sáng khác nhau; HbA1C >6,5%, kèm uống nhiều, tiểu nhiều. 
+
+Test     → ['HbA1c', 'Đường huyết lúc đói']
+Symptom  → ['Khát nhiều', 'Tiểu nhiều']
+Drug     → []
+
+Word boundary demo:
+  'bệnh nhân lên cân'    Food matches → []
+  'ăn quả lê'            Food matches → ['Trái cây ít ngọt']
+  'uống bia'             Food matches → ['Rượu bia']
+  'bị táo bón kéo dài'   Food matches → ['Trái cây ít ngọt']
+
+=== cell 17
+                                                      section heading  about diabetes itself? allowed entity types
+0                                  Triệu chứng bệnh Tiểu đường tuýp 2                    True            [Symptom]
+1                            Đối tượng nguy cơ bệnh Tiểu đường tuýp 1                    True         [RiskFactor]
+2                                        3. Ai dễ bị tiền tiểu đường?                    True         [RiskFactor]
+3                       Các biện pháp điều trị bệnh Tiểu đường tuýp 1                    True    [Drug, Lifestyle]
+4  2.2. Một số thực phẩm mẹ bầu mắc bệnh tiểu đường thai kỳ cần tránh                    True               [Food]
+5                  3. Một số nguyên nhân gây ngứa bàn tay và bàn chân                   False                   []
+6      2. Yếu tố nguy cơ gây tai biến mạch máu não ở người tiểu đường                   False  
+=== cell 19
+Đái tháo đường type 2     ← Tiểu đường tuýp 2: Nguyên nhân, triệu chứng, chẩn đoán và điều trị
+Đái tháo đường thai kỳ    ← Chế độ ăn cho người bị tiểu đường thai kỳ
+Tiền đái tháo đường       ← Nguyên nhân và đối tượng nguy cơ tiền tiểu đường
+Đái tháo đường            ← 12 lời khuyên về lối sống để tránh biến chứng tiểu đường
+
+
+<Figure size 770x286 with 1 Axes>
+[image]
+=== cell 21
+subject: Đái tháo đường type 2 
+
+## Tổng quan bệnh Tiểu đường tuýp 2
+   allowed: —
+## Nguyên nhân bệnh Tiểu đường tuýp 2
+   allowed: ['RiskFactor']
+   → (Đái tháo đường type 2, HAS_RISK_FACTOR, Di truyền / tiền sử gia đình)
+## Triệu chứng bệnh Tiểu đường tuýp 2
+   allowed: ['Symptom']
+   → (Đái tháo đường type 2, HAS_SYMPTOM, Khát nhiều)
+   → (Đái tháo đường type 2, HAS_SYMPTOM, Sụt cân)
+   → (Đái tháo đường type 2, HAS_SYMPTOM, Tiểu nhiều)
+   → (Đái tháo đường type 2, HAS_SYMPTOM, Ăn nhiều)
+## Biến chứng cấp tính
+   allowed: ['Complication']
+   → (Đái tháo đường type 2, HAS_COMPLICATION, Nhiễm toan ceton)
+   → (Đái tháo đường type 2, HAS_COMPLICATION, Tăng áp lực thẩm thấu)
+## Biến chứng mạn tính
+   allowed: ['Complication']
+   → (Đái tháo đường type 2, HAS_COMPLICATION, Bàn chân đái tháo đường)
+   → (Đái tháo đường type 2, HAS_COMPLICATION, Bệnh thần kinh ngoại biên)
+   → (Đái tháo đườ
+=== cell 23
+Khát nhiều   support=3  pages=['A', 'B', 'C']  kept
+Mệt mỏi      support=1  pages=['A']  dropped
+Run tay      support=1  pages=['C']  dropped
+
+=== cell 25
+Side-effect rule on three sentences:
+
+  Insulin có thể gây hạ đường huyết nếu tiêm quá liều.
+     cue=True cause-sentence=False drugs=['Insulin'] effects=['Hạ đường huyết'] → [('Insulin', 'HAS_SIDE_EFFECT', 'Hạ đường huyết')]
+
+  Thiếu insulin gây nhiễm toan ceton.
+     cue=True cause-sentence=True drugs=['Insulin'] effects=['Nhiễm toan ceton'] → no triple
+
+  Metformin là thuốc đầu tay cho tiểu đường tuýp 2.
+     cue=False cause-sentence=False drugs=['Metformin'] effects=[] → no triple
+
+
+=== cell 27
+entities: 127   triples: 339   relation types: 12   entity types: 10
+extracted from text: 301   curated: 38
+
+            subject          relation                     object  support
+295  Đái tháo đường        TREATED_BY                    Insulin      143
+239  Đái tháo đường        MANAGED_BY        Tập thể dục đều đặn      114
+240  Đái tháo đường        MANAGED_BY                   Giảm cân       75
+96   Đái tháo đường  HAS_COMPLICATION              Bệnh tim mạch       56
+259  Đái tháo đường   RECOMMENDS_FOOD         Ngũ cốc nguyên hạt       54
+16   Đái tháo đường       AVOIDS_FOOD                   Rượu bia       48
+97   Đái tháo đường  HAS_COMPLICATION  Bệnh thần kinh ngoại biên       44
+17   Đái tháo đường       AVOIDS_FOOD          Đồ ngọt, bánh kẹo       44
+260  Đái tháo đường   RECOMMENDS_FOOD           Trái cây ít ngọt       44
+261  Đái tháo đường   RECOMMENDS_FOOD                   Rau xanh       43
+63   Đái tháo đường      DIAGNOSED_BY                      HbA1c       42
+262  Đái thá
+=== cell 28
+<Figure size 1760x440 with 3 Axes>
+[image]
+support quantiles: {0.25: 3.0, 0.5: 5.0, 0.75: 9.0, 0.9: 23.0}
+
+=== cell 30
+<Figure size 880x717.2 with 1 Axes>
+[image]
+<Figure size 880x717.2 with 1 Axes>
+[image]
+=== cell 32
+            0     1             2        3           4     5     6          7      8          9             10
+label  Article  Drug  Complication  Symptom  RiskFactor  Food  Test  DrugClass  Organ  Lifestyle  DiabetesType
+n         1096    22            18       16          16    16    10          9      9          6             5
+                0      1                 2           3            4                5                6             7            8                 9           10             11               12  \
+relation  MENTIONS  ABOUT  HAS_COMPLICATION  TREATED_BY  HAS_SYMPTOM  HAS_RISK_FACTOR  RECOMMENDS_FOOD  DIAGNOSED_BY  AVOIDS_FOOD  BELONGS_TO_CLASS  MANAGED_BY  AFFECTS_ORGAN  HAS_SIDE_EFFECT   
+n            10083   1096                52          46           45               42               35            30           26                22          19             12                6   
+
+                  13  
+relation  SUBTYPE_OF  
+n                  4  
+=== cell 34
+<Figure size 1320x990 with 1 Axes>
+[image]
+=== cell 36
+                 subject          relation          object  support   source
+0         Đái tháo đường        TREATED_BY       Metformin       37   vinmec
+1  Đái tháo đường type 2        TREATED_BY       Metformin       11   vinmec
+2    Tiền đái tháo đường        TREATED_BY       Metformin        8   vinmec
+3              Metformin   HAS_SIDE_EFFECT  Hạ đường huyết        5   vinmec
+4              Metformin  BELONGS_TO_CLASS       Biguanide        0  curated
+=== cell 38
+       organ                                  via_complications  evidence
+0  Thần kinh  [Rối loạn cương dương, Bệnh thần kinh ngoại biên]         9
+1        Mắt                 [Đục thủy tinh thể, Bệnh võng mạc]         8
+2   Tim mạch                                    [Bệnh tim mạch]         8
+3        Não                                          [Đột quỵ]         6
+4       Thận                         [Bệnh thận đái tháo đường]         5
+5   Bàn chân                          [Bàn chân đái tháo đường]         3
+6     Dạ dày                                      [Liệt dạ dày]         1
+=== cell 40
+                 symptom               found_in support
+0             Khát nhiều                   both  [7, 4]
+1                Mệt mỏi                   both  [6, 3]
+2                Nhìn mờ                   both  [5, 3]
+3                Sụt cân                   both  [7, 2]
+4             Tiểu nhiều                   both  [6, 5]
+5               Ăn nhiều                   both  [6, 4]
+6               Buồn nôn  Đái tháo đường type 1     [4]
+7   Hơi thở mùi trái cây  Đái tháo đường type 1     [3]
+8   Nhiễm trùng tái phát  Đái tháo đường type 1     [5]
+9               Đau bụng  Đái tháo đường type 1     [5]
+10        Tê bì tay chân  Đái tháo đường type 2     [3]
+11   Vết thương lâu lành  Đái tháo đường type 2     [4]
+=== cell 42
+                     type  matched                                    symptoms  evidence
+0          Đái tháo đường        4  [Khát nhiều, Nhìn mờ, Sụt cân, Tiểu nhiều]        67
+1   Đái tháo đường type 1        4  [Khát nhiều, Nhìn mờ, Sụt cân, Tiểu nhiều]        25
+2   Đái tháo đường type 2        4  [Khát nhiều, Nhìn mờ, Sụt cân, Tiểu nhiều]        14
+3  Đái tháo đường thai kỳ        3           [Khát nhiều, Sụt cân, Tiểu nhiều]        16
+4     Tiền đái tháo đường        2                       [Nhìn mờ, Tiểu nhiều]         7
+=== cell 44
+                                                                          path
+0     [Thừa cân, béo phì, Tiền đái tháo đường, Bệnh thận đái tháo đường, Thận]
+1   [Thừa cân, béo phì, Đái tháo đường type 2, Bệnh thận đái tháo đường, Thận]
+2          [Thừa cân, béo phì, Đái tháo đường, Bệnh thận đái tháo đường, Thận]
+3  [Thừa cân, béo phì, Đái tháo đường thai kỳ, Bệnh thận đái tháo đường, Thận]
+=== cell 46
+                                  test                        threshold                                                                                                     used_for  evidence
+0                                HbA1c                           ≥ 6.5%  [Đái tháo đường thai kỳ, Đái tháo đường type 1, Tiền đái tháo đường, Đái tháo đường, Đái tháo đường type 2]        67
+1  Nghiệm pháp dung nạp glucose (OGTT)  2 giờ ≥ 11.1 mmol/L (200 mg/dL)  [Đái tháo đường, Đái tháo đường type 1, Đái tháo đường thai kỳ, Tiền đái tháo đường, Đái tháo đường type 2]        59
+2                  Đường huyết lúc đói         ≥ 7.0 mmol/L (126 mg/dL)  [Đái tháo đường type 1, Đái tháo đường, Tiền đái tháo đường, Đái tháo đường thai kỳ, Đái tháo đường type 2]        51
+3                 Xét nghiệm nước tiểu                              NaN                                               [Đái tháo đường, Đ
+=== cell 48
+                       class              drug  articles                                               side_effects
+0                  Biguanide         Metformin        37                                           [Hạ đường huyết]
+1                Meglitinide       Repaglinide         6                                                         []
+2               Nhóm Insulin           Insulin       143  [Nhiễm toan ceton, Hạ đường huyết, Buồn nôn, Loãng xương]
+3               Nhóm Insulin  Insulin glargine        13                                                         []
+4               Nhóm Insulin    Insulin aspart        11                                                         []
+5               Nhóm Insulin    Insulin lispro         9                                                         []
+6               Nhóm Insulin       Insulin NPH         6                                
+=== cell 50
+             advice                          food  articles
+0       AVOIDS_FOOD             Đồ ngọt, bánh kẹo        14
+1       AVOIDS_FOOD             Thịt chế biến sẵn         7
+2       AVOIDS_FOOD               Nước ngọt có ga         7
+3       AVOIDS_FOOD                      Rượu bia         6
+4       AVOIDS_FOOD     Đồ chiên rán, mỡ động vật         6
+5       AVOIDS_FOOD          Trái cây nhiều đường         4
+6       AVOIDS_FOOD  Cơm trắng, tinh bột tinh chế         2
+7   RECOMMENDS_FOOD                      Rau xanh        13
+8   RECOMMENDS_FOOD                         Trứng        12
+9   RECOMMENDS_FOOD            Ngũ cốc nguyên hạt        10
+10  RECOMMENDS_FOOD                  Các loại đậu         8
+11  RECOMMENDS_FOOD          Sữa chua không đường         7
+12  RECOMMENDS_FOOD                  Các loại hạt         6
+13  RECOMMENDS_FOOD              Trái cây ít ngọt         5
+
+=== cell 52
+                                                                       article                                                                                                                   url
+0                                   Bệnh tiểu đường type 2 có nguy hiểm không?                                      https://www.vinmec.com/vie/bai-viet/benh-tieu-duong-type-2-co-nguy-hiem-khong-vi
+1                Bệnh tiểu đường type 2: Nguyên nhân, biến chứng và phòng bệnh  https://www.vinmec.com/vie/bai-viet/benh-tieu-duong-type-2-nguyen-nhan-bien-chung-nguy-hiem-doi-tuong-de-mac-nhat-vi
+2                      Các biến chứng nguy hiểm của bệnh đái tháo đường type 2                        https://www.vinmec.com/vie/bai-viet/cac-bien-chung-nguy-hiem-cua-benh-dai-thao-duong-type-2-vi
+3  Cách tự nhiên điều trị bệnh tiểu đường type 2 với những thực phẩm hàng ngày    https://www.vinmec.com/vie/bai
+=== cell 54
+              complication_1            complication_2  articles_together
+0              Bệnh tim mạch            Hạ đường huyết                170
+1   Bệnh thận đái tháo đường             Bệnh tim mạch                163
+2              Bệnh tim mạch                   Đột quỵ                139
+3   Bệnh thận đái tháo đường            Hạ đường huyết                116
+4  Bệnh thần kinh ngoại biên             Bệnh tim mạch                110
+5   Bệnh thận đái tháo đường             Bệnh võng mạc                107
+6  Bệnh thần kinh ngoại biên  Bệnh thận đái tháo đường                100
+7              Bệnh tim mạch             Bệnh võng mạc                 98
+8   Bệnh thận đái tháo đường                   Đột quỵ                 95
+9  Bệnh thần kinh ngoại biên             Bệnh võng mạc                 84
+=== cell 56
+1 hop from 'Hạ đường huyết':
+   Đái tháo đường HAS_COMPLICATION Hạ đường huyết.
+   Insulin HAS_SIDE_EFFECT Hạ đường huyết.
+   Đái tháo đường thai kỳ HAS_COMPLICATION Hạ đường huyết.
+   Metformin HAS_SIDE_EFFECT Hạ đường huyết.
+   Đái tháo đường type 2 HAS_COMPLICATION Hạ đường huyết.
+
+2 hops: 230 facts (only the first 30 would be returned) — e.g.
+   Đái tháo đường TREATED_BY Insulin.
+   Đái tháo đường MANAGED_BY Tập thể dục đều đặn.
+   Đái tháo đường MANAGED_BY Giảm cân.
+   Đái tháo đường HAS_COMPLICATION Bệnh tim mạch.
+   Đái tháo đường RECOMMENDS_FOOD Ngũ cốc nguyên hạt.
+   Đái tháo đường AVOIDS_FOOD Rượu bia.
+   Đái tháo đường AVOIDS_FOOD Đồ ngọt, bánh kẹo.
+
+=== cell 58
+127 nodes, 339 edges, density = 0.021
+
+<Figure size 1760x1210 with 1 Axes>
+[image]
+=== cell 60
+<Figure size 1540x1100 with 1 Axes>
+[image]
+<Figure size 1430x990 with 1 Axes>
+[image]
+=== cell 62
+Top by directed PageRank (dead ends of the chains):
+
+<pandas.io.formats.style.Styler at 0x237b69cea50>
+Top by undirected PageRank (central entities):
+
+<pandas.io.formats.style.Styler at 0x237b28a9e50>
+<Figure size 880x550 with 1 Axes>
+[image]
+=== cell 64
+<Figure size 880x660 with 1 Axes>
+[image]
+=== cell 66
+precision = 48/50 = 0.96   likely range for the whole graph: 0.87 to 0.99
+
+
+                  sampled  correct
+relation                          
+AVOIDS_FOOD             7        7
+DIAGNOSED_BY            6        6
+HAS_COMPLICATION        7        7
+HAS_RISK_FACTOR        11       10
+HAS_SYMPTOM             7        6
+MANAGED_BY              2        2
+RECOMMENDS_FOOD         3        3
+TREATED_BY              7        7
+           subject         relation           object                                                            error_type
+3   Đái tháo đường  HAS_RISK_FACTOR  Rối loạn mỡ máu                 risk factor of a complication attached to the disease
+30  Đái tháo đường      HAS_SYMPTOM         Đau bụng  symptom of a complication (DKA / neuropathy) attached to the disease
+=== cell 68
+facts with support ≥  1: 301
+facts with support ≥  2: 295
+facts with support ≥  3: 252
+facts with support ≥  5: 161
+facts with support ≥ 10: 70
+
+=== cell 70

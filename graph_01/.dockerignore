@@ -1,0 +1,8 @@
+.venv
+neo4j_data
+node_modules
+dataset/raw
+report
+notebook
+scratch
+.git

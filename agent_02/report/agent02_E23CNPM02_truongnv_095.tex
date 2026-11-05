@@ -562,26 +562,5 @@ So the agent I would recommend is the 8-state Q-learner trained against an oppon
 
 I implemented the two-seller market, a tabular Q-learning agent and a rule-based agent, and compared them with a separate, paired, multi-seed evaluation. In the reference market the hand-written rule is already the best response, and Q-learning reaches the same policy in most runs (34.39 $\pm$ 1.24 vs 34.97 $\pm$ 0.25 per step). The learning rate and exploration schedule matter: $\alpha = 0.10$ with decaying $\varepsilon$ worked best, while too much exploration, no exploration, too slow or too fast learning all produced worse and less reliable policies. When the rival changes, the advantage reverses: fixed rules lose up to 4.5 per step and learning agents adapt. An agent trained against a pool of opponents with a decreasing step size came within 0.3 per step of the best response against every opponent tested. The broader lesson is that the winner depends on the market: which agent is better is a question about the environment and its assumptions as much as about the algorithm.
 
-% =====================================================================
-\section*{Reproducibility}
-\addcontentsline{toc}{section}{Reproducibility}
-
-\begin{codeblock}
-pip install numpy matplotlib
-cd agent_02/code
-python agent02_experiment.py               # all experiments (~25 min), writes ../results/
-python agent02_experiment.py robustness    # only the Question 10 experiment
-cd ../report && xelatex agent02_E23CNPM02_truongnv_095.tex   # run twice for the contents
-\end{codeblock}
-
-Python 3.13, NumPy 2.5, Matplotlib 3.11. The notebook \code{notebook/agent02\_demo.ipynb} runs the same experiments step by step with explanations. Seeds and the evaluation protocol are listed in Section~\ref{sec:setup}. All CSV files (per-seed and summary) are in \code{agent\_02/results/}.
-
-\section*{References}
-\addcontentsline{toc}{section}{References}
-
-\begin{enumerate}[label={[\arabic*]}]
-    \item Intelligent System Development, \emph{Laboratory Experiment 02: Reinforcement-Learning-Based Agents versus Rule-Based Agents}, assignment and reference implementation (\code{agent02\_experiment.py}), 2026.
-    \item R. S. Sutton and A. G. Barto, \emph{Reinforcement Learning: An Introduction}, 2nd ed., MIT Press, 2018 (Q-learning, $\varepsilon$-greedy, step-size parameters).
-\end{enumerate}
 
 \end{document}

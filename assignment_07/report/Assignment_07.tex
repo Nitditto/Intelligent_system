@@ -1,0 +1,448 @@
+%!TEX program = xelatex
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[top=2cm, bottom=2cm, left=2.5cm, right=2cm]{geometry}
+\usepackage{fontspec}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{xurl}
+\usepackage{parskip}
+\usepackage{listings}
+\usepackage{microtype}
+\usepackage{caption}
+\usepackage{enumitem}
+
+\graphicspath{{images/}}
+\emergencystretch=10em
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!70!black,
+    citecolor=blue!70!black,
+    urlcolor=blue!70!black,
+    pdftitle={Assignment 07 - 5-layer RNN and LSTM in PyTorch and Keras},
+    pdfauthor={Nguyen Van Truong}
+}
+
+\lstset{
+    basicstyle=\small\ttfamily,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10},
+    columns=fullflexible
+}
+
+\newcommand{\run}[1]{\texttt{#1}}
+\setlist{itemsep=2pt, topsep=4pt}
+
+\begin{document}
+
+% ---------------------------------------------------------
+% COVER PAGE
+% ---------------------------------------------------------
+\begin{titlepage}
+\begin{center}
+
+\vspace*{0.5cm}
+
+\Large
+\textbf{POSTS AND TELECOMMUNICATIONS INSTITUTE OF TECHNOLOGY}\\
+\textbf{Faculty of Information Technology}
+
+\vspace{2.0cm}
+
+\Huge
+\textbf{Intelligent System Development}\\
+\vspace{0.4cm}
+\LARGE
+\textbf{ASSIGNMENT 07}\\
+\vspace{0.6cm}
+\Large
+\textbf{A Five-Layer RNN and a Five-Layer LSTM\\as Compositions of Functions:\\PyTorch and Keras on Review Sentiment\\and Stock Volatility}
+
+\vspace{1.2cm}
+
+\vfill
+
+\normalsize
+\begin{tabular}{rl}
+\textbf{Lecturer:} & Assoc. Prof. Dinh Que Tran, Ph.D. \\
+\textbf{Email:} & quetd@ptit.edu.vn, tdque@yahoo.com \\[0.8cm]
+\textbf{Student Name:} & Nguyễn Văn Trường \\
+\textbf{Student ID:} & B23DCCE095 \\
+\textbf{Semester:} & I.2025 -- 2026 \\
+\textbf{Class:} & E23CNPM02 \\
+\textbf{Submission:} & Individual Project \\
+\end{tabular}
+
+\vfill
+
+\textbf{Hanoi, 2026}
+
+\vspace{0.5cm}
+
+\end{center}
+\end{titlepage}
+
+{
+    \hypersetup{linkcolor=black}
+    \tableofcontents
+}
+\newpage
+
+% =====================================================================
+\section{Overview}
+% =====================================================================
+
+The assignment asks for four things: the structure of a 5-layer RNN and of a 5-layer LSTM written as compositions of elementary functions and explained; the two networks
+implemented in PyTorch and in Keras; two datasets (comments from an e-commerce site and stock prices); and a run, evaluation and comparison of LSTM against RNN on both.
+This report does all four with the same protocol for every run. The datasets are \textbf{EC}, Amazon reviews of unlocked mobile phones (162{,}490 unique reviews, classified as negative, neutral or positive),
+and \textbf{ST}, S\&P~500 stocks (145 stocks, 2010--2024, forecasting the mean absolute move of the next five trading days). Each dataset is run with
+2 architectures $\times$ 2 frameworks = 4 runs, named \run{<dataset>-<framework>-<model>}, for example \run{EC-PT-LSTM} (\run{TF} = Keras/TensorFlow, \run{PT} = PyTorch).
+
+\begin{table}[H]
+\centering
+\caption{All eight runs on the test sets. EC: 16{,}249 reviews; ST: 108{,}315 windows (2022--2024). s/epoch = median time per epoch on a CPU.}
+\label{tab:summary}
+\small
+\resizebox{\textwidth}{!}{\input{table_summary.tex}}
+\end{table}
+
+\textbf{Key findings}
+\begin{enumerate}
+\item \textbf{EC: the LSTM wins on the hard class, not on accuracy.} Accuracy is nearly identical for all four runs (0.829--0.834) because 64\,\% of the reviews are positive. The 5-layer RNN almost never
+  predicts \emph{neutral} (F1 0.10--0.13); the LSTM does (F1 0.31--0.35), which raises macro-F1 from 0.605--0.614 to 0.682--0.695 and lowers the log-loss by about 0.04.
+\item \textbf{EC: TF-IDF with logistic regression is still the benchmark.} It has the best accuracy (0.850) and log-loss (0.396), and a macro-F1 (0.688) equal to the LSTMs'. A bag of words that ignores order is hard to beat on this task.
+\item \textbf{EC: long reviews do not favour the LSTM.} Accuracy by review length shows the LSTM ahead only for reviews of up to 20 words and slightly behind above 40 words. The expectation that memory pays off on long reviews is not supported here.
+\item \textbf{ST: the networks beat a strong hand-built forecaster, by little.} All four runs reach $R^2=0.30$--$0.33$ out of sample against 0.30 for the EWMA (RiskMetrics) rule and 0.22 for the 20-day mean. The LSTM is ahead of the RNN by 0.9--1.8\,\% in RMSE,
+  which is no larger than the 1.6\,\% spread between Keras and PyTorch for the \emph{same} model. Only the two LSTMs beat the EWMA in every volatility regime and every test year.
+\item \textbf{Cost.} The LSTM has four times the recurrent weights and needs 1.3--4.0$\times$ (EC) and 2.1--4.3$\times$ (ST) the time per epoch.
+\end{enumerate}
+
+\input{sec_theory.tex}
+
+% =====================================================================
+\section{Data}
+% =====================================================================
+
+Both datasets come from Kaggle, are about 100~MB, and were not used in any earlier assignment. They are chosen so that the two tasks stress the models differently: a sequence of words, where order and negation matter, and a sequence of days, where the signal is a slowly varying level of turbulence.
+
+\subsection{EC: Amazon Reviews of Unlocked Mobile Phones}
+
+\textbf{Source.} PromptCloud's \emph{Amazon Reviews: Unlocked Mobile Phones}: 413{,}840 rows with product name, brand, price, a 1--5 star rating, the review text and the number of votes.
+
+\textbf{Cleaning.} 70 reviews have no text and 251{,}280 further rows repeat a text already listed: the same review appears once per variant of a phone. Keeping copies would put the same text in the training and in the test set, so each text is kept once, which leaves 162{,}490 reviews.
+
+\textbf{Task.} Three-way sentiment: \emph{negative} (1--2 stars, 27.3\,\%), \emph{neutral} (3 stars, 8.8\,\%) and \emph{positive} (4--5 stars, 63.9\,\%). The 3-star class is kept deliberately. It is the hardest case for a network that reads one word at a time (``works fine, but\ldots'') and the case in which memory should matter most.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{EC_ratings.png}
+\caption{Star ratings before (left) and after (right) removing duplicate texts. Five stars dominates and one star comes second: people write when they are delighted or angry.}
+\end{figure}
+
+\textbf{Length.} The median review has 31 words if it is negative or neutral and 21 if it is positive (75th percentile: 62, 65 and 46). The less happy the customer, the more there is to explain, so evidence for the two minority classes is often spread over many words.
+91.0\,\% of the reviews have at most 120 words.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{EC_length.png}
+\caption{Review length. Left: all reviews, with the sequence length $T=120$ used by the networks. Right: by class (normalised).}
+\end{figure}
+
+\textbf{From text to numbers.} A network cannot read text, so each review goes through four steps: (1) \emph{tokenize} into lower-case words (letters, digits and apostrophes); (2) build a \emph{vocabulary} of the 15{,}000 most frequent words of the training set, with id 0 for padding and id 1 for unknown words; (3) \emph{encode} each word as its id; (4) \emph{pad or truncate} to $T=120$.
+Reviews shorter than 120 words receive zeros in front (pre-padding), so the last steps the network reads are real words and the final state $h_T$ has just seen the text. A longer review keeps its \emph{last} 120 words, because people state their verdict at the end (``so I returned it'') and the final state is the one that is classified.
+The data are split \emph{before} the vocabulary is built (stratified 80/10/10: 129{,}992 training, 16{,}249 validation and 16{,}249 test reviews), so validation and test words never enter the vocabulary. The training set has 62{,}418 distinct words; the top 15{,}000 cover 99.0\,\% of all word occurrences, and 1.02\,\% of the tokens become \texttt{<unk>}.
+
+\textbf{Class weights.} With 64/27/9\,\% of the reviews, plain cross-entropy lets the network ignore the neutral class. Each training review is weighted by $w_c\propto1/\sqrt{\text{share}_c}$, normalised to mean 1 over the training set, which gives 1.182 (negative), 2.077 (neutral) and 0.773 (positive). The square root is a compromise: full inverse-frequency weights would make one neutral review count seven times as much as a positive one and make training noisy.
+The weights change only the \emph{training} loss; validation loss, early stopping and all metrics are unweighted, so every run is judged on the real class mix.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{EC_words.png}
+\caption{Words whose document frequency differs most between positive and negative reviews, before any model is trained (60{,}000 reviews, 3{,}000 most common words).}
+\end{figure}
+
+\subsection{ST: S\&P 500 Stocks}
+
+\textbf{Source.} \emph{S\&P 500 Stocks} (andrewmvd): daily open, high, low, close, adjusted close and volume of 502 stocks, 2010-01-04 to 2024-12-20, 1{,}891{,}536 rows. Rows before a company joined the index are empty, so only the \textbf{145 stocks with all 3{,}768 trading days} are used.
+
+\textbf{Task.} For stock $s$ and day $t$, the input is the last $T=40$ days and the target is
+\begin{equation}
+y_t=\frac15\sum_{k=1}^{5}\lvert r_{t+k}\rvert,\qquad r_t=\ln\frac{P_t}{P_{t-1}} ,
+\end{equation}
+the mean absolute move of the next five trading days (a one-week volatility forecast; $P_t$ is the adjusted close).
+\emph{Why volatility and not direction?} Daily returns are close to a random walk: the lag-1 autocorrelation of $r_t$ is $-0.040$, whereas for $\lvert r_t\rvert$ it is $0.215$. The \emph{size} of moves clusters in time (calm days follow calm days), so there is structure to learn.
+\emph{Why five days and not one?} One day's $\lvert r\rvert$ is a very noisy target. A weekly mean keeps the level of turbulence and removes much of the noise: measured on non-overlapping 5-day blocks, the autocorrelation one week apart is $0.477$ for the weekly mean against $0.178$ for the daily value at the same distance, and $0.196$ against $0.077$ eight weeks apart (Figure~\ref{fig:cluster}).
+(The 5-day blocks must not overlap: a rolling 5-day mean shares four of its five days with its neighbour and would show a spuriously high autocorrelation of 0.9.)
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{ST_clustering.png}
+\caption{Left: autocorrelation of returns (grey, near 0) and absolute returns (red, positive for 40 days), averaged over the 145 stocks. Right: at equal distance in time, a weekly average of $\lvert r\rvert$ (non-overlapping blocks) is much more strongly tied to its past than a single day.}
+\label{fig:cluster}
+\end{figure}
+
+\textbf{Features} (five per day, all z-scored with training-period statistics): the log return $r_t$; the high--low range $(\text{High}-\text{Low})/\text{Close}$; the open--close return $\ln(\text{Close}/\text{Open})$; the log volume (z-scored per stock); and the \emph{market return}, the mean of $r_t$ over all 145 stocks on day $t$.
+The last one is the only feature that is not about the stock itself: when the whole market moves, single stocks follow, and a market-wide shock is the main way turbulence spreads. It uses day-$t$ information only.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{ST_eda.png}
+\caption{Left: growth of \$1 in the five most traded stocks (log scale); dashed lines are the split dates. Right: daily returns have fat tails compared with a normal distribution of the same variance.}
+\end{figure}
+
+\textbf{Split.} Chronological and by calendar: training windows are those whose target ends before 2019 (321{,}755 windows), validation 2019--2021 (109{,}765) and test 2022--2024 (108{,}315). A window belongs to the split of the day its \emph{target ends}, so no target crosses a boundary:
+with a 5-day target, a window ending on the last training day would have a target reaching into the validation period, and it is dropped from training. The \emph{input} of a validation or test window may look back into the previous period, as it would in real use.
+Scaling uses training-period statistics only. The three test years are different markets: 2022 was a bear market with rising interest rates (mean target 1.67\,\%/day), 2023 a recovery (1.24\,\%) and 2024 a calm year (1.17\,\%).
+
+% =====================================================================
+\section{Models, Protocol and Implementation}
+\label{sec:impl}
+% =====================================================================
+
+\subsection{Architecture and Hyperparameters}
+
+\begin{table}[H]
+\centering
+\caption{The protocol shared by the four runs of each dataset.}
+\label{tab:protocol}
+\small
+\begin{tabularx}{\textwidth}{@{}l X X@{}}
+\toprule
+ & EC (reviews) & ST (stocks) \\
+\midrule
+input & 120 word ids $\to$ embedding 48 & 40 days $\times$ 5 features \\
+recurrent part & 5 layers, $H=64$ & 5 layers, $H=32$ \\
+output & Dense(3) + softmax & Dense(1), linear \\
+loss & class-weighted cross-entropy & mean squared error, standardised target \\
+optimizer & \multicolumn{2}{l}{Adam, gradient clipping at norm 1} \\
+learning rate / batch & $10^{-3}$ / 256 & $2\cdot10^{-3}$ / 512 \\
+epochs / early stopping & $\le 8$, patience 2 & $\le 12$, patience 3 \\
+\multicolumn{3}{@{}l}{\small both: validation loss decides, the best epoch is restored; same arrays for Keras and PyTorch} \\
+seed & 7 & 2024 \\
+parameters (RNN / LSTM, Keras) & 760{,}451 / 881{,}219 & 9{,}569 / 38{,}177 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+For EC the embedding table ($15{,}000\times48=720{,}000$ parameters) holds 95\,\% of the RNN's parameters and 82\,\% of the LSTM's; the five recurrent layers hold 40{,}256 (RNN) and 161{,}024 (LSTM) parameters. The counts follow the formulas of Section~\ref{sec:theory}: for example the ST RNN has $(5\cdot32+32^2+32)+4(2\cdot32^2+32)+33=9{,}569$ parameters.
+
+\subsection{Keras and PyTorch}
+
+In Keras the 5-layer network is a list of layers; in PyTorch one call with \texttt{num\_layers=5} is the whole stack $f^{(5)}\circ\dots\circ f^{(1)}$, and the training loop is written by hand:
+
+\begin{lstlisting}[language=Python]
+# Keras: four layers return the whole sequence, the fifth only its last state
+stack  = [layers.Input((MAXLEN,)), layers.Embedding(VOCAB, EMB)]
+stack += [cell(H, return_sequences=(l < LAYERS - 1)) for l in range(LAYERS)]
+stack += [layers.Dense(3, activation="softmax")]          # cell = SimpleRNN or LSTM
+
+# PyTorch: nn.RNN / nn.LSTM with num_layers=5, then the last step of the top layer
+class TorchSentiment(nn.Module):
+    def __init__(self, kind):
+        self.emb  = nn.Embedding(VOCAB, EMB)
+        self.rnn  = {"RNN": nn.RNN, "LSTM": nn.LSTM}[kind](EMB, H, num_layers=5, batch_first=True)
+        self.head = nn.Linear(H, 3)
+    def forward(self, x):
+        out, _ = self.rnn(self.emb(x))
+        return self.head(out[:, -1])                      # logits from h^(5)_T
+\end{lstlisting}
+
+\textbf{Making the two frameworks start alike.} Keras and PyTorch initialise differently, which would make a framework comparison partly a comparison of initialisations. The PyTorch weights are therefore set to Keras's defaults: Glorot-uniform input weights (per gate for the LSTM), orthogonal recurrent weights, zero biases, forget-gate bias 1, embedding uniform in $\pm0.05$.
+PyTorch stores two biases per layer, so its models have $L\cdot H$ (RNN) or $4L\cdot H$ (LSTM) more parameters (EC: $+320$ and $+1{,}280$; ST: $+160$ and $+640$), all starting at zero; their sum is Keras's single bias, so the function is the same.
+The class weights enter PyTorch as the per-review loss times $w_y$, averaged over the batch, which is exactly what Keras's \texttt{class\_weight} does.
+
+\textbf{Verification.} Section~\ref{sec:theory} checks the equivalence on a small network: the NumPy implementation built from the five elementary functions agrees with PyTorch and Keras to $1.1\cdot10^{-7}$ (RNN) and $3.8\cdot10^{-8}$ (LSTM), and the parameter counts follow the formulas (271 and 1{,}066 for Keras; 296 and 1{,}166 for PyTorch). Each dataset notebook also asserts the expected parameter count before training.
+
+\subsection{Baselines and Metrics}
+
+\textbf{EC.} The \emph{class prior} (always predict the training class shares, hence always ``positive'') is the floor. \emph{TF-IDF + logistic regression} (unigrams and bigrams, 200{,}000 features, multinomial, the same class weights) is a strong classical model that ignores order: if a recurrent network cannot beat it, its ability to read order is not being used.
+Metrics: accuracy; the F1 of each class and macro-F1, their plain mean (so the 9\,\% neutral class counts as much as the 64\,\% positive one); one-vs-rest ROC-AUC averaged over classes; and the log-loss, which also judges how well calibrated the probabilities are.
+
+\textbf{ST.} All baselines use only the past: the \emph{train mean}; the mean of the \emph{last 5 days} (persistence); the mean of the \emph{last 20 days}; and the \emph{EWMA} $\sigma_t=0.94\,\sigma_{t-1}+0.06\lvert r_t\rvert$, the RiskMetrics rule. The EWMA is a recurrent model with a single number of state and a hand-chosen constant, which makes it the natural opponent of a learned recurrent network.
+Metrics in the original unit (\%\ per day): RMSE, MAE, the out-of-sample $R^2=1-\sum(y-\hat y)^2/\sum(y-\bar y_{\text{train}})^2$ (0 means no better than the train mean) and the correlation of forecast and truth.
+
+% =====================================================================
+\section{Experiment 1: Three-Way Sentiment of Reviews (EC)}
+% =====================================================================
+
+\begin{table}[H]
+\centering
+\caption{EC, test set (16{,}249 reviews). F1 is per class; epochs = epochs run (best epoch); s/epoch = median time per epoch.}
+\label{tab:ec}
+\small
+\resizebox{\textwidth}{!}{\input{table_ec.tex}}
+\end{table}
+
+\textbf{The LSTM finds the neutral reviews.} The accuracies of the four runs differ by 0.005, but the confusion matrices (Figure~\ref{fig:confusion}, rows normalised) show why: the RNNs send 53\,\% of the neutral reviews to ``negative'' and 38--41\,\% to ``positive'' and recognise only 7--9\,\% of them. The LSTMs recognise 31\,\% (Keras) and 42\,\% (PyTorch) while losing 1 point (Keras) and 7 points (PyTorch) of recall on the negative class.
+Neutral reviews mix praise and complaint, so the verdict depends on how the two parts combine, which the final state must carry from earlier words. A plausible reason for the LSTM's advantage is that its gated cell can hold such information while the RNN's last state is dominated by the final words; we did not test this directly. The net effect is macro-F1 $0.682$--$0.695$ against $0.605$--$0.614$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{EC_confusion.png}
+\caption{EC: confusion matrices on the test set, each row divided by its total (the diagonal is the per-class recall).}
+\label{fig:confusion}
+\end{figure}
+
+\textbf{The star order is learned from three labels.} The networks never saw the difference between 1 and 2 stars or between 4 and 5. Still, the score $P(\text{pos})-P(\text{neg})$ rises monotonically with the rating for every model (Table~\ref{tab:stars}), and is close to 0 at 3 stars for the PyTorch LSTM ($-0.036$) as for TF-IDF ($-0.005$). The LSTMs separate the extremes more strongly: at 5 stars they score 0.84--0.85 against 0.79 for the RNNs.
+
+\begin{table}[H]
+\centering
+\caption{EC: mean sentiment score $P(\text{pos})-P(\text{neg})$ of the test reviews of each star rating.}
+\label{tab:stars}
+\small
+\input{table_ec_stars.tex}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.6\textwidth]{EC_stars.png}
+\caption{EC: the same scores as Table~\ref{tab:stars}; the order of the stars is respected by every model.}
+\end{figure}
+
+\textbf{Overfitting.} Figure~\ref{fig:eccurves} shows validation loss reaching its minimum at epoch 2 (epoch 4 for the PyTorch LSTM) and rising afterwards while the training loss keeps falling: the 720{,}000-parameter embedding table is learned from 130{,}000 reviews and starts to memorise them. Early stopping restores the best epoch. This is also why the LSTM's extra capacity does not translate into an accuracy gain.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{EC_curves.png}
+\caption{EC: validation loss (left) and validation accuracy (right) per epoch; dotted line: TF-IDF accuracy on the test set.}
+\label{fig:eccurves}
+\end{figure}
+
+\textbf{Long reviews do not favour the LSTM.} If the RNN lost information over many steps, its accuracy should fall faster than the LSTM's on long reviews. Table~\ref{tab:eclen} shows the opposite pattern: the LSTM is ahead by 0.9--1.4 points on reviews of up to 20 words, level at 21--40 words and up to 2 points behind above 40 words; above 120 words (cut to the last 120) every recurrent model loses clearly to TF-IDF (0.74--0.78 against 0.84), which sees every word.
+The vanishing-gradient argument of Section~\ref{sec:grad} concerns training signal for \emph{early} words, and on these data it does not visibly limit the RNN. A possible reason, which we did not test, is that with pre-padding and a verdict at the end most of the information is in the last few steps. What the data show is that the LSTM's gain on EC comes from the neutral class, not from long reviews.
+
+\begin{table}[H]
+\centering
+\caption{EC: test accuracy by review length. Reviews above 120 words are cut to their last 120.}
+\label{tab:eclen}
+\small
+\input{table_ec_length.tex}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{EC_by_length.png}
+\caption{EC: test accuracy by review length, all runs and TF-IDF.}
+\end{figure}
+
+\textbf{TF-IDF remains the benchmark.} It has the best accuracy (0.850) and log-loss (0.396), is level on AUC (0.916 against 0.910--0.913) and on macro-F1 (0.688 against 0.682 and 0.695; the two LSTM implementations differ by 0.013, more than their gap to TF-IDF). Sentiment in product reviews is largely lexical (``great'', ``broke'', ``refund''); a bag of words sees all words of every review, while the networks see at most 120 and must learn their embeddings from scratch on 130{,}000 reviews.
+We state this as measured: with this training set and no pre-trained embeddings, the recurrent models match a linear baseline on macro-F1 but do not beat it.
+
+% =====================================================================
+\section{Experiment 2: One-Week Stock Volatility (ST)}
+% =====================================================================
+
+\begin{table}[H]
+\centering
+\caption{ST, test set (108{,}315 windows, 2022--2024). Errors are in \%\ per day; baselines use only the past.}
+\label{tab:st}
+\small
+\resizebox{\textwidth}{!}{\input{table_st.tex}}
+\end{table}
+
+\textbf{The baselines show what a model has to beat.} The mean of the last 5 days is \emph{worse} than the train mean ($R^2=-0.127$): five days are a noisy copy of next week's level. Averaging 20 days removes noise and gives $R^2=0.221$; the EWMA, which weights recent days more and old days less without a hard cut-off, gives $0.296$.
+
+\textbf{The networks beat the EWMA, by a small margin.} The four runs reach $R^2$ between 0.299 and 0.332. The RMSE gain over the EWMA is 0.2\,\% (PyTorch RNN) to 2.6\,\% (Keras LSTM), and the correlation with the truth is 0.516--0.544 against 0.526 for the EWMA. Figure~\ref{fig:forecast} shows what this looks like: all forecasts follow the level of turbulence but none anticipates a spike, as expected of a volatility forecast.
+The networks have additional inputs (range, volume, market return) and learn the weights of the past days instead of fixing 0.94; yet a rule with one hand-chosen constant is already within 3\,\% of them in RMSE.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{ST_forecast.png}
+\caption{ST: true weekly mean $\lvert r\rvert$ and forecasts for one stock (DLR, from the middle of the liquidity ranking), last 250 test days.}
+\label{fig:forecast}
+\end{figure}
+
+\textbf{Early stopping picked epoch 1 in all four runs.} Validation loss is about 1.8 (standardised MSE) against 0.6 on the training set and rises from epoch 2 (Figure~\ref{fig:stcurves}). The validation period 2019--2021 contains the crash of March 2020, whose very large targets dominate the loss, so the validation loss mostly measures how a model copes with a regime the training period (2010--2018) never contained, not how well it has fitted the training data.
+The reported models are therefore barely trained. This is a limitation of the protocol, discussed in Section~\ref{sec:limits}; the test results are still valid, because the test set was not used for any decision.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{ST_curves.png}
+\caption{ST: validation loss per epoch.}
+\label{fig:stcurves}
+\end{figure}
+
+\textbf{Where does the LSTM help?} Table~\ref{tab:stregime} splits the test windows into five groups by the 20-day volatility at prediction time, and Table~\ref{tab:styear} by test year. Both LSTMs beat the EWMA in all five regimes and all three years. The RNNs do not: they lose narrowly in the calm and middle regimes, and the PyTorch RNN ties the EWMA in 2022 and is slightly worse in 2023.
+All models are least accurate in the most turbulent group (RMSE 0.91--0.94\,\% against 0.49--0.50\,\% in the calmest), since the level of the target rises and falls together with its error.
+
+\begin{table}[H]
+\centering
+\caption{ST: test RMSE (\%) by volatility regime (quintiles of the 20-day mean $\lvert r\rvert$ at prediction time).}
+\label{tab:stregime}
+\small
+\input{table_st_regime.tex}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{ST: test RMSE (\%) by year; the last column is the mean target in that year.}
+\label{tab:styear}
+\small
+\input{table_st_year.tex}
+\end{table}
+
+\textbf{LSTM against RNN: a small edge, within the noise.} The LSTM's RMSE is lower by 0.9\,\% (Keras) and 1.8\,\% (PyTorch), but the two implementations of the \emph{same} model differ by 1.6\,\% (RNN) and 0.6\,\% (LSTM). With one run per configuration the LSTM advantage is not larger than the spread between single runs, so we cannot call it established.
+It is also consistent with the data: the autocorrelation of the weekly level decays over weeks (Figure~\ref{fig:cluster}), so the information is in the recent past, within reach of a plain RNN; the cell path matters when the answer sits far back.
+
+% =====================================================================
+\section{Comparison: LSTM against RNN, Keras against PyTorch}
+% =====================================================================
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{cmp_score.png}
+\caption{Main score of the eight runs (axes start at 0).}
+\end{figure}
+
+\textbf{Accuracy.} The LSTM's advantage differs by task and by metric. On EC it is large for macro-F1 (+0.07 to +0.09) and for the neutral class, and absent for accuracy. On ST it is a 1--2\,\% lower RMSE. In neither case is it explained by long-range memory in the sense of Section~\ref{sec:grad}; in both, the data put the information in the last steps.
+
+\textbf{Parameters.} The recurrent part is exactly 4$\times$ larger (EC: 40{,}256 $\to$ 161{,}024; ST: 9{,}569 $\to$ 38{,}177 in total). On EC the embedding dominates, so the total grows by only 16\,\%; on ST the whole model grows 4$\times$.
+
+\textbf{Time.} Seconds per epoch on a CPU (Figure~\ref{fig:time}): the LSTM needs 1.3$\times$ (PyTorch) to 4.0$\times$ (Keras) the time of the RNN on EC and 2.1$\times$ (PyTorch) to 4.3$\times$ (Keras) on ST, because each step does four matrix products instead of one.
+Epoch times of the PyTorch RNN on EC varied between 97 and 206\,s inside one run, so timing ratios on this machine are indicative only.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{cmp_time.png}
+\caption{Median seconds per epoch (CPU only).}
+\label{fig:time}
+\end{figure}
+
+\textbf{Framework.} Keras and PyTorch, started from the same initialisation, land close together but not identically: macro-F1 0.614 / 0.605 (RNN) and 0.682 / 0.695 (LSTM); ST RMSE 0.685 / 0.696\,\% (RNN) and 0.679 / 0.683\,\% (LSTM). The remaining differences come from batch order, non-deterministic kernels and the epoch at which early stopping fires, not from different mathematics (the forward passes agree to $10^{-7}$).
+This spread, about 0.01 in macro-F1 and 1\,\% in RMSE, is the yardstick for reading any difference between two single runs in this report.
+
+% =====================================================================
+\section{Conclusions and Limitations}
+\label{sec:limits}
+% =====================================================================
+
+\textbf{Conclusions.}
+\begin{itemize}
+\item A 5-layer RNN is $\hat y=g\circ\mathrm{last}\circ f^{(5)}\circ\dots\circ f^{(1)}$ with each $f^{(l)}$ made of matrix products, additions and $\tanh$; a 5-layer LSTM is the same grid with gates built from sigmoid, $\tanh$ and $\odot$. Hand-written versions agree with PyTorch and Keras to $10^{-7}$ and the parameter formulas match the frameworks exactly.
+\item Gradient clipping and the additive cell address the two opposite failures of recurrence: clipping caps an exploding gradient (up to $2\cdot10^{10}$ in our test), the cell path keeps a vanishing one alive (about $5\cdot10^{5}$ times more signal at the first step than in the RNN, with forget bias 1).
+\item On three-way review sentiment the LSTM is clearly better than the RNN on the neutral class and in macro-F1, equal in accuracy, and level with TF-IDF + logistic regression in macro-F1 but not better on accuracy or log-loss.
+\item On one-week stock volatility, networks of both types beat a strong EWMA baseline by 0.2--2.6\,\% in RMSE, and the LSTM's edge over the RNN is of the order of the run-to-run spread.
+\item The LSTM costs four times the recurrent weights and 1.3--4.3$\times$ the time per epoch. It is worth it when a minority class needs context (EC), and marginal when the signal is a short-memory level (ST).
+\end{itemize}
+
+\textbf{Limitations.}
+\begin{itemize}
+\item One run per configuration: no seeds, so no confidence intervals. Differences below about 0.01 in macro-F1 or 1\,\% in RMSE (the Keras--PyTorch spread) should not be read as real.
+\item ST validation period: 2019--2021 contains the March 2020 crash, so early stopping selected epoch 1 for all four runs. A validation period without such a shock, or time-series cross-validation, would train the models longer and may widen or close the gap between RNN and LSTM.
+\item Embeddings are learned from scratch on 130{,}000 reviews; pre-trained word vectors would likely lift the recurrent models over TF-IDF. Reviews are cut to the last 120 words.
+\item Fixed sizes ($H=64$ and $H=32$, five layers): both models were not tuned separately, and the RNN was not given four times the units to match the LSTM's parameters, so architecture and size are compared together.
+\item CPU-only timing on one machine; ratios between frameworks depend on thread settings and kernels.
+\item Not tried: bidirectional layers, GRU, attention, other horizons and targets for ST.
+\end{itemize}
+
+% =====================================================================
+\appendix
+
+\end{document}

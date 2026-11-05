@@ -1,0 +1,15 @@
+\begin{tabular}{llrrrrr}
+\toprule
+Run & main metric & value & second metric & params & s/epoch & train time (s) \\
+\midrule
+\run{EC-TF-RNN} & macro-F1 & 0.614 & acc. 0.829 & 760{,}451 & 69.7 & 286 \\
+\run{EC-PT-RNN} & macro-F1 & 0.605 & acc. 0.830 & 760{,}771 & 143.4 & 566 \\
+\run{EC-TF-LSTM} & macro-F1 & 0.682 & acc. 0.834 & 881{,}219 & 278.4 & 1127 \\
+\run{EC-PT-LSTM} & macro-F1 & 0.695 & acc. 0.829 & 882{,}499 & 188.2 & 1126 \\
+\midrule
+\run{ST-TF-RNN} & RMSE (\%) & 0.6849 & $R^2$ 0.320 & 9{,}569 & 20.2 & 87 \\
+\run{ST-PT-RNN} & RMSE (\%) & 0.6956 & $R^2$ 0.299 & 9{,}729 & 31.1 & 127 \\
+\run{ST-TF-LSTM} & RMSE (\%) & 0.6788 & $R^2$ 0.332 & 38{,}177 & 86.5 & 362 \\
+\run{ST-PT-LSTM} & RMSE (\%) & 0.6828 & $R^2$ 0.324 & 38{,}817 & 66.3 & 264 \\
+\bottomrule
+\end{tabular}
